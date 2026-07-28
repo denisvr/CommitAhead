@@ -4,7 +4,7 @@ CommitAhead is a private, invite-only web application for structured software-en
 
 ## Status
 
-**Phase 0A**, plus everything else in Phase 0 that doesn't need a real Supabase project (EF Core/Npgsql wiring, OpenAPI + generated TypeScript client, CI), is implemented. There is no Supabase project, authentication, or business domain layer yet. See `docs/roadmap.md` for what's left and `docs/prompts/phase-0a-claude-kickoff.md` for what Phase 0A specifically covered.
+Phase 0 is complete: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth, CSRF, security headers, and a minimal authenticated screen are all implemented and verified (including one real call to the live Supabase Auth API). There is no business domain layer yet (Phase 1). The Supabase project exists and is used for Auth; its Postgres stays untouched (development runs against the local Docker Postgres instead — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
 
 ## Local Requirements
 
@@ -39,6 +39,37 @@ docker compose exec -T db psql -U postgres -d commitahead < scripts/database/002
 `users` and must be run manually, after migrations, because it needs the table to already exist.
 When the real Supabase project is created, the same two SQL scripts are the template for setting it
 up (see `backend/scripts/database/`) — only the connection host/credentials change.
+
+## Setting Up the Real Supabase Project
+
+**Not required for local development.** `Supabase:Url`/`Supabase:AnonKey` point at the real
+project for Auth, while `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres —
+auth and persistence are independent, and there's no need to develop against the real Postgres
+before deployment (Phase 6). The steps below apply the same
+`backend/scripts/database/001_roles.sql`/`002_rls_users.sql` used locally to the *real* Postgres,
+for whenever you're ready (e.g. first deployment). Only you should run these — they need the
+project's real database password, which this assistant never sees or handles, even if you offer
+to share it:
+
+```bash
+# 1. In the Supabase SQL editor, run 001_roles.sql with the ${...} placeholders replaced by real
+#    passwords you generate (never reuse the local dev ones).
+# 2. Apply the migration bundle using the migrator role from step 1:
+COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_migrator;Password=<real password>" \
+  dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
+# 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2).
+# 4. Seed the owner's row (use your real Supabase Auth user's UID and email):
+#    INSERT INTO users (id, supabase_user_id, email, is_enabled, created_at_utc)
+#    VALUES ('<uid>', '<uid>', '<email>', true, now());
+# 5. Point the running API at the real database with the app role from step 1:
+dotnet user-secrets set "ConnectionStrings:CommitAheadDb" \
+  "Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_app;Password=<real password>" \
+  --project src/CommitAhead.Api
+```
+
+Also in the Supabase dashboard: Authentication → URL Configuration → add your callback URL
+(`http://localhost:5120/auth/callback` for local dev) to the redirect allow-list, and confirm
+Authentication → Sign In / Providers → "Allow new users to sign up" stays off (ADR-0006).
 
 ## MVP
 

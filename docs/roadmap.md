@@ -4,25 +4,28 @@ The roadmap is organised as vertical slices. Every phase must leave a working, t
 
 ---
 
-## Phase 0 — Secure Foundation *(current — Phase 0A and part of the rest of Phase 0 are implemented)*
+## Phase 0 — Secure Foundation *(current — nearly complete)*
 
 **Outcome:** An authenticated owner can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
 
-**Phase 0A is implemented** (`docs/prompts/phase-0a-claude-kickoff.md` — solution skeleton and architecture baseline). A further slice of Phase 0 — everything that doesn't require a live Supabase project — is also implemented. **Auth, CSRF, security headers, and the authenticated screen are not implemented**; they need a real Supabase project, which does not exist yet.
+The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) and is used for Auth only right now — `Supabase:Url`/`Supabase:AnonKey` point at it, while `ConnectionStrings:CommitAheadDb` still points at the local Docker Postgres (`backend/docker-compose.yml`), which already has the owner's `users` row seeded. This is a deliberate, accepted split: Supabase Auth and the app's Postgres are independent, and there is no need to develop against the real Postgres before deployment. Backend-mediated magic-link/PKCE auth, per-user authorization, CSRF, and security headers are implemented and verified end-to-end this way — including one real call to the live Supabase Auth API (`POST /auth/v1/otp` → `200`).
+
+**Applying the migration bundle and roles/RLS scripts to the real Supabase Postgres is deferred to deployment (Phase 6)**, not blocking Phase 0 — it needs the project's real database password, which stays with the user (see `backend/README.md`).
 
 - [x] Create `.slnx` and Domain, Application, Infrastructure, and API projects (`backend/`)
 - [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`) — E2E project not yet added
 - [x] Configure project references and the API composition root according to ADR-0013
 - [x] Serve the production Vite build from Kestrel on the same origin (copied into the published artifact's `wwwroot` at publish time, not into the backend source tree)
-- [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`) — **not yet against the real Supabase project**, which doesn't exist yet; the same scripts are the template for it
-- [ ] Create the Supabase project and apply the migration bundle to it
-- [ ] Implement backend-mediated magic-link/PKCE auth, per-user authorization (ADR-0015), refresh/logout, CSRF, and security headers
-- [ ] Add a minimal authenticated health/home screen (Phase 0A added only an anonymous health endpoint, deliberately with no auth)
+- [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`)
+- [x] Create the Supabase project
+- [ ] *(Deferred to Phase 6/deployment, not blocking)* Apply the migration bundle and `001_roles.sql`/`002_rls_users.sql` to the real Supabase Postgres, and seed the owner's `users` row there — user-run, needs the real DB password
+- [x] Implement backend-mediated magic-link/PKCE auth (`/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`), per-user authorization (ADR-0015), CSRF (`/auth/csrf` + validation middleware), and security headers
+- [x] Add a minimal authenticated home screen (`GET /api/me` + a login form / signed-in view in `frontend/`)
 - [x] Add OpenAPI generation (build-time, via `Microsoft.Extensions.ApiDescription.Server`) and generated TypeScript client compilation (`frontend/src/api/generated`)
 - [x] Add the five NetArchTest rules (4 active; the repository half of rule 5 is active against `IUserRepository`/`UserRepository`; the `IAIProvider` half is still skipped/pending — see `CLAUDE.md`)
 - [x] Add blocking CI: Gitleaks and generated-client drift, on top of the build/format/lint/type-check/test/NuGet+npm audit gates already in place
 
-**Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass; no frontend Supabase key exists.
+**Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass (locally-signed JWTs, per `docs/testing/strategy.md`); no frontend Supabase key exists.
 
 ---
 
