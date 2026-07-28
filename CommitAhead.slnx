@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CommitAhead.Api/CommitAhead.Api.csproj" />
+    <Project Path="src/CommitAhead.Application/CommitAhead.Application.csproj" />
+    <Project Path="src/CommitAhead.Domain/CommitAhead.Domain.csproj" />
+    <Project Path="src/CommitAhead.Infrastructure/CommitAhead.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CommitAhead.Api.Tests/CommitAhead.Api.Tests.csproj" />
+    <Project Path="tests/CommitAhead.Application.Tests/CommitAhead.Application.Tests.csproj" />
+    <Project Path="tests/CommitAhead.Domain.Tests/CommitAhead.Domain.Tests.csproj" />
+    <Project Path="tests/CommitAhead.Infrastructure.Tests/CommitAhead.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

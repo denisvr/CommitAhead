@@ -1,1 +1,21 @@
 .claude/
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Frontend
+node_modules/
+dist/
+src/CommitAhead.Api/wwwroot/
+*.tsbuildinfo
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+
+# OS
+.DS_Store
+Thumbs.db
