@@ -6,12 +6,15 @@ namespace CommitAhead.Application.Auth;
 
 /// <summary>
 /// Always returns a PKCE code verifier so the response shape is identical whether or not the
-/// email is provisioned (ADR-0015: closed login, no enumeration). Supabase is only called — the
-/// only externally-visible/timed side effect — when the email matches an existing, enabled User;
-/// the controller returns the same generic response regardless of outcome. A Supabase failure
-/// (network error, non-success status) is swallowed here for the same reason: a provisioned
-/// user's email must not produce a different HTTP status than an unknown one just because the
-/// external call happened to fail. Only a safe, content-free error is logged.
+/// email is provisioned (ADR-0015: closed login — this prevents enumeration through the response
+/// status/body; the timing difference between calling Supabase or not is a separate, accepted
+/// residual risk mitigated only by rate limiting, see docs/security/threat-model.md). Supabase is
+/// only called — the only externally-visible/timed side effect — when the email matches an
+/// existing, enabled User; the controller returns the same generic response regardless of
+/// outcome. A Supabase failure (network error, non-success status, provider timeout) is swallowed
+/// here for the same reason: a provisioned user's email must not produce a different HTTP status
+/// than an unknown one just because the external call happened to fail. Only a safe event/error
+/// type is logged — never the email, never the raw exception (message/stack trace).
 /// </summary>
 public sealed class LoginUseCase
 {
@@ -39,11 +42,15 @@ public sealed class LoginUseCase
             {
                 await _authClient.InitiateMagicLinkAsync(normalizedEmail, codeChallenge, cancellationToken);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // HttpClient provider timeouts also throw via the OperationCanceledException
+            // hierarchy (TaskCanceledException) — those must be treated as an ordinary provider
+            // failure, not propagated. Only genuine cancellation of OUR OWN cancellationToken
+            // (the caller's request being aborted) should propagate.
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 // Never let a Supabase failure surface as a different response than an unknown
-                // email would get (no enumeration by timing/status) — never logs the email itself.
-                _logger.LogError(ex, "Failed to initiate a Supabase magic link.");
+                // email would get — never logs the email, never the exception message/stack trace.
+                _logger.LogError("Failed to initiate a Supabase magic link. Exception type: {ExceptionType}", ex.GetType().Name);
             }
         }
 

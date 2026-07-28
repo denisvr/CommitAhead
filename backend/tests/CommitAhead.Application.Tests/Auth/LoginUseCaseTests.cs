@@ -104,14 +104,57 @@ public class LoginUseCaseTests
         Assert.False(string.IsNullOrEmpty(codeVerifier));
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Null(entry.Exception);
         Assert.DoesNotContain("owner@example.com", entry.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenSupabaseCallTimesOut_TreatsItLikeAnyOtherProviderFailure_AndDoesNotPropagate()
+    {
+        // HttpClient's own configured timeout throws via the OperationCanceledException
+        // hierarchy (TaskCanceledException) — this must be swallowed and logged just like an
+        // HttpRequestException, not treated as if the caller cancelled the request.
+        var authClient = new FakeSupabaseAuthClient
+        {
+            ExceptionToThrowOnInitiateMagicLink = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."),
+        };
+        var userRepository = new FakeUserRepository();
+        await userRepository.AddAsync(new User(Guid.NewGuid(), "owner-sub", "owner@example.com", Now), CancellationToken.None);
+        var logger = new RecordingLogger<LoginUseCase>();
+        var useCase = new LoginUseCase(authClient, userRepository, logger);
+
+        // The caller's own token is never cancelled — only the provider's internal timeout fired.
+        var codeVerifier = await useCase.ExecuteAsync("owner@example.com", CancellationToken.None);
+
+        Assert.False(string.IsNullOrEmpty(codeVerifier));
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Null(entry.Exception);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCallerCancellationIsRequested_PropagatesTheCancellation()
+    {
+        var authClient = new FakeSupabaseAuthClient
+        {
+            ExceptionToThrowOnInitiateMagicLink = new OperationCanceledException("Caller aborted the request."),
+        };
+        var userRepository = new FakeUserRepository();
+        await userRepository.AddAsync(new User(Guid.NewGuid(), "owner-sub", "owner@example.com", Now), CancellationToken.None);
+        var useCase = new LoginUseCase(authClient, userRepository, NullLogger<LoginUseCase>.Instance);
+
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => useCase.ExecuteAsync("owner@example.com", cts.Token));
     }
 
     [Fact]
     public async Task ExecuteAsync_WithProvisionedEmailWhereSupabaseFails_ReturnsACodeVerifier_JustLikeAnUnknownEmailWould()
     {
-        // The whole point of ADR-0015's closed-login/no-enumeration guarantee: a provisioned
-        // user whose Supabase call happens to fail must behave identically (from the
+        // The whole point of ADR-0015's closed-login guarantee (prevents enumeration through the
+        // response status/body — timing remains a separate, rate-limited residual risk): a
+        // provisioned user whose Supabase call happens to fail must behave identically (from the
         // controller's perspective — same codeVerifier contract) to an unknown email, not throw.
         var authClient = new FakeSupabaseAuthClient
         {

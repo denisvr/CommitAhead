@@ -4,8 +4,9 @@ namespace CommitAhead.Application.Auth;
 
 /// <summary>
 /// Best-effort Supabase revoke (ADR-0006): a failure here must never stop logout from completing
-/// — the controller always clears session cookies regardless of this call's outcome. Only a safe,
-/// content-free error is logged.
+/// — the controller always clears session cookies regardless of this call's outcome. Only a safe
+/// event/error type is logged — never the access token, never the raw exception (message/stack
+/// trace).
 /// </summary>
 public sealed class LogoutUseCase
 {
@@ -24,9 +25,12 @@ public sealed class LogoutUseCase
         {
             await _authClient.RevokeAsync(accessToken, cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        // See LoginUseCase for why only genuine cancellation of OUR OWN cancellationToken should
+        // propagate — an HttpClient provider timeout is also an OperationCanceledException, but
+        // must be treated like any other revoke failure, not rethrown.
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(ex, "Failed to revoke the Supabase access token during logout.");
+            _logger.LogError("Failed to revoke the Supabase access token during logout. Exception type: {ExceptionType}", ex.GetType().Name);
         }
     }
 }

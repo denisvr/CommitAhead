@@ -69,8 +69,9 @@ public class LoginEndpointTests
         var response = await client.PostAsJsonAsync("/auth/login", new { email = "owner@example.com" });
 
         // Same 200 + same generic message a healthy call or an unknown email would produce — a
-        // Supabase failure must never turn into a distinguishable response (no enumeration via
-        // external-failure status codes).
+        // Supabase failure must never turn into a distinguishable response/status code. This
+        // prevents enumeration through status/body; timing remains a separate, rate-limited
+        // residual risk (see docs/security/threat-model.md).
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
         Assert.Equal(GenericMessage, body!.Message);

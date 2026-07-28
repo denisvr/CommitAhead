@@ -48,7 +48,7 @@
 
 ### Authentication
 - Supabase magic link with PKCE, completed by the backend callback
-- Magic-link initiation: accepts only a provisioned, enabled user's email; Supabase is never called for any other email; response is generic either way (no enumeration); rate-limited
+- Magic-link initiation: accepts only a provisioned, enabled user's email; Supabase is never called for any other email; response status/body is generic either way, preventing enumeration through those channels — the timing difference between calling Supabase or not is a separate, accepted residual risk, mitigated only by the rate limit on this endpoint
 - PKCE state cookie: `SameSite=Lax` (required for email redirect); session cookies: `SameSite=Strict`
 - Access tokens expire in 15 minutes; proactive/single-flight refresh before expiry
 - Refresh cookie scoped to `/auth/refresh`; requires POST + CSRF validation; rotates atomically
