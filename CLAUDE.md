@@ -1,6 +1,6 @@
 # CommitAhead
 
-Private single-user interview preparation app. Full domain model and architecture confirmed — read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives. See `docs/` for the complete product, domain, architecture, testing, and security documentation.
+Private, invite-only interview preparation app — data is isolated per user by `OwnerUserId` from the start (see ADR-0015); public signup stays disabled. Today there is exactly one real user. Full domain model and architecture confirmed — read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives. See `docs/` for the complete product, domain, architecture, testing, and security documentation.
 
 ## Stack
 - **Frontend:** React 19 + TypeScript + Vite; OpenAPI-generated TypeScript client
@@ -39,7 +39,7 @@ Private single-user interview preparation app. Full domain model and architectur
 2. Application has no dependency on Infrastructure, API, EF Core, Npgsql, ASP.NET Core, or Supabase.
 3. Infrastructure has no dependency on API.
 4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services. The API composition root is the explicit exception for Infrastructure registration.
-5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded).
+5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). **Pending**: skipped until Application declares `IAIProvider` and at least one repository interface (Phase 1/Phase 4) — there is nothing to check the rule against yet, and a name-suffix match against a codebase with no such types would pass vacuously.
 
 ## Project structure (target)
 ```
@@ -58,20 +58,28 @@ CommitAhead/
 │   ├── deployment/                   ← strategy (TBD)
 │   ├── roadmap.md
 │   └── tbd.md
-├── src/
-│   ├── CommitAhead.Domain/
-│   ├── CommitAhead.Application/
-│   ├── CommitAhead.Infrastructure/
-│   ├── CommitAhead.Api/
-│   └── CommitAhead.Web/              ← Vite React frontend
-└── tests/
-    ├── CommitAhead.Domain.Tests/
-    ├── CommitAhead.Application.Tests/
-    ├── CommitAhead.Infrastructure.Tests/
-    ├── CommitAhead.Api.Tests/
-    ├── CommitAhead.Web.Tests/         ← Vitest + RTL + MSW
-    └── e2e/                           ← Playwright
+├── backend/                           ← ASP.NET Core solution — not the frontend
+│   ├── CommitAhead.slnx
+│   ├── global.json
+│   ├── src/
+│   │   ├── CommitAhead.Domain/
+│   │   ├── CommitAhead.Application/
+│   │   ├── CommitAhead.Infrastructure/
+│   │   └── CommitAhead.Api/
+│   └── tests/
+│       ├── CommitAhead.Domain.Tests/
+│       ├── CommitAhead.Application.Tests/
+│       ├── CommitAhead.Infrastructure.Tests/
+│       └── CommitAhead.Api.Tests/
+└── frontend/                          ← React 19 + Vite app — a separate application, not a
+    ├── package.json                     Clean Architecture layer; builds to frontend/dist
+    ├── src/
+    └── tests (colocated with src, e.g. src/App.test.tsx)
 ```
+
+`frontend/dist` is never committed and never copied into `backend/src`. It is copied into the
+published backend artifact's `wwwroot` only during `dotnet publish` (see the
+`CopyFrontendBuildToPublishOutput` MSBuild target in `CommitAhead.Api.csproj`).
 
 ## CI quality gates (every PR — all blocking)
 

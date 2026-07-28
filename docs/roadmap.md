@@ -4,21 +4,23 @@ The roadmap is organised as vertical slices. Every phase must leave a working, t
 
 ---
 
-## Phase 0 — Secure Foundation *(current)*
+## Phase 0 — Secure Foundation *(current — Phase 0A only is implemented)*
 
 **Outcome:** An authenticated owner can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
 
-- [ ] Create `.sln` and Domain, Application, Infrastructure, and API projects
-- [ ] Create React 19 + Vite + TypeScript project and frontend/component/E2E test projects
-- [ ] Configure project references and the API composition root according to ADR-0013
-- [ ] Serve the production Vite build from Kestrel on the same origin
+**Phase 0A is implemented** (`docs/prompts/phase-0a-claude-kickoff.md` — solution skeleton and architecture baseline only). **The rest of Phase 0 below is not implemented.**
+
+- [x] Create `.slnx` and Domain, Application, Infrastructure, and API projects (`backend/`)
+- [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`) — E2E project not yet added
+- [x] Configure project references and the API composition root according to ADR-0013
+- [x] Serve the production Vite build from Kestrel on the same origin (copied into the published artifact's `wwwroot` at publish time, not into the backend source tree)
 - [ ] Wire EF Core + Npgsql; verify the dedicated runtime DB role and separate migration credential
 - [ ] Create the Supabase project and empty baseline migration bundle
-- [ ] Implement backend-mediated magic-link/PKCE auth, owner check, refresh/logout, CSRF, and security headers
-- [ ] Add a minimal authenticated health/home screen
+- [ ] Implement backend-mediated magic-link/PKCE auth, per-user authorization (ADR-0015), refresh/logout, CSRF, and security headers
+- [ ] Add a minimal authenticated health/home screen (Phase 0A added only an anonymous health endpoint, deliberately with no auth)
 - [ ] Add OpenAPI generation and generated TypeScript client compilation
-- [ ] Add the five NetArchTest rules
-- [ ] Add blocking CI: builds, format/lint/type-check, dependency scans, Gitleaks, backend tests, frontend tests, and generated-client drift
+- [x] Add the five NetArchTest rules (4 active; rule 5 is skipped/pending — see `CLAUDE.md`)
+- [ ] Add blocking CI: dependency scans beyond NuGet/npm audit, Gitleaks, and generated-client drift (build/format/lint/type-check/test are already blocking in CI)
 
 **Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass; no frontend Supabase key exists.
 

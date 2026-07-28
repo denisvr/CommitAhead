@@ -27,4 +27,4 @@ Denormalisation is deferred until a performance measurement shows it is necessar
 
 ## Considered Alternatives
 
-Persisting a denormalised `score` column would require explicit recomputation triggers on every input change (review submitted, link added or removed, weights reconfigured). For a single-user app with low write frequency, this adds synchronisation complexity for no measured benefit.
+Persisting a denormalised `score` column would require explicit recomputation triggers on every input change (review submitted, link added or removed, weights reconfigured). For an invite-only app with a small number of users and low write frequency, this adds synchronisation complexity for no measured benefit.

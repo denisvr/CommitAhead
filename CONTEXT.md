@@ -1,6 +1,6 @@
 # CommitAhead
 
-A private, single-user web application for structured interview preparation. It maintains a ranked study queue, a professional profile, and an evidence layer (job analyses, interview notes) that together drive what to study next.
+A private, invite-only web application for structured interview preparation, with every user's data isolated by owner (see ADR-0015). It maintains a ranked study queue, a professional profile, and an evidence layer (job analyses, interview notes) that together drive what to study next.
 
 ## Language
 

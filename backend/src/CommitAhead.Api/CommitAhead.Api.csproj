@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommitAhead.Application\CommitAhead.Application.csproj" />
+    <ProjectReference Include="..\CommitAhead.Infrastructure\CommitAhead.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    The frontend is a separate application (see /frontend), not a Clean Architecture layer.
+    Its production build is never checked into the backend source tree. It is copied into the
+    published artifact's wwwroot only when publishing, so `dotnet build`/local dev never creates
+    a wwwroot folder under src/.
+  -->
+  <PropertyGroup>
+    <FrontendDistDir>$(MSBuildThisFileDirectory)..\..\..\frontend\dist\</FrontendDistDir>
+  </PropertyGroup>
+
+  <Target Name="CopyFrontendBuildToPublishOutput" AfterTargets="Publish">
+    <ItemGroup Condition="Exists('$(FrontendDistDir)')">
+      <FrontendDistFiles Include="$(FrontendDistDir)**\*.*" />
+    </ItemGroup>
+    <Copy
+      Condition="Exists('$(FrontendDistDir)')"
+      SourceFiles="@(FrontendDistFiles)"
+      DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)"
+      SkipUnchangedFiles="true" />
+    <Warning
+      Condition="!Exists('$(FrontendDistDir)')"
+      Text="frontend/dist not found — run 'npm run build' in frontend/ before publishing so the SPA is included in wwwroot." />
+  </Target>
+
+</Project>

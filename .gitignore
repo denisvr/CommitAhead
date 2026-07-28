@@ -9,8 +9,11 @@ obj/
 # Frontend
 node_modules/
 dist/
-src/CommitAhead.Api/wwwroot/
 *.tsbuildinfo
+
+# Published artifacts (dotnet publish output; wwwroot is copied in only here)
+publish/
+backend/**/wwwroot/
 
 # Test results
 [Tt]est[Rr]esult*/

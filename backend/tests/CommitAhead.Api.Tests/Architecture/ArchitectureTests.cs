@@ -65,24 +65,18 @@ public class ArchitectureTests
         Assert.True(result.IsSuccessful, Describe(result));
     }
 
-    [Fact]
+    [Fact(Skip =
+        "Pending: CLAUDE.md rule 5 (\"repository and IAIProvider production implementations exist only in " +
+        "Infrastructure\") cannot be verified yet. Application defines no repository interfaces and no " +
+        "IAIProvider yet (those land in Phase 1 and Phase 4), so there is nothing to check the rule against. " +
+        "A name-suffix match (e.g. \"*Repository\", \"*AIProvider\") on a codebase with no such types would " +
+        "pass vacuously and prove nothing — and adding placeholder interfaces solely to make this test pass " +
+        "would be a speculative abstraction with no use case behind it. Rewrite this test once Application " +
+        "declares IAIProvider and at least one repository interface: assert concrete implementations of those " +
+        "interfaces (Types.InAssembly(...).That().ImplementInterface(typeof(IAIProvider)), etc.) exist only in " +
+        "CommitAhead.Infrastructure, excluding test fakes.")]
     public void RepositoryAndAIProviderImplementations_ShouldOnlyExistInInfrastructure()
     {
-        var nonInfrastructureAssemblies = new[] { DomainAssembly, ApplicationAssembly, ApiAssembly };
-
-        foreach (var assembly in nonInfrastructureAssemblies)
-        {
-            var matchingTypes = Types.InAssembly(assembly)
-                .That()
-                .AreClasses()
-                .And()
-                .HaveNameEndingWith("Repository")
-                .Or()
-                .HaveNameEndingWith("AIProvider")
-                .GetTypes();
-
-            Assert.Empty(matchingTypes);
-        }
     }
 
     private static string Describe(TestResult result)

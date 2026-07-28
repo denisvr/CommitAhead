@@ -11,18 +11,18 @@
 
 ## TBD
 
-The hosting platform is not yet decided. The deployment topology is decided: the Vite production build is copied into the ASP.NET Core application and served by Kestrel from the same origin as the API. One container/process is deployed. See `docs/tbd.md` for the hosting-platform decision.
+The hosting platform is not yet decided. The deployment topology is decided: the Vite production build (`frontend/dist`) is copied into the published ASP.NET Core artifact's `wwwroot` at publish time and served by Kestrel from the same origin as the API. One container/process is deployed. See `docs/tbd.md` for the hosting-platform decision.
 
 ## Requirements for the Chosen Platform
 
 Whatever platform is selected must satisfy:
 
 - **TLS termination** — HTTPS enforced everywhere; HSTS enabled in production
-- **Environment variables / secrets injection** — API key, DB connection string, Supabase keys, `OWNER_USER_ID`, Data Protection key ring must be injectable as environment variables or mounted secrets (never baked into the image)
+- **Environment variables / secrets injection** — API key, DB connection string, Supabase keys, Data Protection key ring must be injectable as environment variables or mounted secrets (never baked into the image)
 - **Single-process deployment** — Kestrel serves the React production assets and API from one ASP.NET Core process; no multi-instance load balancing is needed
 - **Pre-deploy migrations** — a reviewed EF Core migration bundle runs before the new API accepts traffic; the application never migrates its own schema on startup
 - **Container support** (preferred) — Dockerfile-based deployment for reproducibility; enables Trivy image scanning in CI/CD
-- **Cost** — proportionate to a private single-user app; minimal idle cost acceptable
+- **Cost** — proportionate to a small, invite-only user base; minimal idle cost acceptable
 
 ## Data Protection Key Ring
 

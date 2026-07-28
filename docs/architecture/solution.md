@@ -59,7 +59,7 @@ ASP.NET Core 10 Web API  ──────────────────�
 
 ### API (`CommitAhead.Api`)
 - Thin controllers: bind request → call use case → map result to HTTP response
-- Middleware pipeline: auth validation (`sub == OWNER_USER_ID`), CSRF, error mapping, structured logging, rate limiting
+- Middleware pipeline: auth validation (JWT `sub` must resolve to an existing, enabled application `User` — see ADR-0015), CSRF, error mapping, structured logging, rate limiting
 - OpenAPI / Swagger generation (source for TypeScript client)
 - Auth endpoints: PKCE callback, refresh, logout
 - Composition root: references Infrastructure only from startup/DI registration; controllers never resolve Infrastructure types directly

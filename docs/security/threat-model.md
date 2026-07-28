@@ -34,7 +34,7 @@
 
 | Threat | Priority | Primary controls |
 |---|---|---|
-| Unauthorized access | High | Auth middleware; `sub == OWNER_USER_ID`; 15-min JWT; HttpOnly cookies |
+| Unauthorized access | High | Auth middleware; `sub` must match an existing, enabled application `User` (ADR-0015); 15-min JWT; HttpOnly cookies |
 | Credential theft | High | HttpOnly + Secure + SameSite=Strict cookies; no tokens in localStorage; short token lifetime |
 | XSS / file parsing | High | CSP from `default-src 'none'`; restricted CommonMark; DOMPurify; PDF text-only parser with strict limits |
 | Prompt injection / data disclosure | High | Source text marked untrusted; AI receives no tools/URLs/secrets; minimal inputs per command; structured output validated |
@@ -57,7 +57,7 @@
 - Public signup disabled in Supabase; owner account pre-created
 
 ### Authorisation
-- Every request: middleware validates JWT (issuer, audience, signature, expiry, `sub == OWNER_USER_ID`)
+- Every request: middleware validates JWT (issuer, audience, signature, expiry, and that `sub` resolves to an existing, enabled application `User` — ADR-0015) and scopes all data access to that user's `OwnerUserId`
 - All foreign ID references validated in use cases (404 for missing resources, 422 for invalid related IDs)
 - DB enforces FK constraints as a second line of defence
 - Supabase RLS: enabled on all tables; no `anon` or `authenticated` policies — direct Data API access is denied
@@ -139,7 +139,6 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 - Supabase anon key: backend-only (not shipped to browser)
 - Supabase service-role key: backend-only; used only for Auth/Storage admin
 - AI provider key: backend-only; never logged or included in prompts
-- `OWNER_USER_ID`: protected server configuration
 - ASP.NET Data Protection key ring: persisted, encrypted; used for cookies and antiforgery
 - Credentials rotated when exposed
 

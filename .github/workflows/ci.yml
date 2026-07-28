@@ -1,7 +1,9 @@
-name: PR
+name: CI
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -10,6 +12,9 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -17,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
-          global-json-file: global.json
+          global-json-file: backend/global.json
 
       - name: Restore (locked)
         run: dotnet restore --locked-mode
@@ -45,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: src/CommitAhead.Web
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -53,9 +58,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version-file: src/CommitAhead.Web/.nvmrc
+          node-version-file: frontend/.nvmrc
           cache: npm
-          cache-dependency-path: src/CommitAhead.Web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci

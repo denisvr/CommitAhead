@@ -4,12 +4,22 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ---
 
+## Users
+
+### Invited-user provisioning
+**Needed for:** whenever a second user is actually added (ADR-0015 makes the architecture ready for this; it does not schedule it)
+**Question:** Since public signup stays disabled, how is a new invited user actually created — Supabase Admin API invite, a manual `User` row tied to a pre-created Supabase identity, an admin CLI/script?
+**Constraints:** Must never require enabling public signup; a new user must get an isolated `OwnerUserId` scope with zero visibility into another user's data
+**Affects:** ADR-0015, `docs/architecture/solution.md`, `docs/security/threat-model.md`
+
+---
+
 ## Infrastructure
 
 ### Hosting platform for ASP.NET Core API and React frontend
 **Needed for:** Phase 6
 **Options:** Azure App Service, Railway, Fly.io, Render, self-hosted VPS, Docker Compose on a VM
-**Constraints:** TLS required; environment variable injection required; container support preferred; single-process deployment; cost proportionate to a private single-user app
+**Constraints:** TLS required; environment variable injection required; container support preferred; single-process deployment; cost proportionate to a small, invite-only user base
 **Affects:** `docs/deployment/strategy.md`, Data Protection key ring configuration, secrets injection method
 
 ### Secrets management in production

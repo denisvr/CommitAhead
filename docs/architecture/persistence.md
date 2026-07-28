@@ -86,7 +86,7 @@ Provider success updates the row to Completed with actual usage, actual cost, an
 - The migration job uses a separate privileged migration credential. The running API never receives schema-owner or migration privileges.
 
 ## ScoringConfig
-A `scoring_config` table with at most one row (no user ID scope — single-user app). The row is absent when defaults apply; it is created on first user save. The application layer never assumes the row exists.
+A `scoring_config` table with at most one row per `OwnerUserId` (see ADR-0015). A given user's row is absent when defaults apply for them; it is created on that user's first save. The application layer never assumes the row exists.
 
 The Application layer resolves the optional row or code defaults into `ScoringWeights` and supplies those weights to `IRankedStudyQueueQuery`. The pure Domain policy owns the formula and validation; it does not load configuration or execute SQL.
 

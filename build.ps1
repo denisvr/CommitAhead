@@ -1,10 +1,16 @@
 $ErrorActionPreference = "Stop"
 
-dotnet build --warnaserror
-dotnet test
-dotnet format --verify-no-changes
+Push-Location backend
+try {
+    dotnet build --warnaserror
+    dotnet test
+    dotnet format --verify-no-changes
+}
+finally {
+    Pop-Location
+}
 
-Push-Location src/CommitAhead.Web
+Push-Location frontend
 try {
     npm ci
     npm run lint

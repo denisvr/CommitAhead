@@ -2,11 +2,11 @@
 
 ## Purpose
 
-CommitAhead is a private, single-user web application for structured technical interview preparation. It maintains a ranked study queue, a professional profile, and an evidence layer (job analyses, interview notes) that together answer the question: *what should I study next, and why?*
+CommitAhead is a private, invite-only web application for structured technical interview preparation. It maintains a ranked study queue, a professional profile, and an evidence layer (job analyses, interview notes) that together answer the question: *what should I study next, and why?*
 
-## Sole User
+## Users
 
-Denis Silva. No other users, no multi-tenancy, no sharing, no public pages.
+Public signup is disabled; accounts are provisioned out-of-band (see `docs/tbd.md`). Today the only account belongs to Denis Silva. Every user's data is isolated by owner from the start (see ADR-0015), so additional invited users can be added later without a rearchitecture. There is no sharing between users and no public pages.
 
 ## Design Principles
 
