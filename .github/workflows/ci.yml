@@ -91,7 +91,13 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: openapi-spec
-          path: ../backend/src/CommitAhead.Api/obj
+          # download-artifact's `path` is resolved relative to GITHUB_WORKSPACE (the repo root),
+          # not relative to this job's `defaults.run.working-directory: frontend` — that default
+          # only applies to `run:` steps, not `uses:` steps. A leading `../` here walks the
+          # artifact right outside the checked-out repo, so `npm run generate:api` (which does run
+          # with cwd=frontend/ and looks for ../backend/... from there, landing back at the repo
+          # root's backend/) never finds it.
+          path: backend/src/CommitAhead.Api/obj
 
       - name: Regenerate API client and check for drift
         run: |
