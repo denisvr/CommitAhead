@@ -19,6 +19,10 @@ backend/**/wwwroot/
 [Tt]est[Rr]esult*/
 *.trx
 
+# Local secrets
+.env
+!.env.example
+
 # OS
 .DS_Store
 Thumbs.db

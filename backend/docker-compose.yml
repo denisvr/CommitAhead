@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: commitahead
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      COMMITAHEAD_MIGRATOR_PASSWORD: ${COMMITAHEAD_MIGRATOR_PASSWORD}
+      COMMITAHEAD_APP_PASSWORD: ${COMMITAHEAD_APP_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - commitahead_db_data:/var/lib/postgresql/data
+      - ./scripts/database/001_roles.sql:/docker-entrypoint-initdb.d/001_roles.sql.template:ro
+      - ./scripts/database/dev-init.sh:/docker-entrypoint-initdb.d/00-dev-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d commitahead"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  commitahead_db_data:

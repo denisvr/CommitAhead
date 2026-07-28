@@ -1,13 +1,33 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      We serve the frontend via plain UseStaticFiles/MapFallbackToFile against a wwwroot that
+      only exists in the published artifact (see the copy target below) — we don't use Razor
+      Class Library static-asset composition. Without this, the SDK's Static Web Assets loader
+      throws DirectoryNotFoundException at startup whenever src/CommitAhead.Api/wwwroot doesn't
+      physically exist, which is the case for every local build/test run.
+    -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <!-- Generates obj/CommitAhead.Api.json on every build (contract source for the frontend's
+         generated TypeScript client); never committed, always derived from the controllers. -->
+    <OpenApiDocumentsDirectory>$(BaseIntermediateOutputPath)</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <UserSecretsId>fc22db2f-cd63-47cd-95f7-6968e18a9f90</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.10">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
   </ItemGroup>
 
@@ -30,14 +50,8 @@
     <ItemGroup Condition="Exists('$(FrontendDistDir)')">
       <FrontendDistFiles Include="$(FrontendDistDir)**\*.*" />
     </ItemGroup>
-    <Copy
-      Condition="Exists('$(FrontendDistDir)')"
-      SourceFiles="@(FrontendDistFiles)"
-      DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)"
-      SkipUnchangedFiles="true" />
-    <Warning
-      Condition="!Exists('$(FrontendDistDir)')"
-      Text="frontend/dist not found — run 'npm run build' in frontend/ before publishing so the SPA is included in wwwroot." />
+    <Copy Condition="Exists('$(FrontendDistDir)')" SourceFiles="@(FrontendDistFiles)" DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Warning Condition="!Exists('$(FrontendDistDir)')" Text="frontend/dist not found — run 'npm run build' in frontend/ before publishing so the SPA is included in wwwroot." />
   </Target>
 
 </Project>

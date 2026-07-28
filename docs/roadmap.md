@@ -4,23 +4,23 @@ The roadmap is organised as vertical slices. Every phase must leave a working, t
 
 ---
 
-## Phase 0 — Secure Foundation *(current — Phase 0A only is implemented)*
+## Phase 0 — Secure Foundation *(current — Phase 0A and part of the rest of Phase 0 are implemented)*
 
 **Outcome:** An authenticated owner can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
 
-**Phase 0A is implemented** (`docs/prompts/phase-0a-claude-kickoff.md` — solution skeleton and architecture baseline only). **The rest of Phase 0 below is not implemented.**
+**Phase 0A is implemented** (`docs/prompts/phase-0a-claude-kickoff.md` — solution skeleton and architecture baseline). A further slice of Phase 0 — everything that doesn't require a live Supabase project — is also implemented. **Auth, CSRF, security headers, and the authenticated screen are not implemented**; they need a real Supabase project, which does not exist yet.
 
 - [x] Create `.slnx` and Domain, Application, Infrastructure, and API projects (`backend/`)
 - [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`) — E2E project not yet added
 - [x] Configure project references and the API composition root according to ADR-0013
 - [x] Serve the production Vite build from Kestrel on the same origin (copied into the published artifact's `wwwroot` at publish time, not into the backend source tree)
-- [ ] Wire EF Core + Npgsql; verify the dedicated runtime DB role and separate migration credential
-- [ ] Create the Supabase project and empty baseline migration bundle
+- [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`) — **not yet against the real Supabase project**, which doesn't exist yet; the same scripts are the template for it
+- [ ] Create the Supabase project and apply the migration bundle to it
 - [ ] Implement backend-mediated magic-link/PKCE auth, per-user authorization (ADR-0015), refresh/logout, CSRF, and security headers
 - [ ] Add a minimal authenticated health/home screen (Phase 0A added only an anonymous health endpoint, deliberately with no auth)
-- [ ] Add OpenAPI generation and generated TypeScript client compilation
-- [x] Add the five NetArchTest rules (4 active; rule 5 is skipped/pending — see `CLAUDE.md`)
-- [ ] Add blocking CI: dependency scans beyond NuGet/npm audit, Gitleaks, and generated-client drift (build/format/lint/type-check/test are already blocking in CI)
+- [x] Add OpenAPI generation (build-time, via `Microsoft.Extensions.ApiDescription.Server`) and generated TypeScript client compilation (`frontend/src/api/generated`)
+- [x] Add the five NetArchTest rules (4 active; the repository half of rule 5 is active against `IUserRepository`/`UserRepository`; the `IAIProvider` half is still skipped/pending — see `CLAUDE.md`)
+- [x] Add blocking CI: Gitleaks and generated-client drift, on top of the build/format/lint/type-check/test/NuGet+npm audit gates already in place
 
 **Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass; no frontend Supabase key exists.
 
