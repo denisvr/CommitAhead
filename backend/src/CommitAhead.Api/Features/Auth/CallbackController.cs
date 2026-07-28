@@ -11,10 +11,12 @@ namespace CommitAhead.Api.Features.Auth;
 public sealed class CallbackController : ControllerBase
 {
     private readonly CallbackUseCase _useCase;
+    private readonly SessionStartToken _sessionStartToken;
 
-    public CallbackController(CallbackUseCase useCase)
+    public CallbackController(CallbackUseCase useCase, SessionStartToken sessionStartToken)
     {
         _useCase = useCase;
+        _sessionStartToken = sessionStartToken;
     }
 
     [HttpGet]
@@ -34,7 +36,7 @@ public sealed class CallbackController : ControllerBase
         }
 
         AuthCookieWriter.SetSessionCookies(Response, result.Tokens);
-        AuthCookieWriter.SetSessionStartedMarker(Response);
+        AuthCookieWriter.SetSessionStartedMarker(Response, _sessionStartToken.Protect(DateTimeOffset.UtcNow));
 
         return Redirect("/");
     }

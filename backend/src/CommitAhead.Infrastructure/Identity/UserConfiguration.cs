@@ -35,5 +35,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.SupabaseUserId)
             .IsUnique();
+
+        // User.Email is always stored normalized (trimmed, lowercase — see User.Normalize), so a
+        // plain unique index gives case-insensitive lookup without a Postgres-specific collation.
+        builder.HasIndex(u => u.Email)
+            .IsUnique();
     }
 }

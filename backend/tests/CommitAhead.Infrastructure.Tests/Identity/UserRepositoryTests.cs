@@ -57,4 +57,37 @@ public class UserRepositoryTests : IAsyncLifetime
 
         Assert.Null(found);
     }
+
+    [Fact]
+    public async Task AddThenGetByNormalizedEmail_RoundTripsTheUser()
+    {
+        var repository = new UserRepository(_dbContext);
+        var user = new User(Guid.NewGuid(), "supabase-sub-email", "Owner@Example.com", DateTime.UtcNow);
+
+        await repository.AddAsync(user, CancellationToken.None);
+        var found = await repository.GetByNormalizedEmailAsync("owner@example.com", CancellationToken.None);
+
+        Assert.NotNull(found);
+        Assert.Equal(user.Id, found.Id);
+    }
+
+    [Fact]
+    public async Task GetByNormalizedEmail_WhenNotFound_ReturnsNull()
+    {
+        var repository = new UserRepository(_dbContext);
+
+        var found = await repository.GetByNormalizedEmailAsync("does-not-exist@example.com", CancellationToken.None);
+
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public async Task AddingASecondUser_WithTheSameEmailDifferentCase_ViolatesTheUniqueIndex()
+    {
+        var repository = new UserRepository(_dbContext);
+        await repository.AddAsync(new User(Guid.NewGuid(), "supabase-sub-dup-1", "dup@example.com", DateTime.UtcNow), CancellationToken.None);
+
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            repository.AddAsync(new User(Guid.NewGuid(), "supabase-sub-dup-2", "DUP@Example.com", DateTime.UtcNow), CancellationToken.None));
+    }
 }

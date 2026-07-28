@@ -2,6 +2,8 @@ using System.Text;
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.Extensions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,10 +25,18 @@ public sealed class AuthTestWebApplicationFactory : WebApplicationFactory<Progra
 
     public StubUserRepository Users { get; } = new();
 
+    public StubSupabaseAuthClient SupabaseAuth { get; } = new();
+
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
         {
+            // Each test host gets its own isolated, in-memory key ring. Without this, ASP.NET
+            // Core's default DataProtection falls back to a machine-wide, file-system-persisted
+            // key ring — multiple WebApplicationFactory hosts across parallel test classes race
+            // on that shared file, causing intermittent antiforgery/session-cookie failures.
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
+
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.TokenValidationParameters.ValidateIssuer = true;
@@ -40,7 +50,7 @@ public sealed class AuthTestWebApplicationFactory : WebApplicationFactory<Progra
             services.AddSingleton<IUserRepository>(Users);
 
             services.RemoveAll<ISupabaseAuthClient>();
-            services.AddSingleton<ISupabaseAuthClient, StubSupabaseAuthClient>();
+            services.AddSingleton<ISupabaseAuthClient>(SupabaseAuth);
         });
     }
 }

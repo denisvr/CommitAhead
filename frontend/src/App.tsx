@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiClient } from './api/client'
+import { apiClient, ensureFreshSession } from './api/client'
 import { LoginForm } from './features/auth/LoginForm'
 
 type AuthState = 'loading' | 'authenticated' | 'anonymous'
@@ -20,14 +20,16 @@ function App() {
   }, [])
 
   const handleLogout = async () => {
-    const { data: csrf } = await apiClient.GET('/auth/csrf')
-    if (!csrf) {
-      return
-    }
+    // Best-effort: a fresh access token gives /auth/logout a real Supabase token to revoke.
+    // Cookies are cleared below regardless of whether this succeeds.
+    await ensureFreshSession()
 
-    await apiClient.POST('/auth/logout', {
-      headers: { 'X-CSRF-TOKEN': csrf.token },
-    })
+    const { data: csrf } = await apiClient.GET('/auth/csrf')
+    if (csrf) {
+      await apiClient.POST('/auth/logout', {
+        headers: { 'X-CSRF-TOKEN': csrf.token },
+      })
+    }
 
     setEmail(null)
     setAuthState('anonymous')

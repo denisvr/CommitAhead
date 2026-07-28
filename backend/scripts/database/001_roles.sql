@@ -14,7 +14,7 @@
 --
 -- ${COMMITAHEAD_MIGRATOR_PASSWORD} / ${COMMITAHEAD_APP_PASSWORD} are placeholders: substitute
 -- real values before running against Supabase (never commit real values anywhere). Local dev
--- substitutes them automatically from backend/.env via docker-compose (see backend/README.md).
+-- substitutes them automatically from backend/.env via docker-compose (see README.md at the repo root).
 
 DO $$
 BEGIN

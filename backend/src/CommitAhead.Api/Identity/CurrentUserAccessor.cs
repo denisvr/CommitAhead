@@ -3,9 +3,9 @@ using CommitAhead.Application.Identity;
 namespace CommitAhead.Api.Identity;
 
 /// <summary>
-/// Scoped per-request. Set once by EnabledUserMiddleware after the ADR-0015 check passes;
-/// unset (default Guid/empty email) for anonymous requests or requests that never reach an
-/// authenticated route.
+/// Scoped per-request. Set once by EnabledUserAuthorizationHandler after the ADR-0015 check
+/// passes; unset (default Guid/empty email) for anonymous requests or requests that never
+/// evaluate the fallback authorization policy (e.g. [AllowAnonymous] auth endpoints).
 /// </summary>
 internal sealed class CurrentUserAccessor : ICurrentUser
 {

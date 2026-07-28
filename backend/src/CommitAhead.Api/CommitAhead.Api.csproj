@@ -52,7 +52,7 @@
       <FrontendDistFiles Include="$(FrontendDistDir)**\*.*" />
     </ItemGroup>
     <Copy Condition="Exists('$(FrontendDistDir)')" SourceFiles="@(FrontendDistFiles)" DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Warning Condition="!Exists('$(FrontendDistDir)')" Text="frontend/dist not found — run 'npm run build' in frontend/ before publishing so the SPA is included in wwwroot." />
+    <Error Condition="!Exists('$(FrontendDistDir)')" Text="frontend/dist not found — run 'npm run build' in frontend/ before publishing so the SPA is included in wwwroot." />
   </Target>
 
 </Project>

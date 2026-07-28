@@ -17,6 +17,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON users TO commitahead_app;
 -- policies by an owner_user_id column, e.g.:
 --   CREATE POLICY owner_isolation ON study_items
 --     USING (owner_user_id = current_setting('app.current_user_id')::uuid);
+-- DROP + CREATE (not CREATE POLICY IF NOT EXISTS, which Postgres doesn't support) makes this
+-- script safe to re-run — the reproducible setup flow (backend/scripts/setup-local-db.ps1) may
+-- run it more than once against the same database.
+DROP POLICY IF EXISTS commitahead_app_full_access ON users;
 CREATE POLICY commitahead_app_full_access ON users
     TO commitahead_app
     USING (true)

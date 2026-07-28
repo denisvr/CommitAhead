@@ -20,7 +20,7 @@
 
 | Boundary | Trusted side | Untrusted side |
 |---|---|---|
-| Authenticated session | Validated owner request | Unauthenticated or non-owner request |
+| Authenticated session | Validated, enabled-user request, isolated to that user's own data (ADR-0015) | Unauthenticated request, or a request from a disabled/unknown user |
 | Backend API | Validated + sanitised inputs | Browser, uploaded files, pasted text, AI output |
 | Supabase PostgreSQL | Backend (least-privileged credential) | All direct client access (blocked by RLS) |
 | Supabase Auth | Backend PKCE callback and server-held Supabase credentials | Browser and unauthenticated internet; no Supabase key is shipped to React |
@@ -48,13 +48,13 @@
 
 ### Authentication
 - Supabase magic link with PKCE, completed by the backend callback
-- Magic-link initiation: accepts only owner email, generic response, rate-limited
+- Magic-link initiation: accepts only a provisioned, enabled user's email; Supabase is never called for any other email; response is generic either way (no enumeration); rate-limited
 - PKCE state cookie: `SameSite=Lax` (required for email redirect); session cookies: `SameSite=Strict`
 - Access tokens expire in 15 minutes; proactive/single-flight refresh before expiry
 - Refresh cookie scoped to `/auth/refresh`; requires POST + CSRF validation; rotates atomically
 - Absolute session timeout: 7 days
 - Logout: revokes refresh token, clears cookies; 15-minute residual window accepted (no denylist in MVP)
-- Public signup disabled in Supabase; owner account pre-created
+- Public signup disabled in Supabase; every user's account is pre-provisioned out-of-band, not self-registered
 
 ### Authorisation
 - Every request: middleware validates JWT (issuer, audience, signature, expiry, and that `sub` resolves to an existing, enabled application `User` — ADR-0015) and scopes all data access to that user's `OwnerUserId`
@@ -164,7 +164,7 @@ Log access is restricted. The exact production retention period remains TBD in `
 ### Automated Security Tests (every PR, blocking)
 - Gitleaks secret scanning
 - Dependency CVE scans (direct + transitive)
-- Auth, owner check, CSRF, CSP, CORS, `Cache-Control: no-store` API tests
+- Auth, enabled-user check, CSRF, CSP, CORS, `Cache-Control: no-store` API tests
 - Malicious upload rejection tests
 - Markdown/XSS protocol tests
 - AI schema validation tests

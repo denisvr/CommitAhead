@@ -79,7 +79,9 @@ Provider success updates the row to Completed with actual usage, actual cost, an
 
 ## Migration Strategy
 
-- Migrations are applied once per deployment, before the API starts, using a reviewed EF Core migration bundle or an equivalent pre-deploy job. The production API never applies migrations automatically on startup.
+- **Tables are owned by EF Core migrations** — they are the single authoritative source for schema (columns, indexes, constraints). Migrations are applied once per deployment, before the API starts, using a reviewed EF Core migration bundle or an equivalent pre-deploy job. The production API never applies migrations automatically on startup.
+- **Roles and RLS are owned by the versioned SQL scripts** under `backend/scripts/database/` (`001_roles.sql`, `002_rls_users.sql`) — they are the authoritative source for login roles and Row-Level Security policies, not EF Core. This split is deliberate: mixing role/RLS provisioning into EF migrations would make Infrastructure own PostgreSQL-superuser-level concerns it has no business touching (EF Core connects as the least-privileged `commitahead_app` role and cannot grant itself access).
+- Locally, `backend/scripts/setup-local-db.ps1` runs all three steps in the correct order (roles via `docker compose up`'s init script → EF migrations → `002_rls_users.sql`) as one reproducible command — RLS is never a manually-remembered post-migration step.
 - Each migration is reviewed before merging — no auto-generated migrations are applied unreviewed.
 - Breaking schema changes (column renames, type changes) are split into additive migrations with a deprecation period.
 - Integration tests run against a Testcontainers PostgreSQL instance with migrations applied once per test session; Respawn resets data between tests (not schema).

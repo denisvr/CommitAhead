@@ -30,7 +30,7 @@ _Avoid_: Default mastery, starting mastery
 **Demand**: A 0–5 value representing how urgently confirmed EvidenceLinks signal that a StudyItem is needed. Computed as `min(sum of confirmed EvidenceLink weights pointing to this item, 5)`.
 _Avoid_: Relevance, urgency, market demand
 
-**ScoringConfig**: The three weight percentages (Importance, Demand, Mastery gap) that govern the EffectiveScore formula. Code-level defaults are 40/35/25; a single optional database row holds user overrides. Weights must be non-negative and sum to 100.
+**ScoringConfig**: The three weight percentages (Importance, Demand, Mastery gap) that govern the EffectiveScore formula. Code-level defaults are 40/35/25; at most one optional database row per user holds that user's own overrides. Weights must be non-negative and sum to 100.
 _Avoid_: Score settings, ranking config
 
 ### Category Details
@@ -45,7 +45,7 @@ _Avoid_: Score settings, ranking config
 
 ### Professional Profile
 
-**ProfessionalProfile**: The singleton canonical record of the user's professional identity. Contains six ordered canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. CVPresentations are separate aggregate roots that reference and curate these collections; entries are never duplicated.
+**ProfessionalProfile**: The canonical record of a user's professional identity — a singleton per user (ADR-0015), not a single global record. Contains six ordered canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. CVPresentations are separate aggregate roots that reference and curate these collections; entries are never duplicated.
 _Avoid_: CV, resume, profile
 
 **CVPresentation**: An independently addressable aggregate root representing a curated, locale-specific view over one ProfessionalProfile. Selects and orders entries from each canonical collection by ID, may override the summary, and carries formatting rules: targetMarket, locale, template, photo inclusion, personal-details visibility, date format, and page limit.
@@ -96,7 +96,7 @@ _Avoid_: Interview stage, round type
 
 ### AI Analysis
 
-**EvidenceLink**: A confirmed connection from an evidence source (CVPresentation, JobAnalysis, or InterviewNote) to a StudyItem, carrying a weight (0–5) and a rationale. Created only from an accepted LinkProposal. Existence means the link is active; there is no separate lifecycle flag. At most one EvidenceLink may exist per source–StudyItem pair.
+**EvidenceLink**: A confirmed connection from an evidence source (CVPresentation, JobAnalysis, or InterviewNote) to a StudyItem, carrying a weight (0–5) and a rationale. Created only from an accepted LinkProposal. Existence means the link is active; there is no separate lifecycle flag. At most one EvidenceLink may exist per source–StudyItem pair. Source and target always belong to the same user (ADR-0015) — there is no cross-user linking.
 _Avoid_: Tag link, relevance link, demand link
 
 **AnalysisDraft**: The output of one AI analysis command. Contains three typed proposal collections: SuggestionProposals, LinkProposals, and StudyItemProposals. Each proposal carries its own Pending/Accepted/Rejected status. Draft status transitions Pending → Applied or Pending → Discarded. Only one Pending draft may exist per evidence source at a time.

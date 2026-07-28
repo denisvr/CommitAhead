@@ -115,3 +115,81 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+  combined-artifact:
+    name: Combined artifact (frontend build + backend publish + smoke test)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: backend/global.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Publish backend
+        working-directory: backend
+        # Fails if frontend/dist is missing (CopyFrontendBuildToPublishOutput in
+        # CommitAhead.Api.csproj) — proves the SPA is actually included, not just built.
+        run: dotnet publish src/CommitAhead.Api --configuration Release --output ./publish
+
+      - name: Start published app and verify / and /api/health
+        working-directory: backend/publish
+        # Must run from inside the publish directory — the generic host defaults ContentRootPath
+        # (and so WebRootPath -> wwwroot) to the current working directory, not the DLL's
+        # location, so running from anywhere else silently breaks static file / SPA serving.
+        run: |
+          set -e
+          ASPNETCORE_URLS=http://localhost:5199 dotnet ./CommitAhead.Api.dll &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+
+          ready=false
+          for _ in $(seq 1 20); do
+            if curl -sf http://localhost:5199/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::Published app never became ready on /api/health"
+            exit 1
+          fi
+
+          curl -sf http://localhost:5199/api/health | grep -q "Healthy" || {
+            echo "::error::/api/health did not report Healthy"
+            exit 1
+          }
+          curl -sf http://localhost:5199/ | grep -qi "<!doctype html>" || {
+            echo "::error::/ did not return the SPA shell (frontend/dist not served from wwwroot)"
+            exit 1
+          }
+
+          unknown_api_status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5199/api/does-not-exist)"
+          [ "$unknown_api_status" = "404" ] || {
+            echo "::error::Unmatched /api route returned $unknown_api_status, expected 404"
+            exit 1
+          }
+          unknown_auth_status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5199/auth/does-not-exist)"
+          [ "$unknown_auth_status" = "404" ] || {
+            echo "::error::Unmatched /auth route returned $unknown_auth_status, expected 404"
+            exit 1
+          }

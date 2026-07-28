@@ -24,9 +24,9 @@ internal static class AuthCookieWriter
         });
     }
 
-    public static void SetSessionStartedMarker(HttpResponse response)
+    public static void SetSessionStartedMarker(HttpResponse response, string protectedStartedAtUtc)
     {
-        response.Cookies.Append(AuthCookieNames.SessionStarted, "1", new CookieOptions
+        response.Cookies.Append(AuthCookieNames.SessionStarted, protectedStartedAtUtc, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,

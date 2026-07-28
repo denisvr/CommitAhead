@@ -4,28 +4,34 @@ The roadmap is organised as vertical slices. Every phase must leave a working, t
 
 ---
 
-## Phase 0 — Secure Foundation *(current — nearly complete)*
+## Phase 0 — Secure Foundation *(security/architecture baseline complete; E2E and one architecture rule fragment remain pending)*
 
-**Outcome:** An authenticated owner can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
+**Outcome:** An authenticated, enabled user can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
 
-The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) and is used for Auth only right now — `Supabase:Url`/`Supabase:AnonKey` point at it, while `ConnectionStrings:CommitAheadDb` still points at the local Docker Postgres (`backend/docker-compose.yml`), which already has the owner's `users` row seeded. This is a deliberate, accepted split: Supabase Auth and the app's Postgres are independent, and there is no need to develop against the real Postgres before deployment. Backend-mediated magic-link/PKCE auth, per-user authorization, CSRF, and security headers are implemented and verified end-to-end this way — including one real call to the live Supabase Auth API (`POST /auth/v1/otp` → `200`).
+The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) and is used for Auth only right now — `Supabase:Url`/`Supabase:AnonKey` point at it, while `ConnectionStrings:CommitAheadDb` still points at the local Docker Postgres (`backend/docker-compose.yml`), which already has an enabled user's `users` row seeded. This is a deliberate, accepted split: development uses Supabase Auth (remote) for authentication while the application's own PostgreSQL stays entirely local via Docker — there is no need to develop against the real Postgres before deployment. Backend-mediated magic-link/PKCE auth, per-user authorization, CSRF, and security headers are implemented and verified end-to-end this way — including one real call to the live Supabase Auth API (`POST /auth/v1/otp` → `200`).
 
-**Applying the migration bundle and roles/RLS scripts to the real Supabase Postgres is deferred to deployment (Phase 6)**, not blocking Phase 0 — it needs the project's real database password, which stays with the user (see `backend/README.md`).
+**Applying the migration bundle and roles/RLS scripts to the real Supabase Postgres is deferred to deployment (Phase 6)**, not blocking Phase 0 — it needs the project's real database password, which stays with the user (see `README.md`).
 
 - [x] Create `.slnx` and Domain, Application, Infrastructure, and API projects (`backend/`)
-- [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`) — E2E project not yet added
+- [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`)
+- [ ] *(Pending — not yet started)* Add the E2E (Playwright) project and its four journeys
 - [x] Configure project references and the API composition root according to ADR-0013
 - [x] Serve the production Vite build from Kestrel on the same origin (copied into the published artifact's `wwwroot` at publish time, not into the backend source tree)
-- [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`)
+- [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration plus a follow-up migration adding a case-insensitive unique index on email. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`), via the reproducible `backend/scripts/setup-local-db.ps1` (roles → migrations → RLS in one command; `002_rls_users.sql` is idempotent)
 - [x] Create the Supabase project
-- [ ] *(Deferred to Phase 6/deployment, not blocking)* Apply the migration bundle and `001_roles.sql`/`002_rls_users.sql` to the real Supabase Postgres, and seed the owner's `users` row there — user-run, needs the real DB password
+- [ ] *(Deferred to Phase 6/deployment, not blocking)* Apply the migration bundle and `001_roles.sql`/`002_rls_users.sql` to the real Supabase Postgres, and seed each enabled user's `users` row there — user-run, needs the real DB password
 - [x] Implement backend-mediated magic-link/PKCE auth (`/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`), per-user authorization (ADR-0015), CSRF (`/auth/csrf` + validation middleware), and security headers
+- [x] Closed login: `/auth/login` normalizes and validates the email, looks up a provisioned + enabled `User` (case-insensitive unique index), and only calls Supabase for a match — an unknown or disabled email gets the same generic response without ever reaching Supabase
+- [x] Secure-by-default authorization: an `AuthorizationOptions` fallback (and default) policy requires authentication plus an enabled ADR-0015 user for every endpoint; only Health and the `/auth/*` endpoints carry `[AllowAnonymous]`
+- [x] The ADR-0015 enabled-user check is an authorization policy/handler applied via that fallback policy, not global middleware — it never blocks `/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`, or `/auth/csrf`, and logout always clears cookies even if the external Supabase revoke call fails
+- [x] Session hardening: the frontend does a single-flight refresh-and-retry on 401 (get CSRF → `/auth/refresh` → retry the original request once); the backend enforces an effective 15-minute access-token limit independent of the token's own `exp` (via its `iat` claim); the session-start timestamp is sealed with ASP.NET Data Protection so the 7-day absolute timeout holds even against a non-browser replay of a captured cookie; the frontend attempts a refresh before logout so `/auth/logout` has a live token to revoke
+- [x] The SPA fallback route no longer swallows unmatched `/api` or `/auth` requests into `index.html` — they return a real 404
 - [x] Add a minimal authenticated home screen (`GET /api/me` + a login form / signed-in view in `frontend/`)
 - [x] Add OpenAPI generation (build-time, via `Microsoft.Extensions.ApiDescription.Server`) and generated TypeScript client compilation (`frontend/src/api/generated`)
-- [x] Add the five NetArchTest rules (4 active; the repository half of rule 5 is active against `IUserRepository`/`UserRepository`; the `IAIProvider` half is still skipped/pending — see `CLAUDE.md`)
-- [x] Add blocking CI: Gitleaks and generated-client drift, on top of the build/format/lint/type-check/test/NuGet+npm audit gates already in place
+- [x] Add the five NetArchTest architectural rules (4 fully active; rule 4 — controllers depend on Application only — is enforced by two tests, including one preventing controllers from injecting repositories directly; the repository half of rule 5 is active against `IUserRepository`/`UserRepository`; the `IAIProvider` half of rule 5 remains skipped/pending until Phase 4 declares that interface — see `CLAUDE.md`)
+- [x] Add blocking CI: Gitleaks and generated-client drift, on top of the build/format/lint/type-check/test/NuGet+npm audit gates already in place; `dotnet publish` now fails (not just warns) when `frontend/dist` is missing, and a dedicated CI job builds the frontend, publishes the backend, starts the published Kestrel app, and verifies `/`, `/api/health`, and that unmatched `/api`/`/auth` routes 404
 
-**Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass (locally-signed JWTs, per `docs/testing/strategy.md`); no frontend Supabase key exists.
+**Exit criteria:** production builds run locally from Kestrel; unauthenticated/unknown-or-disabled-user/CSRF/header tests pass (locally-signed JWTs, per `docs/testing/strategy.md`); no frontend Supabase key exists. E2E and the `IAIProvider` architecture-rule fragment remain open and are not exit-criteria for Phase 0 as scoped here — they are tracked above as pending.
 
 ---
 

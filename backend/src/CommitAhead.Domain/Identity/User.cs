@@ -27,7 +27,7 @@ public sealed class User
 
         Id = id;
         SupabaseUserId = supabaseUserId;
-        Email = email;
+        Email = Normalize(email);
         CreatedAtUtc = createdAtUtc;
         IsEnabled = isEnabled;
     }
@@ -36,4 +36,9 @@ public sealed class User
     {
         IsEnabled = false;
     }
+
+    // Provisioning is admin-driven and login must look up this exact form (trimmed, lowercase),
+    // so both sides of the comparison go through the same normalization instead of relying on a
+    // database-level case-insensitive collation.
+    public static string Normalize(string email) => email.Trim().ToLowerInvariant();
 }

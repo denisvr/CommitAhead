@@ -4,7 +4,7 @@ CommitAhead is a private, invite-only web application for structured software-en
 
 ## Status
 
-Phase 0 is complete: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth, CSRF, security headers, and a minimal authenticated screen are all implemented and verified (including one real call to the live Supabase Auth API). There is no business domain layer yet (Phase 1). The Supabase project exists and is used for Auth; its Postgres stays untouched (development runs against the local Docker Postgres instead — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
+Phase 0's security and architecture baseline is implemented and verified: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth with closed (invite-only) login, secure-by-default authorization, CSRF, security headers, and a minimal authenticated screen — including one real call to the live Supabase Auth API. Two pieces remain pending, not complete: the E2E (Playwright) project has not been added yet, and the `IAIProvider` half of NetArchTest rule 5 stays skipped until Phase 4 declares that interface. There is no business domain layer yet (Phase 1). Development uses Supabase Auth (remote) for authentication; the application's own PostgreSQL stays entirely local via Docker (development never connects to or migrates the real Supabase Postgres — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
 
 ## Local Requirements
 
@@ -19,26 +19,28 @@ cd frontend && npm ci && npm run lint && npm test && npm run build
 
 ## Local Database (Development)
 
-Until a real Supabase project exists, development uses a plain Postgres container — not a stand-in
-for Supabase Auth/Storage, just persistence:
+Development uses Supabase Auth (remote) for authentication, but the application's own PostgreSQL
+stays entirely local via Docker — the real Supabase Postgres is never connected to or migrated
+during development (see "Setting Up the Real Supabase Project" below for when that changes, at
+deployment).
 
 ```bash
 cd backend
 cp .env.example .env               # then edit the passwords
-docker compose up -d
 dotnet user-secrets set "ConnectionStrings:CommitAheadDb" \
   "Host=localhost;Port=5433;Database=commitahead;Username=commitahead_app;Password=<COMMITAHEAD_APP_PASSWORD from .env>" \
   --project src/CommitAhead.Api
-COMMITAHEAD_MIGRATION_CONNECTION="Host=localhost;Port=5433;Database=commitahead;Username=commitahead_migrator;Password=<COMMITAHEAD_MIGRATOR_PASSWORD from .env>" \
-  dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
-docker compose exec -T db psql -U postgres -d commitahead < scripts/database/002_rls_users.sql
+powershell -File scripts/setup-local-db.ps1
 ```
 
-`docker compose up` runs `scripts/database/001_roles.sql` automatically on first start (creating the
-`commitahead_app`/`commitahead_migrator` roles from `.env`). `002_rls_users.sql` enables RLS on
-`users` and must be run manually, after migrations, because it needs the table to already exist.
-When the real Supabase project is created, the same two SQL scripts are the template for setting it
-up (see `backend/scripts/database/`) — only the connection host/credentials change.
+`scripts/setup-local-db.ps1` is the single reproducible entry point for roles → migrations → RLS —
+see `docs/architecture/persistence.md` ("Migration Strategy") for why that split exists and which
+artifact is authoritative for each. It: starts the Postgres container (`docker compose up`, which
+runs `scripts/database/001_roles.sql` automatically on first start, creating the
+`commitahead_app`/`commitahead_migrator` roles from `.env`), applies pending EF Core migrations,
+then applies `scripts/database/002_rls_users.sql` (RLS on `users`) — safe to re-run. When the real
+Supabase project is created, the same two SQL scripts are the template for setting it up (see
+`backend/scripts/database/`) — only the connection host/credentials change.
 
 ## Setting Up the Real Supabase Project
 
@@ -58,7 +60,7 @@ to share it:
 COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_migrator;Password=<real password>" \
   dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
 # 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2).
-# 4. Seed the owner's row (use your real Supabase Auth user's UID and email):
+# 4. Seed each enabled user's row (use their real Supabase Auth UID and email):
 #    INSERT INTO users (id, supabase_user_id, email, is_enabled, created_at_utc)
 #    VALUES ('<uid>', '<uid>', '<email>', true, now());
 # 5. Point the running API at the real database with the app role from step 1:

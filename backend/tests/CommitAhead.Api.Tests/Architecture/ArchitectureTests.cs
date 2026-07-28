@@ -67,6 +67,36 @@ public class ArchitectureTests
     }
 
     [Fact]
+    public void Controllers_ShouldNotInjectRepositoriesDirectly()
+    {
+        // Repository interfaces live in CommitAhead.Application, so a controller injecting one
+        // directly would not trip Controllers_ShouldOnlyDependOnApplication_NotInfrastructureOrDomain
+        // above — controllers must depend on use cases, not repositories, even though both live in
+        // the same allowed assembly.
+        var controllerTypes = Types.InAssembly(ApiAssembly)
+            .That()
+            .HaveNameEndingWith("Controller")
+            .GetTypes();
+
+        var violations = new List<string>();
+
+        foreach (var controllerType in controllerTypes)
+        {
+            var constructor = controllerType.GetConstructors().SingleOrDefault();
+            if (constructor is null)
+            {
+                continue;
+            }
+
+            violations.AddRange(constructor.GetParameters()
+                .Where(p => p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal))
+                .Select(p => $"{controllerType.Name}({p.ParameterType.Name})"));
+        }
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
     public void RepositoryImplementations_ShouldOnlyExistInInfrastructure()
     {
         var nonInfrastructureAssemblies = new[] { DomainAssembly, ApplicationAssembly, ApiAssembly };

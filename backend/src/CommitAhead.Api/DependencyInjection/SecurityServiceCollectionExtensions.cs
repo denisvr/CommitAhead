@@ -10,6 +10,11 @@ public static class SecurityServiceCollectionExtensions
 
     public static IServiceCollection AddCommitAheadSecurity(this IServiceCollection services, IWebHostEnvironment environment)
     {
+        // Durable/encrypted key storage for production is a Phase 6 decision (docs/tbd.md) — the
+        // default key ring is enough to seal the session-start timestamp for local/dev use now.
+        services.AddDataProtection();
+        services.AddSingleton<SessionStartToken>();
+
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-CSRF-TOKEN";

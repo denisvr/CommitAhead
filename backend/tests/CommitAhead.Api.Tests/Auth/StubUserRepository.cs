@@ -27,6 +27,11 @@ public sealed class StubUserRepository : IUserRepository
         return Task.FromResult(_usersBySupabaseId.GetValueOrDefault(supabaseUserId));
     }
 
+    public Task<User?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_usersBySupabaseId.Values.SingleOrDefault(u => u.Email == normalizedEmail));
+    }
+
     public Task AddAsync(User user, CancellationToken cancellationToken)
     {
         Add(user);

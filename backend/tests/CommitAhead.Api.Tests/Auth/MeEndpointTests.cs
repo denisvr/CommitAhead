@@ -81,4 +81,20 @@ public class MeEndpointTests : IClassFixture<AuthTestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Get_WithTokenOlderThanFifteenMinutesByIssuedAt_ReturnsUnauthorized_EvenWhenNotExpired()
+    {
+        _factory.Users.Add(new User(Guid.NewGuid(), "sub-enabled", "owner@example.com", DateTime.UtcNow));
+        // exp still valid (default +15min from now), but iat is 20 minutes old — the effective
+        // 15-minute access token limit is enforced independently of Supabase's own exp claim.
+        var token = JwtTestTokenFactory.CreateAccessToken("sub-enabled", issuedAtUtc: DateTime.UtcNow.AddMinutes(-20));
+        var client = _factory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/me");
+        request.Headers.Add("Cookie", $"commitahead_access={token}");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

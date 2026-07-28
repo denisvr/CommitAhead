@@ -16,6 +16,12 @@ public sealed class FakeUserRepository : IUserRepository
         return Task.FromResult(user);
     }
 
+    public Task<User?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        var user = _users.SingleOrDefault(u => u.Email == normalizedEmail);
+        return Task.FromResult(user);
+    }
+
     public Task AddAsync(User user, CancellationToken cancellationToken)
     {
         _users.Add(user);

@@ -1,6 +1,6 @@
 # CommitAhead — Use Cases
 
-Key user journeys. Each maps to one or more application use case classes in the `Features/` folder structure.
+Key user journeys. Each maps to one or more application use case classes in the `Features/` folder structure. Every journey below operates entirely within the authenticated request's own data (ADR-0015) — StudyItems, the ProfessionalProfile, evidence sources, and drafts referenced anywhere in this document belong to that one user; there is no journey that reads or writes another user's data.
 
 ---
 

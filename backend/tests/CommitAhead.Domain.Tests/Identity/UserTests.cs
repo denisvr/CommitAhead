@@ -49,4 +49,20 @@ public class UserTests
 
         Assert.False(user.IsEnabled);
     }
+
+    [Fact]
+    public void Constructor_NormalizesEmail_TrimAndLowercase()
+    {
+        var user = new User(Guid.NewGuid(), "sub", "  Owner@Example.COM  ", Now);
+
+        Assert.Equal("owner@example.com", user.Email);
+    }
+
+    [Theory]
+    [InlineData("Owner@Example.com", "owner@example.com")]
+    [InlineData("  spaced@example.com  ", "spaced@example.com")]
+    public void Normalize_TrimsAndLowercases(string input, string expected)
+    {
+        Assert.Equal(expected, User.Normalize(input));
+    }
 }

@@ -1,11 +1,13 @@
 using CommitAhead.Application.Identity;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommitAhead.Api.Features.Me;
 
+// Secure by default: no [Authorize] needed — the authorization fallback policy already requires
+// an authenticated, enabled user for any endpoint without [AllowAnonymous]. An explicit [Authorize]
+// here would use AuthorizationOptions.DefaultPolicy instead of FallbackPolicy, bypassing
+// EnabledUserRequirement entirely.
 [ApiController]
-[Authorize]
 [Route("api/me")]
 public sealed class MeController : ControllerBase
 {

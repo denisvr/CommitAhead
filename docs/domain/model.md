@@ -6,13 +6,16 @@ For term definitions see `CONTEXT.md`. For architectural decisions see `docs/adr
 
 ## Aggregate Roots
 
+Every aggregate root below carries an `ownerUserId` (see ADR-0015): all reads, writes, and cross-aggregate references are scoped to the authenticated request's owner. There is no cross-user sharing — a user's data is invisible to every other user, full stop.
+
 ### 1. StudyItem
 
-The primary unit of preparation and the only entity ranked in the study queue.
+The primary unit of preparation and the only entity ranked in the study queue, scoped to one user.
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | UUID | |
+| `ownerUserId` | UUID | FK to the owning User (ADR-0015); never exposed to other users |
 | `title` | string | Canonical name; not duplicated in details |
 | `category` | enum | Theory \| LeetCode \| SystemDesign \| Behavioral |
 | `status` | enum | Active \| Archived |
@@ -47,13 +50,14 @@ The default weights are 40/35/25. Tiebreaking between equal EffectiveScores rema
 
 ---
 
-### 2. ProfessionalProfile *(singleton)*
+### 2. ProfessionalProfile *(singleton per user)*
 
-The canonical source of professional identity and reusable CV content.
+The canonical source of professional identity and reusable CV content — one per user, not a single global row. A user's first save creates their row; there is never more than one per `ownerUserId`.
 
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `ownerUserId` | UUID |
 | `contactInfo` | ContactInfo |
 | `summaryMarkdown` | string |
 | `createdAt` | timestamp |
@@ -157,7 +161,8 @@ A curated, locale-specific projection over one ProfessionalProfile.
 | Field | Type | Notes |
 |---|---|---|
 | `id` | UUID | |
-| `professionalProfileId` | UUID | FK to the singleton profile |
+| `ownerUserId` | UUID | FK to the owning User (ADR-0015) |
+| `professionalProfileId` | UUID | FK to the user's own ProfessionalProfile — must share `ownerUserId` |
 | `label` | string | e.g. “UK — Senior Backend Engineer” |
 | `targetMarket` | string | Country/market identifier |
 | `targetRole` | string? | |
@@ -182,6 +187,7 @@ It owns seven ordered selection collections: Experience, Education, Skill, Langu
 | Field | Type | Notes |
 |---|---|---|
 | `id` | UUID | |
+| `ownerUserId` | UUID | FK to the owning User (ADR-0015) |
 | `title` | string | User-assigned label |
 | `jobSource` | JobSource | PastedText or UploadedFile |
 | `requirements` | JobRequirement[] | Child entities |
@@ -217,6 +223,7 @@ It owns seven ordered selection collections: Experience, Education, Skill, Langu
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `ownerUserId` | UUID |
 | `company` | string |
 | `role` | string |
 | `interviewRound` | InterviewRound |
@@ -239,8 +246,9 @@ It owns seven ordered selection collections: Experience, Education, Skill, Langu
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `ownerUserId` | UUID |
 | `sourceType` | CVPresentation \| JobAnalysis \| InterviewNote |
-| `sourceId` | UUID |
+| `sourceId` | UUID — must reference a source with the same `ownerUserId` |
 | `status` | Pending \| Applied \| Discarded |
 | `createdAt` | timestamp |
 | `appliedAt` | timestamp? |
@@ -263,14 +271,15 @@ Every proposal has `id`, final `status` (`Pending | Accepted | Rejected`), an im
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `ownerUserId` | UUID |
 | `sourceType` | CVPresentation \| JobAnalysis \| InterviewNote |
-| `sourceId` | UUID |
-| `targetStudyItemId` | UUID |
+| `sourceId` | UUID — must reference a source with the same `ownerUserId` |
+| `targetStudyItemId` | UUID — must reference a StudyItem with the same `ownerUserId` |
 | `weight` | decimal 0–5 |
 | `rationale` | string |
 | `createdAt` | timestamp |
 
-EvidenceLinks have no proposal lifecycle. Existence means active; deletion removes their contribution to Demand.
+EvidenceLinks have no proposal lifecycle. Existence means active; deletion removes their contribution to Demand. A link only ever connects a source and a StudyItem owned by the same user — there is no cross-user linking.
 
 ---
 
@@ -382,13 +391,14 @@ These records support application/infrastructure concerns and are not domain agg
 
 ### ScoringConfigOverride
 
-One optional row containing ScoringWeights. Absence means the 40/35/25 code defaults apply. The Application layer resolves override-or-defaults and supplies the resulting weights to the ranked queue query.
+At most one optional row per user (`ownerUserId`), containing ScoringWeights. Absence means the 40/35/25 code defaults apply for that user. The Application layer resolves override-or-defaults per user and supplies the resulting weights to that user's ranked queue query. There is no global/shared override — each user's weights are independent.
 
 ### AIUsageRecord
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | UUID | |
+| `ownerUserId` | UUID | FK to the owning User (ADR-0015) — the user whose action triggered the AI call |
 | `idempotencyKey` | string | Unique |
 | `commandType` | enum | One of the three AI commands |
 | `sourceType` / `sourceId` | enum / UUID | |
@@ -437,12 +447,14 @@ The budget reservation transaction checks Completed actual cost plus active Rese
 26. ScoringWeights are non-negative integers summing to 100.
 27. Computed EffectiveScore is `[8,100]` with default input ranges; an override may be `[0,100]`.
 28. AIUsageRecord.idempotencyKey is unique.
+29. Every cross-aggregate reference connects entities owned by the same user (see ADR-0015): a CVPresentation's `professionalProfileId`, an EvidenceLink's `sourceId`/`targetStudyItemId`, an AnalysisDraft's `sourceId`, and an InterviewNote's `jobAnalysisId` must all share the referencing entity's `ownerUserId`. There is no cross-user reference, ever.
+30. ScoringConfigOverride and AIUsageRecord are scoped by `ownerUserId`; a user's budget and scoring weights never affect another user's.
 
 ---
 
 ## Cross-Aggregate References
 
-All cross-aggregate references are IDs only; domain navigation properties never cross aggregate boundaries.
+All cross-aggregate references are IDs only; domain navigation properties never cross aggregate boundaries. Every reference below is additionally scoped to the same `ownerUserId` on both ends (invariant 29) — a user can only ever reference their own data.
 
 | From | Field | References |
 |---|---|---|

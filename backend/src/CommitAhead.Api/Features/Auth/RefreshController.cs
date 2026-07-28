@@ -10,17 +10,23 @@ namespace CommitAhead.Api.Features.Auth;
 [Route("auth/refresh")]
 public sealed class RefreshController : ControllerBase
 {
-    private readonly RefreshUseCase _useCase;
+    private static readonly TimeSpan AbsoluteSessionTimeout = TimeSpan.FromDays(7);
 
-    public RefreshController(RefreshUseCase useCase)
+    private readonly RefreshUseCase _useCase;
+    private readonly SessionStartToken _sessionStartToken;
+
+    public RefreshController(RefreshUseCase useCase, SessionStartToken sessionStartToken)
     {
         _useCase = useCase;
+        _sessionStartToken = sessionStartToken;
     }
 
     [HttpPost]
     public async Task<IActionResult> Post(CancellationToken cancellationToken)
     {
-        if (!Request.Cookies.ContainsKey(AuthCookieNames.SessionStarted))
+        if (!Request.Cookies.TryGetValue(AuthCookieNames.SessionStarted, out var sessionStartedValue)
+            || !_sessionStartToken.TryGetStartedAtUtc(sessionStartedValue, out var startedAtUtc)
+            || DateTimeOffset.UtcNow - startedAtUtc > AbsoluteSessionTimeout)
         {
             AuthCookieWriter.ClearSessionCookies(Response);
             return Unauthorized();

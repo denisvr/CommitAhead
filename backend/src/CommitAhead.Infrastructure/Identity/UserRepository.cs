@@ -20,6 +20,12 @@ public sealed class UserRepository : IUserRepository
             .SingleOrDefaultAsync(u => u.SupabaseUserId == supabaseUserId, cancellationToken);
     }
 
+    public Task<User?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        return _dbContext.Users
+            .SingleOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+    }
+
     public async Task AddAsync(User user, CancellationToken cancellationToken)
     {
         _dbContext.Users.Add(user);

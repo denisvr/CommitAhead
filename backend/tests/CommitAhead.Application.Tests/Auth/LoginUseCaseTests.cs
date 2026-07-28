@@ -1,16 +1,22 @@
 using System.Security.Cryptography;
 using System.Text;
 using CommitAhead.Application.Auth;
+using CommitAhead.Application.Tests.Identity;
+using CommitAhead.Domain.Identity;
 
 namespace CommitAhead.Application.Tests.Auth;
 
 public class LoginUseCaseTests
 {
+    private static readonly DateTime Now = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
     [Fact]
-    public async Task ExecuteAsync_InitiatesMagicLink_WithMatchingPkcePair()
+    public async Task ExecuteAsync_WithProvisionedEnabledEmail_InitiatesMagicLink_WithMatchingPkcePair()
     {
         var authClient = new FakeSupabaseAuthClient();
-        var useCase = new LoginUseCase(authClient);
+        var userRepository = new FakeUserRepository();
+        await userRepository.AddAsync(new User(Guid.NewGuid(), "sub-1", "owner@example.com", Now), CancellationToken.None);
+        var useCase = new LoginUseCase(authClient, userRepository);
 
         var codeVerifier = await useCase.ExecuteAsync("owner@example.com", CancellationToken.None);
 
@@ -28,11 +34,54 @@ public class LoginUseCaseTests
     public async Task ExecuteAsync_GeneratesADifferentCodeVerifier_EachCall()
     {
         var authClient = new FakeSupabaseAuthClient();
-        var useCase = new LoginUseCase(authClient);
+        var userRepository = new FakeUserRepository();
+        await userRepository.AddAsync(new User(Guid.NewGuid(), "sub-1", "owner@example.com", Now), CancellationToken.None);
+        var useCase = new LoginUseCase(authClient, userRepository);
 
         var first = await useCase.ExecuteAsync("owner@example.com", CancellationToken.None);
         var second = await useCase.ExecuteAsync("owner@example.com", CancellationToken.None);
 
         Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithUnknownEmail_DoesNotCallSupabase_ButStillReturnsACodeVerifier()
+    {
+        var authClient = new FakeSupabaseAuthClient();
+        var userRepository = new FakeUserRepository();
+        var useCase = new LoginUseCase(authClient, userRepository);
+
+        var codeVerifier = await useCase.ExecuteAsync("unknown@example.com", CancellationToken.None);
+
+        Assert.False(string.IsNullOrEmpty(codeVerifier));
+        Assert.Null(authClient.LastEmail);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithDisabledUserEmail_DoesNotCallSupabase()
+    {
+        var authClient = new FakeSupabaseAuthClient();
+        var userRepository = new FakeUserRepository();
+        var user = new User(Guid.NewGuid(), "sub-1", "disabled@example.com", Now);
+        user.Disable();
+        await userRepository.AddAsync(user, CancellationToken.None);
+        var useCase = new LoginUseCase(authClient, userRepository);
+
+        await useCase.ExecuteAsync("disabled@example.com", CancellationToken.None);
+
+        Assert.Null(authClient.LastEmail);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NormalizesEmail_BeforeLookup()
+    {
+        var authClient = new FakeSupabaseAuthClient();
+        var userRepository = new FakeUserRepository();
+        await userRepository.AddAsync(new User(Guid.NewGuid(), "sub-1", "owner@example.com", Now), CancellationToken.None);
+        var useCase = new LoginUseCase(authClient, userRepository);
+
+        await useCase.ExecuteAsync("  Owner@Example.com  ", CancellationToken.None);
+
+        Assert.Equal("owner@example.com", authClient.LastEmail);
     }
 }

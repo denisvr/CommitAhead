@@ -8,8 +8,19 @@ namespace CommitAhead.Api.Tests.Auth;
 /// </summary>
 public sealed class StubSupabaseAuthClient : ISupabaseAuthClient
 {
+    public bool MagicLinkInitiated { get; private set; }
+    public string? LastMagicLinkEmail { get; private set; }
+
+    public void Reset()
+    {
+        MagicLinkInitiated = false;
+        LastMagicLinkEmail = null;
+    }
+
     public Task InitiateMagicLinkAsync(string email, string codeChallenge, CancellationToken cancellationToken)
     {
+        MagicLinkInitiated = true;
+        LastMagicLinkEmail = email;
         return Task.CompletedTask;
     }
 

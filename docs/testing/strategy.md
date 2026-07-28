@@ -92,7 +92,7 @@
 - Routing and serialisation for representative happy and error paths per controller
 - Request validation: malformed payloads, missing required fields, out-of-range values → 422
 - Missing resources → 404; invalid related IDs → 422; conflict (e.g. duplicate link) → 409
-- **Auth**: unauthenticated → 401; non-owner JWT → 403
+- **Auth**: unauthenticated → 401; unknown/disabled-user JWT → 403 (fallback authorization policy, ADR-0015) — never blocks the `[AllowAnonymous]` auth endpoints themselves
 - Dedicated locally-signed JWT tests for token validation (issuer, audience, signature, expiry, sub)
 - **CSRF**: state-changing requests without token → 400/403
 - **Security headers**: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` on API responses
