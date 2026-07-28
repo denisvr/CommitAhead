@@ -62,7 +62,7 @@ describe('App', () => {
     expect(ensureFreshSessionMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0])
   })
 
-  it('logging out still clears local state even when the CSRF fetch fails', async () => {
+  it('does not switch to anonymous when the CSRF fetch fails — shows a retryable error instead', async () => {
     getMock.mockImplementation((path: string) => {
       if (path === '/api/me') {
         return Promise.resolve({ data: { email: 'owner@example.com' }, response: new Response(null, { status: 200 }) })
@@ -79,7 +79,79 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
 
-    expect(await screen.findByLabelText('Email')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+    expect(screen.getByText('Signed in as owner@example.com')).toBeInTheDocument()
     expect(postMock).not.toHaveBeenCalledWith('/auth/logout', expect.anything())
+  })
+
+  it('does not switch to anonymous when /auth/logout itself returns a non-2xx status', async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === '/api/me') {
+        return Promise.resolve({ data: { email: 'owner@example.com' }, response: new Response(null, { status: 200 }) })
+      }
+      if (path === '/auth/csrf') {
+        return Promise.resolve({ data: { token: 'csrf-token' }, response: new Response(null, { status: 200 }) })
+      }
+      return Promise.resolve({ data: undefined, response: new Response(null, { status: 404 }) })
+    })
+    postMock.mockResolvedValue({ data: undefined, response: new Response(null, { status: 400 }) })
+    ensureFreshSessionMock.mockResolvedValue(true)
+
+    render(<App />)
+    expect(await screen.findByText('Signed in as owner@example.com')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
+    expect(screen.getByText('Signed in as owner@example.com')).toBeInTheDocument()
+  })
+
+  it('does not switch to anonymous when the /auth/logout call throws (network failure)', async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === '/api/me') {
+        return Promise.resolve({ data: { email: 'owner@example.com' }, response: new Response(null, { status: 200 }) })
+      }
+      if (path === '/auth/csrf') {
+        return Promise.resolve({ data: { token: 'csrf-token' }, response: new Response(null, { status: 200 }) })
+      }
+      return Promise.resolve({ data: undefined, response: new Response(null, { status: 404 }) })
+    })
+    postMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    ensureFreshSessionMock.mockResolvedValue(true)
+
+    render(<App />)
+    expect(await screen.findByText('Signed in as owner@example.com')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
+    expect(screen.getByText('Signed in as owner@example.com')).toBeInTheDocument()
+  })
+
+  it('allows retrying logout after a failure, and succeeds the second time', async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === '/api/me') {
+        return Promise.resolve({ data: { email: 'owner@example.com' }, response: new Response(null, { status: 200 }) })
+      }
+      if (path === '/auth/csrf') {
+        return Promise.resolve({ data: { token: 'csrf-token' }, response: new Response(null, { status: 200 }) })
+      }
+      return Promise.resolve({ data: undefined, response: new Response(null, { status: 404 }) })
+    })
+    ensureFreshSessionMock.mockResolvedValue(true)
+    postMock
+      .mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 500 }) })
+      .mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 204 }) })
+
+    render(<App />)
+    expect(await screen.findByText('Signed in as owner@example.com')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument()
   })
 })

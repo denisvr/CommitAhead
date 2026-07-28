@@ -5,10 +5,14 @@ namespace CommitAhead.Api.Tests.Routing;
 
 /// <summary>
 /// Regression coverage: the SPA fallback must not swallow unmatched /api or /auth requests into
-/// index.html — they must 404. This also guards against a related trap: the secure-by-default
-/// fallback authorization policy applies even to requests that match no endpoint at all, so an
-/// unmatched /api or /auth route can silently become 401 instead of 404 unless the catch-all
-/// endpoints handling them are explicitly [AllowAnonymous] (see Program.cs).
+/// index.html — they must 404, via ApiCatchAllController/AuthCatchAllController (Controllers, not
+/// Minimal APIs, per ADR-0008). This also guards against two related traps: (1) the
+/// secure-by-default fallback authorization policy applies even to requests that match no
+/// endpoint at all, so an unmatched /api or /auth route can silently become 401 instead of 404
+/// unless the catch-all controllers are explicitly [AllowAnonymous]; (2) CsrfMiddleware runs
+/// before the catch-all action executes, so a state-changing verb (POST/PUT/PATCH/DELETE) to an
+/// unmatched route can silently become 400 instead of 404 unless the catch-all controllers are
+/// also explicitly [SkipCsrf] (see Program.cs and Features/Routing/*CatchAllController.cs).
 /// </summary>
 public class SpaFallbackRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -19,22 +23,30 @@ public class SpaFallbackRoutingTests : IClassFixture<WebApplicationFactory<Progr
         _factory = factory;
     }
 
-    [Fact]
-    public async Task UnmatchedApiRoute_ReturnsNotFound()
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("DELETE")]
+    public async Task UnmatchedApiRoute_ReturnsNotFound_RegardlessOfHttpMethod(string method)
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/does-not-exist");
+        var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), "/api/does-not-exist"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact]
-    public async Task UnmatchedAuthRoute_ReturnsNotFound()
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("DELETE")]
+    public async Task UnmatchedAuthRoute_ReturnsNotFound_RegardlessOfHttpMethod(string method)
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/auth/does-not-exist");
+        var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), "/auth/does-not-exist"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

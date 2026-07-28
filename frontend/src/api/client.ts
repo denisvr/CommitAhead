@@ -12,21 +12,27 @@ let refreshInFlight: Promise<boolean> | null = null
 
 /**
  * Single-flight refresh: concurrent callers share one /auth/refresh call instead of racing each
- * other. Exported so the logout flow can also call it directly (attempt a fresh access token
- * before revoking, since Supabase revocation needs one) without going through a 401 first.
+ * other. Never rejects — any failure (network error, missing CSRF token, non-204 response)
+ * resolves to false, so every caller can `await` this without its own try/catch. Exported so the
+ * logout flow can also call it directly (attempt a fresh access token before revoking, since
+ * Supabase revocation needs one) without going through a 401 first.
  */
 export function ensureFreshSession(): Promise<boolean> {
   refreshInFlight ??= (async () => {
-    const { data: csrf } = await apiClient.GET('/auth/csrf')
-    if (!csrf) {
+    try {
+      const { data: csrf } = await apiClient.GET('/auth/csrf')
+      if (!csrf) {
+        return false
+      }
+
+      const { response } = await apiClient.POST('/auth/refresh', {
+        headers: { 'X-CSRF-TOKEN': csrf.token },
+      })
+
+      return response.status === 204
+    } catch {
       return false
     }
-
-    const { response } = await apiClient.POST('/auth/refresh', {
-      headers: { 'X-CSRF-TOKEN': csrf.token },
-    })
-
-    return response.status === 204
   })().finally(() => {
     refreshInFlight = null
   })
@@ -60,11 +66,24 @@ apiClient.use({
       return response
     }
 
-    // Calling the global fetch directly (not apiClient) retries exactly once and never re-enters
-    // this middleware, so a request that fails again after a successful refresh just surfaces
-    // its second 401 — no retry loop.
     const retryRequest = new Request(clone)
     retryRequest.headers.set(RetryHeader, '1')
-    return fetch(retryRequest)
+
+    try {
+      // Calling the global fetch directly (not apiClient) retries exactly once and never
+      // re-enters this middleware, so a request that fails again after a successful refresh just
+      // surfaces its second 401 — no retry loop.
+      return await fetch(retryRequest)
+    } catch {
+      // The retry attempt itself failed over the network — fall back to the original 401 rather
+      // than letting the exception replace a well-formed Response the caller expects.
+      return response
+    }
+  },
+  onError({ id }) {
+    // onRequest always stores a clone, but onResponse only runs when fetch resolves to a
+    // Response — if fetch throws instead (network failure), nothing else would ever remove this
+    // entry, leaking one Request per failed call for the life of the page.
+    pendingRequestClones.delete(id)
   },
 })

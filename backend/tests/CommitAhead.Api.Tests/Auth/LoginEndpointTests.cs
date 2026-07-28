@@ -58,6 +58,24 @@ public class LoginEndpointTests
         Assert.False(factory.SupabaseAuth.MagicLinkInitiated);
     }
 
+    [Fact]
+    public async Task Post_WithProvisionedEmailWhenSupabaseFails_StillReturnsTheSameGenericMessage_NotAnError()
+    {
+        using var factory = new AuthTestWebApplicationFactory();
+        factory.Users.Add(new User(Guid.NewGuid(), "sub-enabled", "owner@example.com", DateTime.UtcNow));
+        factory.SupabaseAuth.ExceptionToThrowOnInitiateMagicLink = new HttpRequestException("Supabase is unreachable");
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/auth/login", new { email = "owner@example.com" });
+
+        // Same 200 + same generic message a healthy call or an unknown email would produce — a
+        // Supabase failure must never turn into a distinguishable response (no enumeration via
+        // external-failure status codes).
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        Assert.Equal(GenericMessage, body!.Message);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not-an-email")]

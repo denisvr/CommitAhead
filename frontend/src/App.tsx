@@ -7,6 +7,8 @@ type AuthState = 'loading' | 'authenticated' | 'anonymous'
 function App() {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [email, setEmail] = useState<string | null>(null)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
     apiClient.GET('/api/me').then(({ data, response }) => {
@@ -20,19 +22,36 @@ function App() {
   }, [])
 
   const handleLogout = async () => {
-    // Best-effort: a fresh access token gives /auth/logout a real Supabase token to revoke.
-    // Cookies are cleared below regardless of whether this succeeds.
-    await ensureFreshSession()
+    setIsLoggingOut(true)
+    setLogoutError(null)
 
-    const { data: csrf } = await apiClient.GET('/auth/csrf')
-    if (csrf) {
-      await apiClient.POST('/auth/logout', {
+    try {
+      // Best-effort: a fresh access token gives /auth/logout a real Supabase token to revoke.
+      // ensureFreshSession never rejects, so a refresh failure here can't abort the rest of logout.
+      await ensureFreshSession()
+
+      const { data: csrf, response: csrfResponse } = await apiClient.GET('/auth/csrf')
+      if (!csrf || !csrfResponse.ok) {
+        throw new Error('Could not obtain a CSRF token for logout.')
+      }
+
+      const { response: logoutResponse } = await apiClient.POST('/auth/logout', {
         headers: { 'X-CSRF-TOKEN': csrf.token },
       })
-    }
+      if (!logoutResponse.ok) {
+        throw new Error(`Logout request failed with status ${logoutResponse.status}.`)
+      }
 
-    setEmail(null)
-    setAuthState('anonymous')
+      setEmail(null)
+      setAuthState('anonymous')
+    } catch {
+      // Logout never reached (or was not accepted by) the backend — keep showing the
+      // authenticated UI rather than silently pretending the user is signed out, and let them
+      // retry instead of getting stuck.
+      setLogoutError('Something went wrong signing you out. Please try again.')
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   if (authState === 'loading') {
@@ -51,9 +70,10 @@ function App() {
       ) : (
         <>
           <p>Signed in as {email}</p>
-          <button type="button" onClick={handleLogout}>
+          <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
             Log out
           </button>
+          {logoutError && <p role="alert">{logoutError}</p>}
         </>
       )}
     </main>

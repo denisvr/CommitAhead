@@ -8,11 +8,19 @@ public sealed class FakeSupabaseAuthClient : ISupabaseAuthClient
     public string? LastCodeChallenge { get; private set; }
     public string? LastRevokedAccessToken { get; private set; }
     public SupabaseTokenResult? TokenToReturn { get; set; }
+    public Exception? ExceptionToThrowOnInitiateMagicLink { get; set; }
+    public Exception? ExceptionToThrowOnRevoke { get; set; }
 
     public Task InitiateMagicLinkAsync(string email, string codeChallenge, CancellationToken cancellationToken)
     {
         LastEmail = email;
         LastCodeChallenge = codeChallenge;
+
+        if (ExceptionToThrowOnInitiateMagicLink is not null)
+        {
+            throw ExceptionToThrowOnInitiateMagicLink;
+        }
+
         return Task.CompletedTask;
     }
 
@@ -29,6 +37,12 @@ public sealed class FakeSupabaseAuthClient : ISupabaseAuthClient
     public Task RevokeAsync(string accessToken, CancellationToken cancellationToken)
     {
         LastRevokedAccessToken = accessToken;
+
+        if (ExceptionToThrowOnRevoke is not null)
+        {
+            throw ExceptionToThrowOnRevoke;
+        }
+
         return Task.CompletedTask;
     }
 }

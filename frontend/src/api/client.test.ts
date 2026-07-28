@@ -71,4 +71,38 @@ describe('apiClient single-flight refresh-and-retry on 401', () => {
     const refreshCalls = fetchMock.mock.calls.filter(([request]) => (request as Request).url.includes('/auth/refresh'))
     expect(refreshCalls).toHaveLength(1)
   })
+
+  it('ensureFreshSession resolves to false instead of rejecting when the network call throws', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const { ensureFreshSession } = await import('./client')
+
+    await expect(ensureFreshSession()).resolves.toBe(false)
+  })
+
+  it('falls back to the original 401 response when the retry attempt itself throws', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 })) // GET /api/me
+      .mockResolvedValueOnce(jsonResponse({ token: 'csrf-token' }, 200)) // GET /auth/csrf
+      .mockResolvedValueOnce(new Response(null, { status: 204 })) // POST /auth/refresh
+      .mockRejectedValueOnce(new TypeError('Failed to fetch')) // retried GET /api/me throws
+
+    const { apiClient } = await import('./client')
+    const result = await apiClient.GET('/api/me')
+
+    expect(result.response.status).toBe(401)
+  })
+
+  it('does not leave the request-clone map inconsistent when a call throws — a later call still succeeds', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Failed to fetch')) // first GET /api/me throws
+      .mockResolvedValueOnce(jsonResponse({ email: 'owner@example.com' }, 200)) // second GET /api/me succeeds
+
+    const { apiClient } = await import('./client')
+
+    await expect(apiClient.GET('/api/me')).rejects.toThrow('Failed to fetch')
+
+    const result = await apiClient.GET('/api/me')
+    expect(result.response.status).toBe(200)
+  })
 })

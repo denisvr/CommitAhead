@@ -10,17 +10,27 @@ public sealed class StubSupabaseAuthClient : ISupabaseAuthClient
 {
     public bool MagicLinkInitiated { get; private set; }
     public string? LastMagicLinkEmail { get; private set; }
+    public Exception? ExceptionToThrowOnInitiateMagicLink { get; set; }
+    public Exception? ExceptionToThrowOnRevoke { get; set; }
 
     public void Reset()
     {
         MagicLinkInitiated = false;
         LastMagicLinkEmail = null;
+        ExceptionToThrowOnInitiateMagicLink = null;
+        ExceptionToThrowOnRevoke = null;
     }
 
     public Task InitiateMagicLinkAsync(string email, string codeChallenge, CancellationToken cancellationToken)
     {
         MagicLinkInitiated = true;
         LastMagicLinkEmail = email;
+
+        if (ExceptionToThrowOnInitiateMagicLink is not null)
+        {
+            throw ExceptionToThrowOnInitiateMagicLink;
+        }
+
         return Task.CompletedTask;
     }
 
@@ -36,6 +46,11 @@ public sealed class StubSupabaseAuthClient : ISupabaseAuthClient
 
     public Task RevokeAsync(string accessToken, CancellationToken cancellationToken)
     {
+        if (ExceptionToThrowOnRevoke is not null)
+        {
+            throw ExceptionToThrowOnRevoke;
+        }
+
         return Task.CompletedTask;
     }
 }
