@@ -1,16 +1,14 @@
 # CommitAhead — Domain Model
 
-For term definitions see `CONTEXT.md`. For decisions see `docs/adr/`.
+For term definitions see `CONTEXT.md`. For architectural decisions see `docs/adr/`.
 
 ---
 
-## Aggregates
+## Aggregate Roots
 
-### 1. StudyItem *(aggregate root)*
+### 1. StudyItem
 
-The primary unit of preparation. Lives in the ranked study queue.
-
-**Persisted fields:**
+The primary unit of preparation and the only entity ranked in the study queue.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -19,257 +17,440 @@ The primary unit of preparation. Lives in the ranked study queue.
 | `category` | enum | Theory \| LeetCode \| SystemDesign \| Behavioral |
 | `status` | enum | Active \| Archived |
 | `importance` | int 1–5 | Manual; never computed |
-| `initialMastery` | int 1–5 | Self-assessed; used until first StudyReview |
-| `tags` | string[] | Normalised: trimmed, lowercase, kebab-case, unique per item |
-| `details` | typed union | See category details below |
-| `priorityOverride` | PriorityOverride? | Null = use computed score |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | |
+| `initialMastery` | int 1–5 | Used until the first StudyReview |
+| `tags` | string[] | Trimmed, lowercase, kebab-case, unique per item |
+| `details` | StudyItemDetails | Discriminated union matching `category` |
+| `priorityOverride` | PriorityOverride? | Null means use computed score |
+| `createdAt` | timestamp | UTC |
+| `updatedAt` | timestamp | UTC |
 
-**Computed at query time (never persisted):**
+**Children:** `StudyReview[]`
 
-| Computed field | Formula |
+#### StudyReview
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Unique inside the aggregate |
+| `reviewedAt` | timestamp | UTC; determines recency |
+| `confidenceRating` | int 1–5 | |
+| `notesMarkdown` | string? | Optional private review notes |
+
+#### Computed query fields
+
+| Field | Formula |
 |---|---|
-| `mastery` | `initialMastery` before first review; average of up to 3 most recent `StudyReview.confidenceRating` values |
-| `demand` | `min(Σ confirmed EvidenceLink.weight for links targeting this item, 5)` |
-| `effectiveScore` | `(importance/5)×40 + (demand/5)×35 + ((5−mastery)/4)×25` OR `priorityOverride.score` when set |
+| `mastery` | `initialMastery` before the first review; otherwise the average of up to three most recent ratings ordered by `reviewedAt DESC, id DESC` |
+| `demand` | `min(Σ EvidenceLink.weight for existing links targeting the item, 5)` |
+| `effectiveScore` | `(importance/5)×importanceWeight + (demand/5)×demandWeight + ((5−mastery)/4)×masteryGapWeight`, or `priorityOverride.score` |
 
-**Children (inside aggregate boundary):**
-- `StudyReview[]`
-
----
-
-### 2. ProfessionalProfile *(aggregate root — singleton)*
-
-The single canonical record of professional identity. One instance per installation.
-
-**Persisted fields:** `id`, `contactInfo` (ContactInfo value object), `summary` (Markdown), `createdAt`, `updatedAt`
-
-**Canonical collections (children, selected and ordered by CVPresentations):**
-- `ExperienceEntry[]`
-- `EducationEntry[]`
-- `Skill[]`
-- `LanguageEntry[]`
-- `CertificationEntry[]`
-- `ProjectEntry[]`
-- `ProfileLink[]`
-
-**Children (also inside aggregate):**
-- `CVPresentation[]` — each references canonical entries by ID; entries are never duplicated
+The default weights are 40/35/25. Tiebreaking between equal EffectiveScores remains a Phase 1 decision in `docs/tbd.md`.
 
 ---
 
-### 3. JobAnalysis *(aggregate root)*
+### 2. ProfessionalProfile *(singleton)*
 
-A record created for a specific job posting. Holds the raw source and the extracted structure.
+The canonical source of professional identity and reusable CV content.
 
-**Persisted fields:**
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `contactInfo` | ContactInfo |
+| `summaryMarkdown` | string |
+| `createdAt` | timestamp |
+| `updatedAt` | timestamp |
+
+**Child entity collections:**
+
+#### ExperienceEntry
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `company` | string |
+| `client` | string? |
+| `role` | string |
+| `employmentType` | Permanent \| Contract \| Freelance \| Internship \| Other |
+| `startDate` | YearMonth |
+| `endDate` | YearMonth? (`null` = current) |
+| `location` | string? |
+| `workMode` | OnSite \| Hybrid \| Remote \| Other |
+| `summaryMarkdown` | string |
+| `achievements` | string[] |
+| `skillIds` | UUID[] referencing Skills in the same profile |
+
+#### EducationEntry
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `institution` | string |
+| `degree` | string |
+| `field` | string? |
+| `startDate` | YearMonth? |
+| `endDate` | YearMonth? |
+| `location` | string? |
+| `detailsMarkdown` | string? |
+
+#### Skill
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `displayName` | string |
+| `normalizedKey` | string | Trimmed, lowercase, kebab-case; unique inside the profile |
+| `category` | SkillCategory |
+| `proficiency` | Beginner \| Intermediate \| Advanced \| Expert \| null |
+
+`SkillCategory`: Language, Framework, Platform, Cloud, Database, Messaging, DevOps, Testing, Architecture, Tool, Methodology, Domain, Other.
+
+#### LanguageEntry
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `language` | string |
+| `proficiency` | A1 \| A2 \| B1 \| B2 \| C1 \| C2 \| Native |
+| `certification` | string? |
+
+#### CertificationEntry
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `name` | string |
+| `issuingOrganisation` | string |
+| `issuedAt` | YearMonth? |
+| `expiresAt` | YearMonth? |
+| `credentialId` | string? |
+| `url` | absolute http/https URL? |
+
+#### ProjectEntry
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `name` | string |
+| `role` | string? |
+| `startDate` | YearMonth? |
+| `endDate` | YearMonth? |
+| `descriptionMarkdown` | string |
+| `url` | absolute http/https URL? |
+| `skillIds` | UUID[] referencing Skills in the same profile |
+
+#### ProfileLink
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `kind` | GitHub \| LinkedIn \| Portfolio \| Blog \| Other |
+| `label` | string? |
+| `url` | absolute http/https URL |
+
+CVPresentations are not children of ProfessionalProfile. They are independent aggregate roots because they have their own lifecycle, AI analyses, EvidenceLinks, and export use cases. See ADR-0012.
+
+---
+
+### 3. CVPresentation
+
+A curated, locale-specific projection over one ProfessionalProfile.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | |
+| `professionalProfileId` | UUID | FK to the singleton profile |
+| `label` | string | e.g. “UK — Senior Backend Engineer” |
+| `targetMarket` | string | Country/market identifier |
+| `targetRole` | string? | |
+| `locale` | string | BCP 47 locale |
+| `templateKey` | string | References an available export template |
+| `summaryOverrideMarkdown` | string? | Null uses profile summary |
+| `includePhoto` | bool | |
+| `includeEmail` | bool | |
+| `includePhone` | bool | |
+| `includeAddress` | bool | |
+| `dateFormat` | string | Locale-aware rendering rule |
+| `pageLimit` | int > 0 | |
+| `createdAt` | timestamp | UTC |
+| `updatedAt` | timestamp | UTC |
+
+It owns seven ordered selection collections: Experience, Education, Skill, Language, Certification, Project, and ProfileLink. Each selection contains `entryId` and `position`. ProfileLinks default to all existing links when a presentation is created but can be explicitly excluded afterward.
+
+---
+
+### 4. JobAnalysis
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | UUID | |
 | `title` | string | User-assigned label |
-| `jobSource` | JobSource | Discriminated union (see Value Objects) |
-| `requirements` | JobRequirement[] | Extracted or manually added |
-| `gaps` | JobGap[] | One per unmatched/partially-matched requirement |
-| `notes` | string? | Free-form Markdown |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | |
+| `jobSource` | JobSource | PastedText or UploadedFile |
+| `requirements` | JobRequirement[] | Child entities |
+| `gaps` | JobGap[] | Child entities |
+| `notesMarkdown` | string? | |
+| `createdAt` | timestamp | UTC |
+| `updatedAt` | timestamp | UTC |
+
+#### JobRequirement *(child entity)*
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `text` | string |
+| `kind` | Technical \| Behavioural \| Experience \| Domain \| Language \| Other |
+| `priority` | Required \| Preferred |
+| `sourceExcerpt` | string |
+
+#### JobGap *(child entity)*
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `requirementId` | UUID referencing a requirement in the same JobAnalysis |
+| `matchLevel` | Partial \| Missing \| Unknown |
+| `severity` | High \| Medium \| Low |
+| `rationale` | string |
 
 ---
 
-### 4. InterviewNote *(aggregate root)*
+### 5. InterviewNote
 
-A structured record of one real interview.
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `company` | string |
+| `role` | string |
+| `interviewRound` | InterviewRound |
+| `sequenceNumber` | int > 0 |
+| `otherLabel` | string? |
+| `date` | date |
+| `questions` | string[] |
+| `gaps` | string[] |
+| `lessons` | string[] |
+| `jobAnalysisId` | UUID? |
+| `createdAt` | timestamp |
+| `updatedAt` | timestamp |
 
-**Persisted fields:**
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | UUID | |
-| `company` | string | |
-| `role` | string | |
-| `interviewRound` | InterviewRound enum | |
-| `sequenceNumber` | int | Position in the interview process |
-| `otherLabel` | string? | Required when `interviewRound = Other` |
-| `date` | date | |
-| `questions` | string[] | Questions asked |
-| `gaps` | string[] | Weaknesses observed |
-| `lessons` | string[] | Takeaways |
-| `jobAnalysisId` | UUID? | Optional link to a JobAnalysis |
-| `createdAt` | timestamp | |
-
----
-
-### 5. AnalysisDraft *(aggregate root)*
-
-The output of one AI analysis command. Holds typed proposals pending human review.
-
-**Persisted fields:**
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | UUID | |
-| `sourceType` | enum | CVPresentation \| JobAnalysis \| InterviewNote |
-| `sourceId` | UUID | |
-| `status` | enum | Pending \| Applied \| Discarded |
-| `createdAt` | timestamp | |
-| `appliedAt` | timestamp? | |
-
-**Children (inside aggregate):**
-- `SuggestionProposal[]` — either StructuredSuggestion or AdvisorySuggestion
-- `LinkProposal[]` — proposed EvidenceLinks
-- `StudyItemProposal[]` — proposed new StudyItems
-
-Each proposal carries: `id`, `status (Pending | Accepted | Rejected)`, and type-specific payload.
+`InterviewRound`: RecruiterScreening, HiringManager, Technical, LiveCoding, TakeHome, SystemDesign, Behavioral, Panel, Final, Other.
 
 ---
 
-### 6. EvidenceLink *(aggregate root)*
+### 6. AnalysisDraft
 
-A confirmed, explicit connection from an evidence source to a StudyItem.
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `sourceType` | CVPresentation \| JobAnalysis \| InterviewNote |
+| `sourceId` | UUID |
+| `status` | Pending \| Applied \| Discarded |
+| `createdAt` | timestamp |
+| `appliedAt` | timestamp? |
+| `discardedAt` | timestamp? |
 
-**Persisted fields:**
+**Child collections:** `SuggestionProposal[]`, `LinkProposal[]`, `StudyItemProposal[]`.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | UUID | |
-| `sourceType` | enum | CVPresentation \| JobAnalysis \| InterviewNote |
-| `sourceId` | UUID | Polymorphic reference |
-| `targetStudyItemId` | UUID | FK → StudyItem (no cascade) |
-| `weight` | decimal 0–5 | Confirmed weight |
-| `rationale` | string | Why this link was proposed |
-| `createdAt` | timestamp | |
+Every proposal has `id`, final `status` (`Pending | Accepted | Rejected`), an immutable AI `proposedPayload`, and an optional `acceptedPayload` stored separately for audit:
+
+- `SuggestionProposal`: either `StructuredSuggestion(commandType, payload)` or `AdvisorySuggestion(markdown)`. The supported structured command allowlist is a Phase 4 decision in `docs/tbd.md`.
+- `LinkProposal`: `targetStudyItemId`, `weight`, and `rationale`.
+- `StudyItemProposal`: proposed `title`, `category`, typed details, tags, and importance. Because AI cannot know the user's mastery, an accepted decision must provide a user-selected `initialMastery`.
+
+`ApplyAnalysisDraft` receives exactly one `ProposalDecision` for every proposal. Every accepted actionable decision includes its complete user-finalised payload; an accepted AdvisorySuggestion requires no separate payload because it has no automatic effect. Rejected decisions have no accepted payload. All decisions, final payloads, accepted effects, and the Applied status are committed atomically.
+
+---
+
+### 7. EvidenceLink
+
+| Field | Type |
+|---|---|
+| `id` | UUID |
+| `sourceType` | CVPresentation \| JobAnalysis \| InterviewNote |
+| `sourceId` | UUID |
+| `targetStudyItemId` | UUID |
+| `weight` | decimal 0–5 |
+| `rationale` | string |
+| `createdAt` | timestamp |
+
+EvidenceLinks have no proposal lifecycle. Existence means active; deletion removes their contribution to Demand.
+
+---
+
+## StudyItemDetails
+
+### LeetCodeDetails
+
+| Field | Type |
+|---|---|
+| `problemNumber` | int > 0? |
+| `url` | absolute https URL? |
+| `difficulty` | Easy \| Medium \| Hard |
+| `patterns` | normalised string[] |
+| `expectedTimeComplexity` | string |
+| `expectedSpaceComplexity` | string |
+| `approachMarkdown` | string |
+| `csharpSolution` | string? |
+
+### SystemDesignDetails
+
+| Field | Type |
+|---|---|
+| `promptMarkdown` | string |
+| `clarifyingQuestions` | string[] |
+| `functionalRequirements` | string[] |
+| `nonFunctionalRequirements` | string[] |
+| `evaluationChecklist` | string[] |
+| `referenceSolutionMarkdown` | string |
+
+Revealing the reference solution is transient UI state and is never persisted.
+
+### BehavioralDetails
+
+| Field | Type |
+|---|---|
+| `competencies` | string[] |
+| `questionVariants` | string[] |
+| `situation` | string |
+| `task` | string |
+| `action` | string |
+| `result` | string |
+| `reflection` | string? |
+
+### TheoryDetails
+
+| Field | Type |
+|---|---|
+| `summaryMarkdown` | string |
+| `keyPoints` | string[] |
+| `interviewQuestions` | string[] |
+| `references` | absolute http/https URL[] |
 
 ---
 
 ## Value Objects
 
 ### PriorityOverride
-```
-score:  int [0, 100]
-reason: string (non-empty)
-```
-Stored inline on StudyItem. Presence implies override is active.
 
-### JobSource *(discriminated union)*
+```text
+score:  int [0, 100]
+reason: non-empty string
 ```
+
+### JobSource
+
+```text
 PastedText:
   content: string
 
 UploadedFile:
-  storageObjectKey: string   ← backend-generated quarantine key; never the original filename
+  storageObjectKey: backend-generated string
   originalFileName: string
-  mimeType: string
-  extractedText: string      ← extracted once at upload; AI always receives this field
+  mimeType: application/pdf
+  extractedText: string
 ```
-
-### JobRequirement
-```
-id:            UUID
-text:          string
-kind:          Technical | Behavioural | Experience | Domain | Language | Other
-priority:      Required | Preferred
-sourceExcerpt: string
-```
-
-### JobGap
-```
-id:            UUID
-requirementId: UUID   ← references parent JobRequirement
-matchLevel:    Partial | Missing | Unknown
-severity:      High | Medium | Low
-rationale:     string
-```
-Only created when `matchLevel ∈ {Partial, Missing, Unknown}`. No gap is created for a fully matched requirement.
 
 ### ContactInfo
-```
-name:    string
-email:   string
-phone:   string?
+
+```text
+name: string
+email: string
+phone: string?
 address: string?
-photoStorageKey: string?   ← Supabase Storage key; never a public URL in the domain
+photoStorageKey: string?
 ```
 
 ### YearMonth
-```
-year:  int
+
+```text
+year: int
 month: int [1, 12]
 ```
-No day precision. Used in ExperienceEntry, EducationEntry, CertificationEntry, ProjectEntry.
+
+### ScoringWeights
+
+```text
+importanceWeight: int
+demandWeight: int
+masteryGapWeight: int
+```
+
+All weights are non-negative and sum to 100.
+
+---
+
+## Operational Persistence Models
+
+These records support application/infrastructure concerns and are not domain aggregates.
+
+### ScoringConfigOverride
+
+One optional row containing ScoringWeights. Absence means the 40/35/25 code defaults apply. The Application layer resolves override-or-defaults and supplies the resulting weights to the ranked queue query.
+
+### AIUsageRecord
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | |
+| `idempotencyKey` | string | Unique |
+| `commandType` | enum | One of the three AI commands |
+| `sourceType` / `sourceId` | enum / UUID | |
+| `provider` / `model` | string | Metadata only |
+| `pricingVersion` / `currency` | string / ISO 4217 code | Pricing snapshot used for estimates |
+| `status` | Reserved \| Completed \| Failed | |
+| `reservedInputTokens` / `reservedOutputTokens` | int | Pre-call limits |
+| `reservedCost` | decimal | In `currency`; counts against budget while Reserved |
+| `actualInputTokens` / `actualOutputTokens` | int? | Provider-reported |
+| `actualCost` | decimal? | In `currency`; reconciled after completion |
+| `analysisDraftId` | UUID? | Allows an idempotent replay to return the existing result |
+| `startedAt` / `completedAt` | timestamp / timestamp? | UTC |
+| `outcomeCode` | string? | Safe metadata; never provider content |
+
+The budget reservation transaction checks Completed actual cost plus active Reserved cost for the daily and monthly windows before inserting the row. Completion reconciles the reservation; failure releases unused reservation while preserving the audit record.
 
 ---
 
 ## Domain Invariants
 
-### StudyItem
-1. `status ∈ {Active, Archived}`
-2. Hard delete permitted only when `StudyReview[]` is empty **and** no `EvidenceLink` targets this item. Otherwise must be archived.
-3. `importance ∈ [1, 5]`
-4. `initialMastery ∈ [1, 5]`
-5. Tags: each tag is trimmed, lowercase, kebab-case; no duplicates per item.
-6. Mastery is never auto-archived based on its value; archival is always explicit.
-
-### StudyReview
-7. `confidenceRating ∈ [1, 5]`
-
-### PriorityOverride
-8. `score ∈ [0, 100]`
-9. `reason` must be non-empty.
-
-### EvidenceLink
-10. `weight ∈ [0, 5]`
-11. At most one `EvidenceLink` per `(sourceType, sourceId, targetStudyItemId)` — enforced by a unique database constraint.
-12. Created only from an accepted `LinkProposal`; no direct creation path exists.
-
-### AnalysisDraft
-13. Status transitions: `Pending → Applied` or `Pending → Discarded` only. No reversal.
-14. At most one `Pending` draft per `(sourceType, sourceId)` — enforced by a partial unique database index.
-15. Proposal status transitions: `Pending → Accepted` or `Pending → Rejected` only. No reversal.
-16. Applying a non-Pending draft is invalid.
-
-### JobGap
-17. No `JobGap` may exist for a `JobRequirement` that is fully matched.
-
-### InterviewNote
-18. `otherLabel` is required when `interviewRound = Other`.
-
-### ScoringConfig
-19. All three weights must be non-negative integers summing exactly to 100.
-
-### EffectiveScore
-20. Computed score range: `[8, 100]` (minimum when `importance=1, demand=0, mastery=5`).
-21. `PriorityOverride.score` range: `[0, 100]`.
-
-### CVPresentation
-22. All IDs in `selectedExperienceIds`, `selectedEducationIds`, `selectedSkillIds`, `selectedLanguageIds`, `selectedCertificationIds`, `selectedProjectIds`, and `selectedProfileLinkIds` must reference existing entries in the owning `ProfessionalProfile`. Validated in the use case and enforced by FK constraints.
-
----
-
-## Configuration (not an aggregate)
-
-### ScoringConfig
-```
-importanceWeight: int   default 40
-demandWeight:     int   default 35
-masteryGapWeight: int   default 25
-```
-Defaults held in code. A single optional database row persists user overrides. The scoring domain service resolves override-or-defaults at query time.
+1. StudyItem status is Active or Archived; mastery never archives automatically.
+2. StudyItem hard delete is allowed only with no StudyReviews and no EvidenceLinks.
+3. Importance, InitialMastery, and StudyReview confidence are in `[1,5]`.
+4. Tags are normalised and unique per StudyItem.
+5. PriorityOverride score is `[0,100]` and its reason is non-empty.
+6. StudyItem category and details discriminator must match.
+7. EvidenceLink weight is `[0,5]`.
+8. EvidenceLink is unique by `(sourceType, sourceId, targetStudyItemId)`.
+9. EvidenceLinks are created only from accepted LinkProposals; there is no direct creation command.
+10. AnalysisDraft transitions only `Pending → Applied` or `Pending → Discarded`.
+11. At most one Pending AnalysisDraft exists per `(sourceType, sourceId)`.
+12. Applying requires one final decision for every proposal, with no omissions or duplicates.
+13. Original proposed payloads are immutable; accepted actionable proposals persist a separate complete accepted payload.
+14. Proposal statuses become Accepted or Rejected only as part of Apply and are then immutable.
+15. Applying a non-Pending draft is invalid.
+16. A JobGap can reference only a requirement in the same JobAnalysis.
+17. No JobGap exists for a fully matched requirement.
+18. `otherLabel` is required when InterviewRound is Other.
+19. Deleting a JobAnalysis sets optional InterviewNote references to null; it never deletes InterviewNotes.
+20. ProfessionalProfile Skill.normalizedKey is unique.
+21. Experience and Project skill IDs must exist in their owning profile.
+22. A Skill referenced by Experience or Project entries cannot be deleted until those references are removed or reassigned.
+23. CVPresentation selection IDs must exist in its referenced ProfessionalProfile.
+24. Every CVPresentation selection collection has unique entry IDs and unique, contiguous positions starting at zero.
+25. Deleting a canonical profile entry removes its CVPresentation selection rows but never deletes a CVPresentation.
+26. ScoringWeights are non-negative integers summing to 100.
+27. Computed EffectiveScore is `[8,100]` with default input ranges; an override may be `[0,100]`.
+28. AIUsageRecord.idempotencyKey is unique.
 
 ---
 
 ## Cross-Aggregate References
 
-All cross-aggregate references are by UUID only — no navigation properties cross aggregate boundaries.
+All cross-aggregate references are IDs only; domain navigation properties never cross aggregate boundaries.
 
 | From | Field | References |
 |---|---|---|
-| `EvidenceLink` | `targetStudyItemId` | `StudyItem.id` (FK, no cascade) |
-| `EvidenceLink` | `sourceId` + `sourceType` | Polymorphic: `CVPresentation`, `JobAnalysis`, or `InterviewNote` |
-| `AnalysisDraft` | `sourceId` + `sourceType` | Polymorphic: same as above |
-| `InterviewNote` | `jobAnalysisId?` | `JobAnalysis.id` (optional, informational) |
-| `JobGap` | `requirementId` | `JobRequirement.id` (within `JobAnalysis` aggregate) |
-| `ExperienceEntry` | `skillIds[]` | `Skill.id` (within `ProfessionalProfile` aggregate) |
-| `ProjectEntry` | `skillIds[]` | `Skill.id` (within `ProfessionalProfile` aggregate) |
-| `CVPresentation` | `selected*Ids[]` | Canonical collection entries (within `ProfessionalProfile`) |
+| CVPresentation | `professionalProfileId` | ProfessionalProfile |
+| CVPresentation selections | `entryId` | Canonical child entries owned by its ProfessionalProfile |
+| EvidenceLink | `targetStudyItemId` | StudyItem (FK, no cascade) |
+| EvidenceLink | `sourceType + sourceId` | CVPresentation, JobAnalysis, or InterviewNote |
+| AnalysisDraft | `sourceType + sourceId` | CVPresentation, JobAnalysis, or InterviewNote |
+| InterviewNote | `jobAnalysisId?` | JobAnalysis |
+
+The polymorphic references cannot have normal foreign keys and are validated by use cases. Source deletion, EvidenceLink cleanup, and AnalysisDraft cleanup follow ADR-0011.

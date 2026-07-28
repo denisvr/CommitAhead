@@ -13,7 +13,7 @@ Three AI commands are core MVP features. They must be testable in CI without inc
 
 The PR pipeline makes zero real AI calls under any circumstances. All AI command paths are exercised via `FakeAIProvider`, a deterministic handwritten `IAIProvider` implementation with six scenario-driven fixture responses per command: success, empty output, malformed proposals, duplicates, timeout, and provider failure.
 
-The real provider adapter (`AnthropicAIProvider` or equivalent) is tested separately with stubbed HTTP/SDK responses that exercise deserialisation, request construction, token-limit enforcement, and error mapping — without making network calls.
+The real provider adapter (`ProviderAIAdapter`, renamed when the provider is selected) is tested separately with stubbed HTTP/SDK responses that exercise deserialisation, request construction, token-limit enforcement, and error mapping — without making network calls.
 
 Live provider smoke tests exist but are triggered only via a dedicated manual workflow requiring explicit parameters: provider, model, maximum input tokens, maximum output tokens, and cost ceiling. They assert schema validity and deserialisation correctness only — never exact AI wording. They are never scheduled and never run automatically.
 

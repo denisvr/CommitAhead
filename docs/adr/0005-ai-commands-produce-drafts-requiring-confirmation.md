@@ -13,7 +13,7 @@ Three AI commands are available: AnalyzeCVPresentation, AnalyzeJobAnalysis, and 
 
 Every AI command produces an `AnalysisDraft` containing three typed proposal collections: `SuggestionProposal[]`, `LinkProposal[]`, and `StudyItemProposal[]`. Each proposal carries its own `Pending | Accepted | Rejected` status. The draft itself transitions `Pending → Applied | Discarded`.
 
-Applying a draft is an explicit user command. Only accepted proposals fan out to domain writes, atomically. Rejected proposals remain in the draft for audit. Only one Pending draft may exist per evidence source at a time.
+Applying a draft is an explicit user command. `ApplyAnalysisDraft` receives one final decision (`Accepted` or `Rejected`) for every proposal in the Pending draft. Every accepted actionable proposal carries its complete user-finalised payload; in particular, an accepted StudyItemProposal requires a user-selected InitialMastery because AI cannot assess it. The original AI-proposed payload remains immutable and the final accepted payload is stored separately for audit. Within one database transaction the command validates the complete decision set and final payloads, persists every proposal decision, applies only accepted proposals, and marks the draft Applied. Rejected proposals remain in the draft for audit. A proposal omitted from the decision set or listed more than once makes the command invalid. Only one Pending draft may exist per evidence source at a time.
 
 AI never edits a source entity directly. Accepted `StructuredSuggestion`s fire normal domain commands; accepted `AdvisorySuggestion`s are marked for manual follow-up only.
 
@@ -21,6 +21,7 @@ AI never edits a source entity directly. Accepted `StructuredSuggestion`s fire n
 
 - AI output is validated against schemas, IDs, lengths, enums, weights, and domain invariants before the draft is created — malformed proposals are rejected at the boundary.
 - A user who triggers an analysis and immediately closes the app will find the draft waiting on next login.
+- Proposal choices remain transient in the review UI until Apply is submitted. This lets the user change selections freely before the final atomic command; persisted proposal statuses are final and cannot be reversed.
 - The "one Pending draft per source" invariant prevents re-triggering analysis while a previous draft is unreviewed, which also limits accidental AI cost duplication.
 
 ## Considered Alternatives

@@ -7,7 +7,6 @@ The following are explicitly excluded. Implementing any of them would add comple
 - Automated archival based on mastery level
 - Interview-date scheduling or countdown pressure
 - Study streaks, gamification, or habit tracking
-- Tiebreaking for equal EffectiveScore — TBD post-MVP (see `docs/tbd.md`)
 
 ## AI
 - AI grading of LeetCode solutions
@@ -16,7 +15,6 @@ The following are explicitly excluded. Implementing any of them would add comple
 - Automatic retry of failed AI commands (every retry is an explicit user action)
 - Scheduled or background AI analysis
 - AI calls in automated CI (FakeAIProvider only — no exceptions)
-- AI provider selection (TBD — see `docs/tbd.md`)
 
 ## Professional Profile
 - Per-job CV versioning (CVPresentations reference canonical entries; no duplication)
@@ -33,7 +31,7 @@ The following are explicitly excluded. Implementing any of them would add comple
 - Server-side JWT denylist (15-minute residual window after logout is accepted)
 - Tagged-PDF accessibility
 - Package-signature enforcement
-- Full penetration testing (deferred to pre-internet-deployment checklist)
+- Full penetration testing (post-MVP; the pre-internet-deployment security checklist is still mandatory)
 - Scheduled or automatic live AI smoke tests
 - DDoS-specific mitigations beyond rate limiting
 

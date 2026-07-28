@@ -11,7 +11,7 @@
 
 ## TBD
 
-The hosting platform for the **ASP.NET Core 10 API** and the **Vite/React frontend** is not yet decided. See `docs/tbd.md` for the open decision.
+The hosting platform is not yet decided. The deployment topology is decided: the Vite production build is copied into the ASP.NET Core application and served by Kestrel from the same origin as the API. One container/process is deployed. See `docs/tbd.md` for the hosting-platform decision.
 
 ## Requirements for the Chosen Platform
 
@@ -19,8 +19,8 @@ Whatever platform is selected must satisfy:
 
 - **TLS termination** — HTTPS enforced everywhere; HSTS enabled in production
 - **Environment variables / secrets injection** — API key, DB connection string, Supabase keys, `OWNER_USER_ID`, Data Protection key ring must be injectable as environment variables or mounted secrets (never baked into the image)
-- **Single-process deployment** — the API is a single ASP.NET Core process; no need for multi-instance load balancing (single-user app)
-- **Migration run on startup** — `dotnet ef database update` (or equivalent) runs before the API starts accepting requests, or is run as a pre-deploy step
+- **Single-process deployment** — Kestrel serves the React production assets and API from one ASP.NET Core process; no multi-instance load balancing is needed
+- **Pre-deploy migrations** — a reviewed EF Core migration bundle runs before the new API accepts traffic; the application never migrates its own schema on startup
 - **Container support** (preferred) — Dockerfile-based deployment for reproducibility; enables Trivy image scanning in CI/CD
 - **Cost** — proportionate to a private single-user app; minimal idle cost acceptable
 
@@ -34,7 +34,7 @@ ASP.NET Data Protection keys (used for cookie encryption and antiforgery) must b
 2. Docker image built and scanned with Trivy; high/critical findings block deployment.
 3. SBOM generated and archived.
 4. Image pushed to container registry.
-5. Pre-deploy: `dotnet ef database update` applies any pending migrations.
+5. Pre-deploy: a reviewed EF Core migration bundle applies pending migrations using the separate migration credential.
 6. New container deployed; health check passes.
 7. Post-deploy: OWASP ZAP baseline scan against the deployed test environment.
 

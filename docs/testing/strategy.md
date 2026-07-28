@@ -28,7 +28,8 @@
 - StudyItem deletion guard (blocked when reviews exist — EvidenceLink check is integration)
 - Tag normalisation: trim → lowercase → kebab-case; deduplication
 - `AnalysisDraft` status transitions: `Pending → Applied`, `Pending → Discarded`; re-applying non-Pending throws
-- Proposal status transitions: `Pending → Accepted`, `Pending → Rejected`; no reversal
+- Apply decision-set validation: every proposal represented exactly once; duplicates/omissions rejected; accepted actionable proposals require complete final payloads; accepted StudyItemProposal requires user-selected InitialMastery
+- Proposal statuses become Accepted/Rejected during Apply and cannot change afterward
 - `PriorityOverride` validation: score ∈ [0,100], reason non-empty
 - `StudyReview` confidence rating bounds: ∈ [1,5]
 - `ScoringConfig` validation: all weights non-negative, sum = 100
@@ -47,11 +48,12 @@
 
 **Coverage:**
 - `CreateStudyItem`, `SubmitStudyReview`, `ArchiveStudyItem`
-- `ApplyAnalysisDraft`: accepted LinkProposals → EvidenceLinks; accepted StudyItemProposals → StudyItems; rejected proposals remain; applying non-Pending throws
+- `ApplyAnalysisDraft`: original payloads preserved, accepted payloads and complete decisions persisted; accepted LinkProposals → EvidenceLinks; accepted StudyItemProposals → StudyItems; rejected proposals remain; omissions/duplicates and applying non-Pending throw
 - `AnalyzeJobAnalysis` via `FakeAIProvider` (success scenario): draft created with correct proposals; source entity not mutated
 - `AnalyzeJobAnalysis` via `FakeAIProvider` (failure scenarios): timeout, provider failure, malformed proposals, duplicates, empty output
 - One-Pending-draft-per-source guard: attempting a second analysis while a Pending draft exists is rejected
 - CVPresentation reference validation: selectedExperienceIds must reference valid canonical entries
+- AnalyzeCVPresentation resolves only selected canonical content and the compact StudyItem catalogue; AnalyzeInterviewNote also receives the compact catalogue
 - `UpdateScoringConfig`: weights validated before persisting
 - `SetPriorityOverride` / `ClearPriorityOverride`
 
@@ -70,11 +72,15 @@
 - DB unique constraint on `(source_type, source_id, target_study_item_id)` for `EvidenceLink`
 - Partial unique index: one-Pending-draft-per-source
 - Non-cascade FK: StudyItem delete blocked when EvidenceLinks exist
-- Cascade (application-managed): source deletion → EvidenceLinks deleted atomically
+- Cascade (application-managed): source deletion → EvidenceLinks plus AnalysisDraft/proposal children deleted atomically; content-free AIUsageRecords retained
+- JobAnalysis deletion sets optional `InterviewNote.jobAnalysisId` references to null without deleting InterviewNotes
 - `ApplyAnalysisDraft` atomicity: partial failure rolls back entirely
+- CVPresentation ordered selection tables: FK enforcement, same-presentation position uniqueness, order round-trip, application rejection of entries from another profile, and canonical-entry deletion removing only affected selections
+- ProfessionalProfile skill references: Experience/Project may reference only Skills in the same profile; referenced Skill deletion is blocked
 - Ranked-list query: correct ordering with mixed override and computed scores
 - `ScoringConfig` resolve: override row used when present; code defaults when absent
 - Mastery derivation in query: initialMastery before first review; avg of up to 3 most recent
+- AIUsageRecord: unique idempotency key, atomic Reserved insertion, daily/monthly budget calculation, Completed reconciliation, Failed release, lazy expiration of stale reservations, and replay returning the existing draft
 
 ---
 
@@ -90,13 +96,13 @@
 - Dedicated locally-signed JWT tests for token validation (issuer, audience, signature, expiry, sub)
 - **CSRF**: state-changing requests without token → 400/403
 - **Security headers**: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` on API responses
-- **CORS**: cross-origin requests rejected (same-origin only)
+- **CORS**: unapproved preflights denied and no response grants `Access-Control-Allow-Origin` to another origin; state-changing requests remain CSRF-protected
 - **Malicious uploads**: invalid PDF, encrypted PDF, image-only PDF, wrong MIME, oversized → 422 with error
-- **Markdown/XSS protocols**: `javascript:` and `data:` links in Markdown fields rejected or sanitised
+- **Markdown storage boundary**: Markdown is accepted as raw text within length limits and returned as JSON without server-side HTML rendering
 - AI schema validation: malformed `FakeAIProvider` scenario → draft not created; error returned
 - Idempotency: duplicate AI command with same key → same draft returned, not duplicated
 - Rate limit: 11th AI call within the window → 429 with `Retry-After`
-- Budget enforcement: call that would exceed daily/monthly limit → 429 or 402
+- Budget enforcement: call that would exceed daily/monthly limit → 429 with safe error code `AI_BUDGET_EXCEEDED`
 - Log redaction: assert sensitive fields (tokens, cookies, bodies) absent from structured logs
 - OpenAPI contract drift: regenerate TypeScript client + compile — compilation failure = contract broken
 
@@ -105,6 +111,21 @@
 ## Layer 5: Architecture Tests (NetArchTest)
 
 Five assembly-level rules (see `CLAUDE.md` for full list).
+
+---
+
+## Layer 6: Frontend Component Tests
+
+Vitest + React Testing Library + MSW cover:
+
+- Typed StudyItem forms and validation
+- AnalysisDraft review, complete proposal decisions, editable accepted payloads, and Apply submission
+- SystemDesign reference solution reveal (transient UI state)
+- CVPresentation editing and ordered selections
+- JobAnalysis pasted-text and upload flows
+- Restricted Markdown rendering: embedded HTML is escaped/ignored; `javascript:` and `data:` links, images, and iframes never reach the DOM
+
+Score, Demand, and Mastery are rendered from API responses and are never recomputed in React. MSW provides representative success, loading, validation, unauthorised, and server-error variants per flow.
 
 ---
 
@@ -125,11 +146,11 @@ Six deterministic fixture responses, one set per AI command:
 
 ## AI Adapter Tests
 
-The real adapter (`AnthropicAIProvider`) is tested with stubbed HTTP/SDK responses:
+The real adapter (`ProviderAIAdapter`, renamed after provider selection) is tested with stubbed HTTP/SDK responses:
 - Request construction: correct model, token limits, system/user message separation
 - Response deserialisation: all proposal types correctly mapped
 - Error mapping: 429 → rate limit error; 5xx → provider failure; timeout → timeout error
-- Token limit enforcement: inputs truncated/rejected before calling the provider
+- Token limit enforcement: oversized inputs are rejected before calling the provider; no silent truncation
 
 ---
 
@@ -155,7 +176,7 @@ The real adapter (`AnthropicAIProvider`) is tested with stubbed HTTP/SDK respons
 
 ---
 
-## E2E Tests (Playwright — post-merge or manual)
+## Layer 7: E2E Tests (Playwright — post-merge or manual)
 
 Four critical journeys. Environment: production Vite build + real Kestrel + Testcontainers PostgreSQL + `FakeAIProvider` + test-environment auth scheme. DB reset between journeys. No Supabase, no real AI.
 

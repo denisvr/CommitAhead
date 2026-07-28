@@ -23,7 +23,7 @@
 | Authenticated session | Validated owner request | Unauthenticated or non-owner request |
 | Backend API | Validated + sanitised inputs | Browser, uploaded files, pasted text, AI output |
 | Supabase PostgreSQL | Backend (least-privileged credential) | All direct client access (blocked by RLS) |
-| Supabase Auth | Backend PKCE callback | Browser (anon key for Auth flow only — no table access) |
+| Supabase Auth | Backend PKCE callback and server-held Supabase credentials | Browser and unauthenticated internet; no Supabase key is shipped to React |
 | Supabase Storage | Backend (service-role key) | All direct client access |
 | AI provider | Backend `IAIProvider` call | Frontend, domain layer |
 | CI / deployment / secrets | Secrets store, GitHub Actions secrets | Code repository (secrets never committed) |
@@ -60,8 +60,9 @@
 - Every request: middleware validates JWT (issuer, audience, signature, expiry, `sub == OWNER_USER_ID`)
 - All foreign ID references validated in use cases (404 for missing resources, 422 for invalid related IDs)
 - DB enforces FK constraints as a second line of defence
-- Supabase RLS: enabled on all tables; no `anon` or `authenticated` policies — all direct access denied
-- Backend uses a least-privileged DB credential; service-role key reserved for Auth/Storage admin only
+- Supabase RLS: enabled on all tables; no `anon` or `authenticated` policies — direct Data API access is denied
+- EF Core uses the dedicated `commitahead_app` PostgreSQL role with minimal grants and explicit RLS policies; a separate migration credential owns schema changes
+- The service-role key is not an Npgsql credential and is reserved for backend Auth/Storage administration only
 - CSRF validation required on all state-changing requests
 
 ### Transport and Storage
@@ -78,7 +79,7 @@
 - Parsed once at upload; never re-executed
 - Failed uploads: Storage object deleted immediately
 - Never serve PDFs inline; never render scripts or follow embedded links; no parser network access
-- Truncation is explicit and user-visible
+- Files whose extracted text exceeds the 50 000-character limit are rejected with an explicit user-visible error; extraction is never silently truncated
 
 ### Markdown / XSS
 - Stored as raw Markdown; sanitised at every rendering boundary
@@ -87,7 +88,7 @@
 - No images, iframes, or embedded HTML in Markdown output
 - CV/PDF export: same allowlist and sanitisation before HTML generation
 - AI-generated Markdown content: same pipeline, no exceptions
-- DOMPurify applied wherever a pipeline produces HTML
+- Every HTML-producing pipeline applies an allowlist sanitizer appropriate to its runtime; DOMPurify is used only when the selected browser/Node export pipeline supports it
 - CSP as defence-in-depth (see Security Headers)
 
 ### Security Headers
@@ -128,9 +129,9 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 - One AI call in flight globally at a time
 - One Pending draft per source (natural deduplication guard)
 - Idempotency key required; server deduplicates duplicate requests
-- Daily and monthly budgets persisted; maximum estimated cost reserved atomically before provider call; reconciled against actual token usage after
+- Daily and monthly budgets persisted; a Reserved AIUsageRecord atomically reserves maximum estimated cost before the provider call and transitions to Completed or Failed afterward
 - No automatic retries; every retry is an explicit user action
-- `AIUsageRecord`: command, provider, model, tokens, estimated cost, timestamp, outcome — never content
+- `AIUsageRecord`: unique idempotency key, command/source, provider/model/pricing version/currency, Reserved/Completed/Failed status, reserved and actual tokens/cost, timestamps, safe outcome code, and optional draft ID — never content
 
 ### Secrets Management
 - `.NET User Secrets` for local development
@@ -147,7 +148,9 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 
 **Production log fields**: correlation ID, route template, HTTP method, status code, duration, safe error code/type, AI usage metadata (no content).
 
-Log access restricted; retention policy enforced.
+The sole additional operational field is a backend-generated `storageObjectKey` on a `StorageCleanupFailed` event, required for manual orphan cleanup. Original filenames and file contents are never logged; a Storage key grants no access to the private bucket by itself.
+
+Log access is restricted. The exact production retention period remains TBD in `docs/tbd.md`.
 
 ### Dependency Security
 - Direct and transitive dependency scanning: `dotnet list package --vulnerable` + `npm audit --audit-level=high`; high/critical vulnerabilities fail PRs

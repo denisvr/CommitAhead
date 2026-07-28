@@ -25,25 +25,27 @@ Private single-user interview preparation app. Full domain model and architectur
 | Domain | `CommitAhead.Domain` | None (no framework, no EF Core, no Supabase) |
 | Application | `CommitAhead.Application` | Domain only — no EF Core, no Npgsql, no ASP.NET Core, no Supabase |
 | Infrastructure | `CommitAhead.Infrastructure` | Domain + Application; owns EF Core, Npgsql, Supabase SDK, AI provider adapter |
-| API | `CommitAhead.Api` | Application (use cases); never Infrastructure, repositories, DbContext, or domain services directly |
+| API | `CommitAhead.Api` | Application plus Infrastructure only at the composition root (`Program.cs` / DI registration); controllers depend on Application only |
 | Frontend | `CommitAhead.Web` | Backend via OpenAPI-generated client only |
 
 **Layer responsibilities:**
-- **Domain** — aggregates, value objects, domain invariants, domain services (e.g. `PriorityScoringService`)
+- **Domain** — aggregates, value objects, domain invariants, pure domain policies (e.g. `EffectiveScorePolicy`)
 - **Application** — one use case class per operation (`CreateStudyItemUseCase`, `ApplyAnalysisDraftUseCase`, …); orchestrates domain + repositories; contains `IAIProvider` and repository interfaces
-- **Infrastructure** — EF Core `DbContext`, repository implementations, AI provider adapter (`AnthropicAIProvider`), Supabase Storage client, PDF text extractor
-- **API** — thin controllers calling use cases directly; middleware for auth, CSRF, error mapping, logging; no business logic
+- **Infrastructure** — EF Core `DbContext`, repository implementations, AI provider adapter (`ProviderAIAdapter`, provider TBD), Supabase Storage client, PDF text extractor
+- **API** — thin controllers calling use cases directly; middleware for auth, CSRF, error mapping, logging; no business logic. The composition root may call Infrastructure DI registration, but controllers may not reference Infrastructure types.
 
 **NetArchTest enforces** (5 rules):
 1. Domain has no dependency on Application, Infrastructure, or API.
 2. Application has no dependency on Infrastructure, API, EF Core, Npgsql, ASP.NET Core, or Supabase.
 3. Infrastructure has no dependency on API.
-4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services.
+4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services. The API composition root is the explicit exception for Infrastructure registration.
 5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded).
 
 ## Project structure (target)
 ```
 CommitAhead/
+├── README.md                         ← human entry point and documentation map
+├── AGENTS.md                         ← instructions for coding agents
 ├── CONTEXT.md                        ← domain glossary
 ├── CLAUDE.md                         ← this file
 ├── docs/
@@ -66,7 +68,9 @@ CommitAhead/
     ├── CommitAhead.Domain.Tests/
     ├── CommitAhead.Application.Tests/
     ├── CommitAhead.Infrastructure.Tests/
-    └── CommitAhead.Api.Tests/
+    ├── CommitAhead.Api.Tests/
+    ├── CommitAhead.Web.Tests/         ← Vitest + RTL + MSW
+    └── e2e/                           ← Playwright
 ```
 
 ## CI quality gates (every PR — all blocking)
@@ -90,7 +94,8 @@ CommitAhead/
 - Repository / integration tests (Testcontainers PostgreSql + Respawn, serial)
 - API tests (WebApplicationFactory + shared Testcontainers DB + `FakeAIProvider`)
 - NetArchTest architecture rules
-- Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, malicious uploads, Markdown/XSS protocols, AI schema validation, idempotency, rate/budget limits, log redaction)
+- Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, malicious uploads, AI schema validation, idempotency, rate/budget limits, log redaction)
+- Frontend/export security tests for restricted Markdown rendering and dangerous-link protocols
 - Parsed PDF/CV assertions
 
 **Post-merge / manual only:**

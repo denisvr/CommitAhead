@@ -17,7 +17,7 @@ At most one `EvidenceLink` may exist per `(sourceType, sourceId, targetStudyItem
 
 ## Consequences
 
-- Creating an EvidenceLink requires triggering an AI analysis command and confirming the resulting `LinkProposal`. There is no automatic link creation path.
+- Creating an EvidenceLink requires triggering an AI analysis command and confirming the resulting `LinkProposal`. There is no automatic or direct/manual creation command.
 - Demand is fully traceable: each point of demand is tied to a specific evidence source, weight, and human-confirmed rationale.
 - The UI can display "why is this item prioritised?" by listing its confirmed EvidenceLinks.
 

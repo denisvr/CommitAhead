@@ -1,111 +1,136 @@
 # CommitAhead — Implementation Roadmap
 
-This roadmap reflects the confirmed architecture. No phase should begin until the previous phase's CI gates pass.
+The roadmap is organised as vertical slices. Every phase must leave a working, tested increment; infrastructure and domain layers are added only when the current slice needs them. A phase starts only after its blocking TBDs are decided and the previous phase's CI gates pass.
 
 ---
 
-## Phase 0 — Foundation (current)
-**Goal:** Project skeleton, tooling, and CI baseline in place before domain logic is written.
+## Phase 0 — Secure Foundation *(current)*
 
-- [ ] .NET solution: `.sln` + four `.csproj` files (Domain, Application, Infrastructure, Api)
-- [ ] Vite + React 19 + TypeScript project (`src/CommitAhead.Web`)
-- [ ] Test project structure (four test projects mirroring source layers)
-- [ ] EF Core + Npgsql wired up; `CommitAheadDbContext` scaffold
-- [ ] Supabase project created; PostgreSQL connection verified
-- [ ] First EF Core migration (empty baseline)
-- [ ] NetArchTest project with the five architecture rules
-- [ ] CI pipeline: `dotnet build --warnaserror`, `vite build`, `dotnet format`, ESLint, `tsc --noEmit`
-- [ ] Dependency scanning: `dotnet list package --vulnerable`, `npm audit`
-- [ ] Gitleaks configured
-- [ ] OpenAPI generation script + TypeScript client generation in CI
+**Outcome:** An authenticated owner can run a production-shaped empty application shell locally; CI proves the architecture and security baseline.
 
----
+- [ ] Create `.sln` and Domain, Application, Infrastructure, and API projects
+- [ ] Create React 19 + Vite + TypeScript project and frontend/component/E2E test projects
+- [ ] Configure project references and the API composition root according to ADR-0013
+- [ ] Serve the production Vite build from Kestrel on the same origin
+- [ ] Wire EF Core + Npgsql; verify the dedicated runtime DB role and separate migration credential
+- [ ] Create the Supabase project and empty baseline migration bundle
+- [ ] Implement backend-mediated magic-link/PKCE auth, owner check, refresh/logout, CSRF, and security headers
+- [ ] Add a minimal authenticated health/home screen
+- [ ] Add OpenAPI generation and generated TypeScript client compilation
+- [ ] Add the five NetArchTest rules
+- [ ] Add blocking CI: builds, format/lint/type-check, dependency scans, Gitleaks, backend tests, frontend tests, and generated-client drift
 
-## Phase 1 — Domain and Core Persistence
-**Goal:** All domain aggregates implemented and round-trippable in PostgreSQL.
-
-- [ ] Domain entities: `StudyItem` (with typed details union), `StudyReview`, `ProfessionalProfile` (all canonical collections), `CVPresentation`, `JobAnalysis` (`JobSource` union, `JobRequirement`, `JobGap`), `InterviewNote`, `AnalysisDraft` (with typed proposal collections), `EvidenceLink`
-- [ ] All domain invariants enforced in the domain layer
-- [ ] Value objects: `PriorityOverride`, `JobSource`, `ContactInfo`, `YearMonth`
-- [ ] EF Core mappings for all aggregates (including polymorphic references, typed details strategy — resolve TBD)
-- [ ] Database migrations for all tables, constraints, and indexes
-- [ ] Repository implementations for all aggregates
-- [ ] `PriorityScoringService` (resolves ScoringConfig; applies formula)
-- [ ] Ranked-list query (joins StudyReview + EvidenceLink; computes mastery, demand, effectiveScore)
-- [ ] Domain unit tests (all invariants from `docs/domain/model.md`)
-- [ ] Repository / integration tests (round-trips, constraints, ranked-list query)
+**Exit criteria:** production builds run locally from Kestrel; unauthenticated/non-owner/CSRF/header tests pass; no frontend Supabase key exists.
 
 ---
 
-## Phase 2 — Study Queue Features
-**Goal:** Core preparation loop working end-to-end.
+## Phase 1 — Ranked Study Queue
 
-- [ ] Use cases: `CreateStudyItem`, `UpdateStudyItem`, `ArchiveStudyItem`, `DeleteStudyItem`
-- [ ] Use case: `SubmitStudyReview`
-- [ ] Use case: `GetRankedStudyQueue`
-- [ ] Use cases: `SetPriorityOverride`, `ClearPriorityOverride`
-- [ ] Use cases: `UpdateScoringConfig`, `ResetScoringConfig`
-- [ ] API controllers for all of the above (thin, feature-folder)
-- [ ] Auth middleware: PKCE callback, session cookies, JWT validation, `sub == OWNER_USER_ID`, CSRF
-- [ ] Security headers middleware
-- [ ] Rate limiting middleware
-- [ ] Application use-case tests (fakes)
-- [ ] API tests (auth, CSRF, CSP, validation, happy paths)
-- [ ] React study queue UI: ranked list, StudyItem detail, typed detail forms, tag input, score breakdown display
-- [ ] Frontend component tests (Vitest + RTL + MSW)
+**Outcome:** The daily preparation loop works end-to-end without AI: create a StudyItem, review it, and see deterministic ranking.
 
----
+**Decide first:** typed StudyItemDetails persistence, EffectiveScore tiebreaker, and component/UI library.
 
-## Phase 3 — Evidence Sources and EvidenceLinks
-**Goal:** Job analyses and interview notes feed the study queue via confirmed EvidenceLinks.
+- [ ] Implement StudyItem, four typed details variants, StudyReview, PriorityOverride, ScoringWeights, and EffectiveScorePolicy
+- [ ] Implement ScoringConfig optional override persistence and resolver
+- [ ] Implement EvidenceLink target schema required by the full Demand query; no creation command exists yet
+- [ ] Add EF mappings, migration, repositories/query ports, and ranked-list SQL
+- [ ] Implement Create/Update/Archive/Delete StudyItem, SubmitStudyReview, Set/ClearPriorityOverride, Update/ResetScoringConfig, and GetRankedStudyQueue
+- [ ] Add Controllers and OpenAPI contracts
+- [ ] Build ranked queue, detail view, typed forms, tag input, review form, and score breakdown UI
+- [ ] Add domain, use-case, PostgreSQL, API, and frontend component tests for the slice
 
-- [ ] Use cases: `CreateJobAnalysis`, `UpdateJobAnalysis`, `DeleteJobAnalysis` (with EvidenceLink cascade)
-- [ ] Use cases: `CreateInterviewNote`, `UpdateInterviewNote`, `DeleteInterviewNote`
-- [ ] Use case: `ManuallyCreateEvidenceLink`, `DeleteEvidenceLink`
-- [ ] ProfessionalProfile use cases: all CRUD for canonical collections, `CreateCVPresentation`, `UpdateCVPresentation`, `DeleteCVPresentation`
-- [ ] PDF upload endpoint: validation, quarantine key, text extraction, Storage upload
-- [ ] API controllers for all of the above
-- [ ] React UI: JobAnalysis form (paste + upload), InterviewNote form, ProfessionalProfile sections, CVPresentation editor
+**Exit criteria:** E2E Create → Review → Rank passes; deletion guards, mastery recency, Demand clamp, overrides, and deterministic ordering are verified.
 
 ---
 
-## Phase 4 — AI Integration
-**Goal:** All three AI analysis commands working with the real provider abstraction.
+## Phase 2 — Professional Profile and CV Editing
 
-- [ ] `IAIProvider` interface finalized
-- [ ] `FakeAIProvider` with six scenario fixtures per command
-- [ ] AI provider adapter (provider TBD — see `docs/tbd.md`): request construction, structured output, token limits, error mapping
-- [ ] Use case: `AnalyzeJobAnalysis` (with budget reservation, idempotency, one-in-flight guard)
-- [ ] Use case: `AnalyzeCVPresentation`
-- [ ] Use case: `AnalyzeInterviewNote`
-- [ ] Use case: `ApplyAnalysisDraft` (atomic fan-out; per-proposal decisions)
-- [ ] `AIUsageRecord` persistence
-- [ ] AI adapter unit tests (stubbed HTTP)
-- [ ] React UI: AnalysisDraft review (per-proposal accept/reject), trigger analysis buttons
+**Outcome:** Canonical career data can be maintained once and curated into independently editable regional CVPresentations.
+
+- [ ] Implement ProfessionalProfile, ContactInfo, all seven canonical child collections, YearMonth, and skill-reference guards
+- [ ] Implement independent CVPresentation aggregate according to ADR-0012
+- [ ] Add canonical child tables, Experience/Project skill joins, and seven ordered CV selection tables
+- [ ] Implement ProfessionalProfile CRUD; canonical-entry deletion removes affected CV selections and guards referenced Skills
+- [ ] Implement Create/Update/Delete/Get CVPresentation, including same-profile selection validation and polymorphic-source cleanup
+- [ ] Build ProfessionalProfile editors, CVPresentation selection/reordering, formatting rules, and preview shell
+- [ ] Add persistence, use-case, API, and component tests, including selection ordering and FK behavior
+
+**Exit criteria:** a CVPresentation can curate canonical entries without duplicating them; editing one presentation does not mutate another.
+
+---
+
+## Phase 3 — Evidence Sources
+
+**Outcome:** Job descriptions and real interview notes are safely stored and ready to influence preparation.
+
+**Decide first:** PDF extraction library and parser resource limits.
+
+- [ ] Implement JobAnalysis, JobSource, JobRequirement, JobGap, and InterviewNote
+- [ ] Add pasted-text and secure PDF-upload flows: validation, private quarantine key, bounded one-time extraction, and failure cleanup
+- [ ] Implement Create/Update/Delete JobAnalysis and InterviewNote
+- [ ] Apply ADR-0011: source deletion removes EvidenceLinks and AnalysisDrafts transactionally; uploaded-file cleanup is best effort after commit
+- [ ] Preserve InterviewNotes when their optional JobAnalysis is deleted (`ON DELETE SET NULL`)
+- [ ] Implement DeleteEvidenceLink; creation remains exclusive to accepted LinkProposals
+- [ ] Build JobAnalysis and InterviewNote interfaces, including extracted-text verification
+- [ ] Add PDF fixtures/failure tests, source-deletion integration tests, and API/component coverage
+
+**Exit criteria:** pasted and PDF job sources plus interview notes are fully manageable; malicious/unsupported PDFs are rejected safely.
+
+---
+
+## Phase 4 — Explicit AI Analysis
+
+**Outcome:** All three explicit AI commands produce reviewable drafts; accepted effects are applied atomically with controlled cost.
+
+**Decide first:** AI provider/model, default budgets/currency, StructuredSuggestion allowlist.
+
+- [ ] Finalise IAIProvider contracts and command-specific minimised input projections
+- [ ] Implement FakeAIProvider with six deterministic scenarios per command
+- [ ] Implement ProviderAIAdapter with structured output, time/token limits, and safe error mapping
+- [ ] Implement AnalysisDraft and immutable proposed/separate accepted proposal payload persistence
+- [ ] Implement AIUsageRecord Reserved → Completed/Failed lifecycle, durable idempotency, lazy stale-reservation reconciliation, and budget checks
+- [ ] Implement AnalyzeJobAnalysis, AnalyzeCVPresentation, and AnalyzeInterviewNote
+- [ ] Implement ApplyAnalysisDraft with exactly one decision per proposal and one atomic accepted-effects transaction
+- [ ] Extend all evidence-source deletion use cases/tests to remove AnalysisDrafts and proposal children according to ADR-0011
+- [ ] Build draft review UI with editable final accepted payloads
+- [ ] Add adapter tests with stubbed HTTP, use-case/API scenarios, integration atomicity tests, and frontend tests
+
+**Exit criteria:** E2E Job Analysis Draft passes with FakeAIProvider; duplicate requests cannot duplicate charges; automated CI performs zero real AI calls.
 
 ---
 
 ## Phase 5 — CV Export
-**Goal:** CVPresentations can be exported in at least one format.
 
-- [ ] Export format decided (TBD — see `docs/tbd.md`)
-- [ ] CV export use case and controller
-- [ ] Markdown sanitisation in export pipeline (DOMPurify + allowlist)
-- [ ] Locale formatting (date format, personal-details rules)
-- [ ] Page-limit enforcement
-- [ ] Parsed content assertions in CI
-- [ ] Visual regression fixture (one per template) — post-merge
+**Outcome:** At least one regional CV template produces a verified downloadable document.
+
+**Decide first:** export format/engine.
+
+- [ ] Implement export renderer abstraction and one template
+- [ ] Apply restricted Markdown rendering with a runtime-appropriate allowlist sanitizer
+- [ ] Apply locale dates, visibility rules, selected-entry order, and page limit
+- [ ] Add ExportCVPresentation use case/controller and download UI
+- [ ] Add parsed-output assertions on every PR
+- [ ] Add one deterministic visual-regression fixture per template post-merge
+
+**Exit criteria:** E2E Edit → Export CV passes; parsed output proves required text, exclusions, ordering, locale, and page limit.
 
 ---
 
-## Phase 6 — Security Hardening and Pre-deployment
-**Goal:** All security controls in place; pre-internet-deployment checklist completed.
+## Phase 6 — Production Hardening
 
-- [ ] OWASP ZAP baseline integrated (staging environment)
-- [ ] Trivy image scan integrated (deployment pipeline)
-- [ ] SBOM generation automated
-- [ ] Dependabot configured for all ecosystems
-- [ ] GitHub Actions pinned to SHA; workflow token permissions minimised
-- [ ] Pre-internet-deployment security checklist completed
-- [ ] All four Playwright E2E journeys passing post-merge
-- [ ] Live AI smoke test workflow created (manual trigger, explicit cost ceiling)
+**Outcome:** The complete MVP is safely deployable to the internet.
+
+**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention.
+
+- [ ] Build reviewed EF migration bundle and production container
+- [ ] Configure durable encrypted Data Protection keys and hosting secrets
+- [ ] Configure Dependabot for NuGet, npm, Docker, and GitHub Actions
+- [ ] Pin Actions to SHAs and minimise workflow permissions
+- [ ] Generate SBOM and block deployment on high/critical Trivy findings
+- [ ] Run OWASP ZAP baseline against staging with FakeAIProvider
+- [ ] Configure encrypted backups and complete a restoration test
+- [ ] Run all four Playwright journeys post-merge
+- [ ] Add manual live-AI smoke workflow with explicit provider/model/token/cost limits
+- [ ] Complete the pre-internet-deployment security checklist
+
+**Exit criteria:** every MVP completion criterion in `docs/product/brief.md` is met and the production deployment passes its security gates.

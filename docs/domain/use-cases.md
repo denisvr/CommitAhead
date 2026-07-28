@@ -37,11 +37,11 @@ Key user journeys. Each maps to one or more application use case classes in the 
 1. Create a JobAnalysis with a title and a JobSource (paste text or upload PDF) (`CreateJobAnalysis`).
 2. For PDF uploads: text is extracted immediately; the user sees the extracted text for verification.
 3. Trigger `AnalyzeJobAnalysis` (explicit user action). AI receives: job posting text + minimal profile skills summary + compact StudyItem catalogue.
-4. Review the AnalysisDraft:
+4. Review the AnalysisDraft; choices remain editable in the UI until Apply:
    - **StructuredSuggestions** — accept to add JobRequirements or JobGaps via domain commands; reject to discard.
    - **LinkProposals** — accept to create EvidenceLinks from this JobAnalysis to existing StudyItems.
    - **StudyItemProposals** — accept to create new StudyItems not yet in the queue.
-5. Apply the draft (`ApplyAnalysisDraft`). Accepted proposals execute atomically; rejected proposals remain recorded.
+5. Apply the draft (`ApplyAnalysisDraft`) with exactly one Accepted/Rejected decision per proposal and a complete final payload for every accepted actionable proposal. Original AI payloads remain immutable; accepted payloads, effects, final statuses, and the draft transition execute atomically.
 
 ---
 
@@ -51,7 +51,7 @@ Key user journeys. Each maps to one or more application use case classes in the 
 
 1. Create an InterviewNote (`CreateInterviewNote`) with: company, role, round, sequence number, date, questions asked, gaps observed, lessons learned.
 2. Optionally link to a JobAnalysis.
-3. Optionally trigger `AnalyzeInterviewNote` to get AI proposals for EvidenceLinks and missing StudyItems.
+3. Optionally trigger `AnalyzeInterviewNote`. AI receives the structured note plus the compact StudyItem catalogue to propose EvidenceLinks with valid IDs and identify missing StudyItems.
 4. Review and apply the AnalysisDraft.
 
 ---
@@ -61,8 +61,8 @@ Key user journeys. Each maps to one or more application use case classes in the 
 **Goal:** Keep the canonical CV data up to date.
 
 1. Edit ProfessionalProfile sections: add/edit/remove ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry, ProfileLink.
-2. Manage CVPresentations: create a presentation for a target market (`CreateCVPresentation`), select and order canonical entries, set format rules (locale, template, photo, personal-details visibility, date format, page limit, summary override).
-3. Trigger `AnalyzeCVPresentation` to get AI improvement suggestions.
+2. Manage independent CVPresentation aggregates: create a presentation for a target market (`CreateCVPresentation`), select and order canonical entries, set format rules (locale, template, photo, personal-details visibility, date format, page limit, summary override).
+3. Trigger `AnalyzeCVPresentation`. The application resolves the selected canonical entries into a minimised presentation projection and includes the compact StudyItem catalogue; contact values, photo keys, reviews, private notes, and hidden solutions are excluded.
 4. Review and apply the AnalysisDraft.
 5. Export / preview the CVPresentation (`ExportCVPresentation`).
 

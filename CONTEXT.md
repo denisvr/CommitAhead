@@ -45,13 +45,13 @@ _Avoid_: Score settings, ranking config
 
 ### Professional Profile
 
-**ProfessionalProfile**: The single canonical record of the user's professional identity. Contains six ordered canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. CVPresentations reference and curate these collections; entries are never duplicated.
+**ProfessionalProfile**: The singleton canonical record of the user's professional identity. Contains six ordered canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. CVPresentations are separate aggregate roots that reference and curate these collections; entries are never duplicated.
 _Avoid_: CV, resume, profile
 
-**CVPresentation**: A curated, locale-specific view over a ProfessionalProfile. Selects and orders entries from each canonical collection by ID, may override the summary, and carries formatting rules: targetMarket, locale, template, photo inclusion, personal-details visibility, date format, and page limit.
+**CVPresentation**: An independently addressable aggregate root representing a curated, locale-specific view over one ProfessionalProfile. Selects and orders entries from each canonical collection by ID, may override the summary, and carries formatting rules: targetMarket, locale, template, photo inclusion, personal-details visibility, date format, and page limit.
 _Avoid_: CV version, regional CV, tailored resume
 
-**ContactInfo**: Global identity and contact data held on the ProfessionalProfile — name, email, phone, address, and optional photo (Supabase Storage key). Always belongs to the profile; never duplicated on a CVPresentation. Per-presentation visibility rules (includePhoto, includePersonalDetails) control what is rendered.
+**ContactInfo**: Global identity and contact data held on the ProfessionalProfile — name, email, phone, address, and optional photo (Supabase Storage key). Always belongs to the profile; never duplicated on a CVPresentation. Per-presentation visibility rules (`includePhoto`, `includeEmail`, `includePhone`, `includeAddress`) control what is rendered.
 
 **ExperienceEntry**: A canonical employment record inside a ProfessionalProfile. Carries company, optional client, role, employment type, dates, location, work mode, a summary (Markdown), achievements, and references to canonical Skill IDs.
 _Avoid_: Job entry, work history item
@@ -108,11 +108,11 @@ _Avoid_: AI recommendation, improvement suggestion
 **LinkProposal**: A proposal within an AnalysisDraft to create an EvidenceLink from the analysed source to an existing StudyItem. Carries proposed weight and rationale. Accepted proposals become confirmed EvidenceLinks.
 _Avoid_: Demand proposal, link suggestion
 
-**StudyItemProposal**: A proposal within an AnalysisDraft to create a new StudyItem identified as absent from the study queue. Carries proposed title, category, typed details, tags, and importance.
+**StudyItemProposal**: A proposal within an AnalysisDraft to create a new StudyItem identified as absent from the study queue. Carries proposed title, category, typed details, tags, and importance. Because AI cannot know the user's Mastery, accepting it requires the user to supply InitialMastery in the final proposal decision.
 _Avoid_: New topic proposal, suggested item
 
 **IAIProvider**: The backend abstraction over the AI provider. The only boundary at which real AI calls occur. Receives text and structured output instructions; never called from the frontend or domain layer.
 _Avoid_: AI service, LLM client
 
-**AIUsageRecord**: A metadata record created after each AI command. Stores command type, provider, model, token counts, estimated cost, timestamp, and outcome. Never stores prompt or response content.
+**AIUsageRecord**: An operational record reserved before an AI call and reconciled afterward. Carries a unique idempotency key, command/source identity, provider/model/pricing version/currency, Reserved/Completed/Failed status, reserved token/cost limits, actual provider-reported usage, optional AnalysisDraft ID, timestamps, and a safe outcome code. Never stores prompt or response content.
 _Avoid_: AI log, cost record

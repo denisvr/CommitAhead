@@ -14,7 +14,7 @@ Denis Silva. No other users, no multi-tenancy, no sharing, no public pages.
 2. **Human confirmation.** Every AI proposal requires explicit per-proposal acceptance before any domain state changes.
 3. **Transparent prioritisation.** EffectiveScore is derived from three visible, understandable inputs — Importance, Demand, and Mastery gap — not a black box.
 4. **Minimal complexity.** Defer everything not needed for the first production-ready cycle. If a feature requires explaining why it belongs in MVP, it probably does not.
-5. **Private by default.** No telemetry, no analytics pipeline, no external data sharing beyond the chosen AI provider (which must meet EU privacy requirements).
+5. **Private by default.** No product analytics or third-party telemetry. Minimal metadata-only operational logs and AI usage/cost records are retained under the security policy. No external data sharing occurs beyond the chosen AI provider, which must meet EU privacy requirements.
 
 ## MVP Scope
 

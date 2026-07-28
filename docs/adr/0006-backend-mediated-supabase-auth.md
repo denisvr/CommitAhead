@@ -31,4 +31,4 @@ Authentication is fully backend-mediated using Supabase magic link with PKCE:
 
 ## Considered Alternatives
 
-A client-side Supabase SDK with `localStorage` storage exposes tokens to XSS. An `httpOnly` cookie issued by the Supabase SDK itself still requires the anon key to be shipped to the browser. Backend mediation is the only approach that keeps all key material server-side while supporting the magic-link flow.
+A client-side Supabase SDK with `localStorage` storage exposes tokens to XSS and requires the anon key in the browser. A browser SDK cannot create `HttpOnly` cookies; doing so requires a server or server-side auth helper. Backend mediation keeps Supabase keys and token exchange logic on the server while supporting the magic-link flow.
