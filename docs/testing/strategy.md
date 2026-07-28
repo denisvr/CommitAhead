@@ -1,0 +1,171 @@
+# CommitAhead — Testing Strategy
+
+## Tooling
+
+| Layer | Tools |
+|---|---|
+| Domain unit | xUnit, built-in assertions |
+| Use-case | xUnit, handwritten repository fakes, `FakeAIProvider` |
+| Repository / integration | xUnit, Testcontainers.PostgreSql, Respawn (serial execution) |
+| API | xUnit, WebApplicationFactory, shared Testcontainers DB, `FakeAIProvider` |
+| Architecture | NetArchTest |
+| Frontend component | Vitest, React Testing Library, MSW |
+| E2E | Playwright |
+| AI adapter | xUnit, stubbed HTTP/SDK responses |
+
+**Absolute rule**: zero real AI calls in any automated test. `FakeAIProvider` in all automated contexts.
+
+---
+
+## Layer 1: Domain Unit Tests
+
+**What**: Pure domain logic — no DB, no HTTP, no I/O.
+
+**Coverage:**
+- EffectiveScore formula (representative boundaries: min=8, max=100, override=0, override=100)
+- Demand clamping: `min(Σ weights, 5)`
+- Mastery derivation: `initialMastery` before first review; average of up to 3 most recent ratings
+- StudyItem deletion guard (blocked when reviews exist — EvidenceLink check is integration)
+- Tag normalisation: trim → lowercase → kebab-case; deduplication
+- `AnalysisDraft` status transitions: `Pending → Applied`, `Pending → Discarded`; re-applying non-Pending throws
+- Proposal status transitions: `Pending → Accepted`, `Pending → Rejected`; no reversal
+- `PriorityOverride` validation: score ∈ [0,100], reason non-empty
+- `StudyReview` confidence rating bounds: ∈ [1,5]
+- `ScoringConfig` validation: all weights non-negative, sum = 100
+- `YearMonth` ordering and equality
+- `JobGap` invariant: no gap for a fully matched requirement
+- `InterviewNote.otherLabel` required when `round = Other`
+- Typed detail invariants (e.g. `LeetCodeDetails` problem number > 0 when present)
+
+**Not tested here**: persistence, HTTP, AI calls, use case orchestration, EF Core mappings.
+
+---
+
+## Layer 2: Application Use-Case Tests
+
+**What**: Non-trivial orchestration with handwritten fakes. No real DB; no real AI.
+
+**Coverage:**
+- `CreateStudyItem`, `SubmitStudyReview`, `ArchiveStudyItem`
+- `ApplyAnalysisDraft`: accepted LinkProposals → EvidenceLinks; accepted StudyItemProposals → StudyItems; rejected proposals remain; applying non-Pending throws
+- `AnalyzeJobAnalysis` via `FakeAIProvider` (success scenario): draft created with correct proposals; source entity not mutated
+- `AnalyzeJobAnalysis` via `FakeAIProvider` (failure scenarios): timeout, provider failure, malformed proposals, duplicates, empty output
+- One-Pending-draft-per-source guard: attempting a second analysis while a Pending draft exists is rejected
+- CVPresentation reference validation: selectedExperienceIds must reference valid canonical entries
+- `UpdateScoringConfig`: weights validated before persisting
+- `SetPriorityOverride` / `ClearPriorityOverride`
+
+**Not tested here**: DB constraints, cascade behaviour, transaction atomicity (→ integration tests).
+
+---
+
+## Layer 3: Repository / Integration Tests
+
+**What**: Real PostgreSQL via Testcontainers. Migrations applied once per session; Respawn resets data between tests. Tests run **serially** against the shared container.
+
+**Coverage:**
+- EF Core mapping round-trips for all aggregates (write → read → assert equality)
+- `JobSource` discriminated union round-trips: PastedText and UploadedFile
+- Typed detail variants round-trips: all four categories
+- DB unique constraint on `(source_type, source_id, target_study_item_id)` for `EvidenceLink`
+- Partial unique index: one-Pending-draft-per-source
+- Non-cascade FK: StudyItem delete blocked when EvidenceLinks exist
+- Cascade (application-managed): source deletion → EvidenceLinks deleted atomically
+- `ApplyAnalysisDraft` atomicity: partial failure rolls back entirely
+- Ranked-list query: correct ordering with mixed override and computed scores
+- `ScoringConfig` resolve: override row used when present; code defaults when absent
+- Mastery derivation in query: initialMastery before first review; avg of up to 3 most recent
+
+---
+
+## Layer 4: API Tests
+
+**What**: Full ASP.NET Core pipeline via WebApplicationFactory with shared Testcontainers PostgreSQL and `FakeAIProvider`. State verified through HTTP responses, not DbContext.
+
+**Coverage:**
+- Routing and serialisation for representative happy and error paths per controller
+- Request validation: malformed payloads, missing required fields, out-of-range values → 422
+- Missing resources → 404; invalid related IDs → 422; conflict (e.g. duplicate link) → 409
+- **Auth**: unauthenticated → 401; non-owner JWT → 403
+- Dedicated locally-signed JWT tests for token validation (issuer, audience, signature, expiry, sub)
+- **CSRF**: state-changing requests without token → 400/403
+- **Security headers**: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` on API responses
+- **CORS**: cross-origin requests rejected (same-origin only)
+- **Malicious uploads**: invalid PDF, encrypted PDF, image-only PDF, wrong MIME, oversized → 422 with error
+- **Markdown/XSS protocols**: `javascript:` and `data:` links in Markdown fields rejected or sanitised
+- AI schema validation: malformed `FakeAIProvider` scenario → draft not created; error returned
+- Idempotency: duplicate AI command with same key → same draft returned, not duplicated
+- Rate limit: 11th AI call within the window → 429 with `Retry-After`
+- Budget enforcement: call that would exceed daily/monthly limit → 429 or 402
+- Log redaction: assert sensitive fields (tokens, cookies, bodies) absent from structured logs
+- OpenAPI contract drift: regenerate TypeScript client + compile — compilation failure = contract broken
+
+---
+
+## Layer 5: Architecture Tests (NetArchTest)
+
+Five assembly-level rules (see `CLAUDE.md` for full list).
+
+---
+
+## FakeAIProvider Scenarios
+
+Six deterministic fixture responses, one set per AI command:
+
+| Scenario | Description |
+|---|---|
+| `Success` | Realistic proposals: 2 LinkProposals, 1 StudyItemProposal, 1 StructuredSuggestion, 1 AdvisorySuggestion |
+| `EmptyOutput` | Provider returns valid response with zero proposals |
+| `MalformedProposals` | Invalid IDs, out-of-range weights, missing required fields |
+| `Duplicates` | Same source–target link proposed twice in one response |
+| `Timeout` | Provider call times out after configured limit |
+| `ProviderFailure` | Provider returns a 5xx error |
+
+---
+
+## AI Adapter Tests
+
+The real adapter (`AnthropicAIProvider`) is tested with stubbed HTTP/SDK responses:
+- Request construction: correct model, token limits, system/user message separation
+- Response deserialisation: all proposal types correctly mapped
+- Error mapping: 429 → rate limit error; 5xx → provider failure; timeout → timeout error
+- Token limit enforcement: inputs truncated/rejected before calling the provider
+
+---
+
+## PDF and CV Verification
+
+**PDF ingestion (runs on every PR):**
+- Normalised text extraction from a known fixture PDF
+- Invalid PDF → 422
+- Encrypted PDF → 422
+- Image-only PDF (no extractable text) → 422
+- Wrong MIME type (`image/png` submitted as `application/pdf`) → 422
+- Oversized file (> 5 MB) → 422
+
+**CV export (runs on every PR — parsed content assertions):**
+- Required text present (name, role, key entries)
+- Entry ordering matches `selectedExperienceIds` order
+- Excluded entries absent from output
+- Locale date formatting correct (e.g. `en-GB` vs `de-DE`)
+- Configured page limit respected
+
+**Visual regression (post-merge or manual):**
+- One deterministic snapshot per CV template in a fixed-font/container environment
+
+---
+
+## E2E Tests (Playwright — post-merge or manual)
+
+Four critical journeys. Environment: production Vite build + real Kestrel + Testcontainers PostgreSQL + `FakeAIProvider` + test-environment auth scheme. DB reset between journeys. No Supabase, no real AI.
+
+1. Authenticated access
+2. Create StudyItem → SubmitStudyReview → verify ranking
+3. Complete job-analysis draft flow
+4. Edit CVPresentation + export
+
+---
+
+## CI Gates Summary
+
+See `CLAUDE.md` for the complete list of blocking PR gates and post-merge gates.

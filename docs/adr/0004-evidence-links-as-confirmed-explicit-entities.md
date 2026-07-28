@@ -1,5 +1,26 @@
+---
+status: accepted
+date: 2026-07-28
+---
+
 # EvidenceLinks are explicit confirmed entities, not automatic tag-matching
 
-Demand could have been computed from shared tags: if a StudyItem and a JobAnalysis share the tag "kafka", demand rises automatically. We rejected tag-matching because it is opaque (many weak signals accumulate invisibly), hard to audit (why does this item have demand 4.2?), and couples the demand signal to a normalisation convention rather than to a deliberate user act.
+## Context
 
-Instead, EvidenceLinks are explicit entities created only from AI-proposed, human-confirmed LinkProposals. Each link carries a weight and a rationale visible in the UI. Demand is the capped sum of confirmed link weights, fully traceable to specific evidence decisions. Tags remain in the model for organisation and filtering, not for demand computation.
+Demand — one of the three inputs to EffectiveScore — must reflect how urgently evidence sources signal that a StudyItem topic is needed. The design question was how to compute that signal: automatically from shared tags, or via explicit human-confirmed links.
+
+## Decision
+
+`EvidenceLink` is an explicit domain entity. It is created only from an accepted `LinkProposal` inside an `AnalysisDraft`. Each link carries a `weight` (0–5) and a `rationale` visible in the UI. `Demand` is `min(Σ confirmed EvidenceLink weights, 5)`.
+
+At most one `EvidenceLink` may exist per `(sourceType, sourceId, targetStudyItemId)` pair (enforced by a unique database constraint). Tags remain in the model for organisation and filtering only — they do not contribute to Demand.
+
+## Consequences
+
+- Creating an EvidenceLink requires triggering an AI analysis command and confirming the resulting `LinkProposal`. There is no automatic link creation path.
+- Demand is fully traceable: each point of demand is tied to a specific evidence source, weight, and human-confirmed rationale.
+- The UI can display "why is this item prioritised?" by listing its confirmed EvidenceLinks.
+
+## Considered Alternatives
+
+Tag-based automatic demand: if a StudyItem and a JobAnalysis share a tag (e.g. `"kafka"`), demand increases automatically. This was rejected because tag counts accumulate invisibly, are sensitive to normalisation inconsistencies, and provide no rationale. A user cannot tell which evidence sources are driving demand or why — making the priority score opaque despite its transparent formula.

@@ -1,5 +1,31 @@
+---
+status: accepted
+date: 2026-07-28
+---
+
 # JobSource PDF text is extracted once at upload; AI receives text only
 
-A JobAnalysis can originate from pasted text or a PDF upload. For uploaded PDFs, text extraction happens once during the upload request using a maintained text-only library under strict timeout, memory, page-count, and character-limit constraints. The extracted text is stored in `UploadedFile.extractedText`. The AI provider always receives the extracted text string; it never fetches files from Supabase Storage.
+## Context
 
-This decision decouples the AI provider from the storage layer, prevents the parser from being invoked more than once (reducing the attack surface for malicious PDFs), and makes text extraction independently testable in isolation from AI calls. It also enforces the trust boundary: the AI provider receives no URLs, no Storage credentials, and no ability to follow embedded links in the source document. Explicit rejection with a user-visible error replaces silent truncation when the extracted text exceeds the output limit.
+A `JobAnalysis` can be created from a pasted job description or an uploaded PDF. AI analysis needs the posting content as text. The question was when and where to extract text from PDFs, and whether the AI provider should fetch files directly.
+
+## Decision
+
+`JobSource` is a discriminated union: `PastedText(content)` or `UploadedFile(storageObjectKey, originalFileName, mimeType, extractedText)`.
+
+For uploaded PDFs, text extraction happens once during the upload request using a maintained text-only library under strict constraints: timeout, memory limit, page-count limit, and a 50 000-character output cap. The extracted text is stored in `UploadedFile.extractedText`. The `storageObjectKey` is a backend-generated quarantine key; the original filename is never used as a storage path.
+
+The AI provider always receives the extracted text string. It never fetches files from Supabase Storage, receives URLs, or accesses embedded content. Explicit rejection with a user-visible error replaces silent truncation when limits are exceeded.
+
+Rejected uploads (malformed, encrypted, image-only, wrong MIME, or oversized) have their Storage objects deleted immediately; no orphaned files are retained for failed uploads.
+
+## Consequences
+
+- Text extraction is independently testable in isolation from AI commands.
+- The AI provider's trust boundary is clean: it receives a bounded text string with no external references.
+- If the extraction library has a vulnerability, the blast radius is limited to the upload endpoint, not the AI provider call path.
+- `UploadedFile.extractedText` grows the `JobAnalysis` row; very large postings are bounded by the 50 000-character cap.
+
+## Considered Alternatives
+
+Having the AI provider fetch the PDF directly via a pre-signed Supabase Storage URL was considered. This was rejected because it gives the provider an external network reference, risks the provider following embedded links in malicious PDFs, and makes text extraction non-testable in isolation. It also couples the AI layer to the storage infrastructure.
