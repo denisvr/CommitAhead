@@ -1,0 +1,3 @@
+# Evidence sources are not StudyItems
+
+CVPresentations, JobAnalyses, and InterviewNotes are not placed in the study queue. They are evidence sources that influence what to study via EvidenceLinks, not things to study themselves. Treating them as a special StudyItem category would conflate two distinct concerns — "what I am preparing" and "why this topic matters now" — and would force the ranking formula to handle inputs whose role is to calibrate priorities rather than receive them. The separation also makes the data minimisation boundary for AI commands explicit: each command receives only the evidence source it was asked to analyse, not the full study queue.

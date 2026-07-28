@@ -1,0 +1,3 @@
+# Unified StudyItem with typed category details
+
+The study queue needs to rank items from four categories (Theory, LeetCode, SystemDesign, Behavioral) against each other. We modelled this as a single `StudyItem` entity with a discriminated `details` value object rather than four separate category-specific entities. Separate entities would require a cross-entity ranking layer to produce a unified queue, adding complexity without domain benefit. The typed details variant (LeetCodeDetails, SystemDesignDetails, etc.) preserves category-specific structure for validation, filtering, and UI without duplicating shared fields such as title, importance, mastery, and score.

@@ -1,0 +1,5 @@
+# JobSource PDF text is extracted once at upload; AI receives text only
+
+A JobAnalysis can originate from pasted text or a PDF upload. For uploaded PDFs, text extraction happens once during the upload request using a maintained text-only library under strict timeout, memory, page-count, and character-limit constraints. The extracted text is stored in `UploadedFile.extractedText`. The AI provider always receives the extracted text string; it never fetches files from Supabase Storage.
+
+This decision decouples the AI provider from the storage layer, prevents the parser from being invoked more than once (reducing the attack surface for malicious PDFs), and makes text extraction independently testable in isolation from AI calls. It also enforces the trust boundary: the AI provider receives no URLs, no Storage credentials, and no ability to follow embedded links in the source document. Explicit rejection with a user-visible error replaces silent truncation when the extracted text exceeds the output limit.
