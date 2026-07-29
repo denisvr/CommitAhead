@@ -1,6 +1,6 @@
 <!-- @dsCard group="Brand" viewport="1280x900" name="Reading Room — refined identity" subtitle="Approved direction, AA-corrected, locally bundled. Palette, type, density, marks." -->
 <!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="utf-8"><title>CommitAhead — Reading Room, refined</title>
-<link rel="icon" href="../assets/logo/rule/favicon.svg">
+<link rel="icon" href="../assets/logo/bookmark/favicon.svg">
 <link rel="stylesheet" href="../styles.css">
 <script src="../assets/icons/icons.js" defer></script>
 <style>
@@ -85,15 +85,15 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 <header>
 <p class="eyebrow">CommitAhead · approved direction</p>
 <h1>Reading Room</h1>
-<p class="lede">Warm paper, ink navy, one humanist sans. The interface reads as a study desk rather than a console: the page leads with a single decision and its written justification, and everything else recedes into a quiet ranked list. This revision fixes every contrast failure in the original study, bundles all fonts and icons locally, adds a density scale for analytical tables, and proposes three marks.</p>
+<p class="lede">Warm paper, ink navy, one humanist sans. The interface reads as a study desk rather than a console: the page leads with a single decision and its written justification, and everything else recedes into a quiet ranked list. This revision fixes every contrast failure in the original study, bundles all fonts and icons locally, adds a density scale for analytical tables, and uses the approved Bookmark mark.</p>
 </header>
 
 <section class="sec">
 <p class="sec-label">What changed since the direction study</p>
 <div class="three">
 <p class="note"><strong>Contrast, corrected.</strong> The study's faint text (<code>#8A8478</code> light, <code>#767065</code> dark) failed AA at 3.5:1. Both were retuned to clear 4.5:1 at 12.5px <strong>on the tint as well as the sheet</strong> — the tint is the tighter constraint — and a <code>--border-strong</code> was added at 3:1 for control edges, which the hairline rules cannot carry.</p>
-<p class="note"><strong>No CDN.</strong> Public Sans (variable) and IBM Plex Mono ship as files in <code>assets/fonts/</code> with their OFL licences; 25 Lucide glyphs ship in <code>assets/icons/</code> as individual SVGs plus a sprite. Nothing in this project reaches the network at runtime.</p>
-<p class="note"><strong>Density, from Direction B.</strong> Comfortable is the default and governs the queue, item detail and CV editor. <code>data-density="dense"</code> is opt-in per region for analytical tables only — never for a whole page.</p>
+<p class="note"><strong>No CDN.</strong> Public Sans (variable) and IBM Plex Mono ship as files in <code>assets/fonts/</code> with their OFL licences; approved Lucide glyphs ship in <code>assets/icons/</code> as individual SVGs. Nothing in this project reaches the network at runtime.</p>
+<p class="note"><strong>Analytical density.</strong> Comfortable is the default and governs the queue, item detail and CV editor. <code>data-density="dense"</code> is opt-in per region for analytical tables only — never for a whole page.</p>
 </div>
 </section>
 
@@ -137,7 +137,7 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 <section class="sec">
 <p class="sec-label">Type — Public Sans (variable) · IBM Plex Mono, both bundled</p>
 <div>
-<div class="tt"><span class="k">Numeral</span><span style="font:var(--weight-regular) var(--text-numeral)/1 var(--font-mono);font-variant-numeric:var(--numeric-tabular)">92</span><span class="s">Mono 52 / 1.0</span></div>
+<div class="tt"><span class="k">Numeral</span><span style="font:var(--weight-regular) var(--text-numeral)/1 var(--font-mono);font-variant-numeric:var(--numeric-tabular)">90</span><span class="s">Mono 52 / 1.0</span></div>
 <div class="tt"><span class="k">Display</span><span style="font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font-sans);letter-spacing:var(--track-display)">CommitAhead</span><span class="s">700 · 42 / −3.5%</span></div>
 <div class="tt"><span class="k">Page title</span><span style="font:var(--weight-bold) var(--text-title)/var(--leading-title) var(--font-sans);letter-spacing:var(--track-title)">Study Queue</span><span class="s">700 · 30 / −3%</span></div>
 <div class="tt"><span class="k">Headline</span><span style="font:var(--weight-semibold) var(--text-headline)/1.25 var(--font-sans);letter-spacing:var(--track-headline)">Merge Intervals</span><span class="s">600 · 25 / −2%</span></div>
@@ -151,28 +151,12 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 </section>
 
 <section class="sec">
-<p class="sec-label">Wordmark — three proposals · Bookmark approved</p>
-<div class="three">
-
+<p class="sec-label">Approved wordmark — Bookmark</p>
+<div class="one">
 <div class="mark">
 <div class="mark-top">
-<span class="mark-n">Proposal 1</span>
-<div class="mark-t">Rule</div>
-<p class="mark-d">Type only. Bold “Commit”, Regular “Ahead” in navy, with a rule the exact width of the first word. The rule is the system's one recurring motif — it reappears as the active-tab underline and the section divider.</p>
-</div>
-<div class="stage stage--light"><img src="../assets/logo/rule/lockup-light.svg" alt="CommitAhead — Rule lockup, light" width="300"></div>
-<div class="strip-cap">light</div>
-<div class="stage stage--dark"><img src="../assets/logo/rule/lockup-dark.svg" alt="CommitAhead — Rule lockup, dark" width="300"></div>
-<div class="strip-cap">dark</div>
-<div class="stage stage--mono"><img src="../assets/logo/rule/lockup-mono-ink.svg" alt="CommitAhead — Rule lockup, monochrome" width="300"></div>
-<div class="strip-cap">monochrome (ink · paper variant alongside)</div>
-<div class="favs"><img src="../assets/logo/rule/favicon.svg" alt="favicon"><img src="../assets/logo/rule/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/rule/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
-</div>
-
-<div class="mark">
-<div class="mark-top">
-<span class="mark-n">Proposal 2</span>
-<div class="mark-t">Bookmark <span style="font:var(--weight-medium) var(--text-micro)/1 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--good);background:var(--good-wash);padding:4px 7px;border-radius:var(--radius-xs);vertical-align:middle;margin-left:6px">Approved</span></div>
+<span class="mark-n">Approved identity</span>
+<div class="mark-t">Bookmark</div>
 <p class="mark-d">A ribbon bookmark set before the wordmark — the place you are at in the material, which is precisely what the study queue holds. The only proposal with a symbol that survives alone at 16px.</p>
 </div>
 <div class="stage stage--light"><img src="../assets/logo/bookmark/lockup-light.svg" alt="CommitAhead — Bookmark lockup, light" width="300"></div>
@@ -183,24 +167,8 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 <div class="strip-cap">monochrome (ink · paper variant alongside)</div>
 <div class="favs"><img src="../assets/logo/bookmark/favicon.svg" alt="favicon"><img src="../assets/logo/bookmark/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/bookmark/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
 </div>
-
-<div class="mark">
-<div class="mark-top">
-<span class="mark-n">Proposal 3</span>
-<div class="mark-t">Queue</div>
-<p class="mark-d">Three rules of decreasing length and weight: the ranked queue itself, with the top item emphasised. The most literal mark, and the one that would age best if the product ever grows past interview preparation.</p>
 </div>
-<div class="stage stage--light"><img src="../assets/logo/queue/lockup-light.svg" alt="CommitAhead — Queue lockup, light" width="310"></div>
-<div class="strip-cap">light</div>
-<div class="stage stage--dark"><img src="../assets/logo/queue/lockup-dark.svg" alt="CommitAhead — Queue lockup, dark" width="310"></div>
-<div class="strip-cap">dark</div>
-<div class="stage stage--mono"><img src="../assets/logo/queue/lockup-mono-ink.svg" alt="CommitAhead — Queue lockup, monochrome" width="310"></div>
-<div class="strip-cap">monochrome (ink · paper variant alongside)</div>
-<div class="favs"><img src="../assets/logo/queue/favicon.svg" alt="favicon"><img src="../assets/logo/queue/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/queue/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
-</div>
-
-</div>
-<p class="callout"><strong>Decided: Bookmark</strong>, then refined away from the stock glyph — an off-centre squared notch and two descending cut slots. Its lockup type is now <strong>converted to paths</strong>, so it renders identically without Public Sans installed. Construction, clear space, the three size cuts and misuse rules are in <a href="Wordmark.html">identity/Wordmark.html</a>. Rule and Queue are kept here as the record of the choice; their lockups still reference the font by name and would need outlining if either were ever revived.</p>
+<p class="callout"><strong>Bookmark is final.</strong> It was refined away from the stock glyph with an off-centre squared notch and two descending cut slots. Its lockup type is <strong>converted to paths</strong>, so it renders identically without Public Sans installed. Construction, clear space, the three size cuts and misuse rules are in <a href="Wordmark.html">identity/Wordmark.html</a>.</p>
 </section>
 
 <section class="sec">
@@ -209,22 +177,22 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 <div class="demo">
 <div class="demo-head">Comfortable · Study Queue</div>
 <div class="demo-body">
-<div class="qrow"><span class="q-rank">02</span><div><div class="q-title">Design a Rate Limiter</div><div class="q-sub">Linked from Ledgerline — Senior Backend · reviewed 6 days ago</div></div><span class="q-cat">System Design</span><span class="q-score">88</span></div>
-<div class="qrow"><span class="q-rank">03</span><div><div class="q-title">Disagreed with a technical decision</div><div class="q-sub">Never reviewed · STAR story incomplete</div></div><span class="q-cat">Behavioral</span><span class="q-score">81</span></div>
-<div class="qrow"><span class="q-rank">04</span><div><div class="q-title">CAP theorem trade-offs</div><div class="q-sub">Reviewed 11 days ago · mastery 3.3</div></div><span class="q-cat">Theory</span><span class="q-score">74</span></div>
+<div class="qrow"><span class="q-rank">02</span><div><div class="q-title">Design a Rate Limiter</div><div class="q-sub">Linked from one job analysis · mastery 2.6 of 5</div></div><span class="q-cat">System Design</span><span class="q-score">83</span></div>
+<div class="qrow"><span class="q-rank">03</span><div><div class="q-title">Disagreed with a technical decision</div><div class="q-sub">Never reviewed · mastery 2.6 of 5</div></div><span class="q-cat">Behavioral</span><span class="q-score">68</span></div>
+<div class="qrow"><span class="q-rank">04</span><div><div class="q-title">CAP theorem trade-offs</div><div class="q-sub">Reviewed 11 days ago · mastery 3.4 of 5</div></div><span class="q-cat">Theory</span><span class="q-score">63</span></div>
 </div>
 </div>
 <div class="demo">
 <div class="demo-head">Dense · Study Items table</div>
 <div class="demo-body dense-wrap" data-density="dense">
 <div class="thead"><span>#</span><span>Item</span><span>Category</span><span class="r">Mastery</span><span class="r">Score</span></div>
-<div class="qrow"><span class="q-rank">01</span><div class="q-title">Merge Intervals</div><span class="q-cat">LeetCode</span><span class="q-score">2.7</span><span class="q-score">92</span></div>
-<div class="qrow"><span class="q-rank">02</span><div class="q-title">Design a Rate Limiter</div><span class="q-cat">System Design</span><span class="q-score">3.0</span><span class="q-score">88</span></div>
-<div class="qrow"><span class="q-rank">03</span><div class="q-title">Disagreed with a technical decision</div><span class="q-cat">Behavioral</span><span class="q-score">2.0</span><span class="q-score">81</span></div>
-<div class="qrow"><span class="q-rank">04</span><div class="q-title">CAP theorem trade-offs</div><span class="q-cat">Theory</span><span class="q-score">3.3</span><span class="q-score">74</span></div>
-<div class="qrow"><span class="q-rank">05</span><div class="q-title">LRU Cache</div><span class="q-cat">LeetCode</span><span class="q-score">4.0</span><span class="q-score">69</span></div>
-<div class="qrow"><span class="q-rank">06</span><div class="q-title">Idempotency in payment flows</div><span class="q-cat">System Design</span><span class="q-score">3.7</span><span class="q-score">63</span></div>
-<div class="qrow"><span class="q-rank">07</span><div class="q-title">SOLID in practice, not in slogans</div><span class="q-cat">Theory</span><span class="q-score">4.0</span><span class="q-score">58</span></div>
+<div class="qrow"><span class="q-rank">01</span><div class="q-title">Merge Intervals</div><span class="q-cat">LeetCode</span><span class="q-score">2.6</span><span class="q-score">90</span></div>
+<div class="qrow"><span class="q-rank">02</span><div class="q-title">Design a Rate Limiter</div><span class="q-cat">System Design</span><span class="q-score">2.6</span><span class="q-score">83</span></div>
+<div class="qrow"><span class="q-rank">03</span><div class="q-title">Disagreed with a technical decision</div><span class="q-cat">Behavioral</span><span class="q-score">2.6</span><span class="q-score">68</span></div>
+<div class="qrow"><span class="q-rank">04</span><div class="q-title">CAP theorem trade-offs</div><span class="q-cat">Theory</span><span class="q-score">3.4</span><span class="q-score">63</span></div>
+<div class="qrow"><span class="q-rank">05</span><div class="q-title">LRU Cache</div><span class="q-cat">LeetCode</span><span class="q-score">4.2</span><span class="q-score">51</span></div>
+<div class="qrow"><span class="q-rank">06</span><div class="q-title">Idempotency in payment flows</div><span class="q-cat">System Design</span><span class="q-score">3.4</span><span class="q-score">48</span></div>
+<div class="qrow"><span class="q-rank">07</span><div class="q-title">SOLID in practice, not in slogans</div><span class="q-cat">Theory</span><span class="q-score">4.2</span><span class="q-score">36</span></div>
 </div>
 </div>
 </div>
@@ -291,7 +259,7 @@ h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font
 <section class="sec">
 <p class="sec-label">Standing rules</p>
 <div class="three">
-<p class="note"><strong>No fictional data.</strong> Mocks use only values the domain actually produces: integer effective scores 0–100, mastery to one decimal 1.0–5.0, importance 1–5, demand 0–5, relative dates. <strong>No commit hashes, no fake IDs, no invented telemetry</strong> — the earlier study's <code>a3f91c2</code>-style metadata is gone, because the product has no such identifier and it was decoration.</p>
+<p class="note"><strong>No decorative data.</strong> Numeric examples respect the domain ranges and EffectiveScore formula; production renders the authoritative API values. <strong>No commit hashes, no fake IDs, no invented telemetry</strong> — the earlier study's <code>a3f91c2</code>-style metadata is gone, because the product has no such identifier and it was decoration.</p>
 <p class="note"><strong>No decoration.</strong> No gradients, no imagery, no texture, no glass, no card shadows, no coloured left borders on cards, no charts that do not answer a question the user asked. The only permitted graphic is the score breakdown, because it is the product's explanation of itself.</p>
 <p class="note"><strong>Keyboard first.</strong> Full operation without a mouse, including the 1–5 rating control (arrow keys) and Accept/Reject proposal pairs. Visible focus everywhere. Motion is 80–180ms, functional only, and zeroed under <code>prefers-reduced-motion</code>.</p>
 </div>

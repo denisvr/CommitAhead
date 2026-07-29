@@ -124,6 +124,10 @@ Vitest + React Testing Library + MSW cover:
 - CVPresentation editing and ordered selections
 - JobAnalysis pasted-text and upload flows
 - Restricted Markdown rendering: embedded HTML is escaped/ignored; `javascript:` and `data:` links, images, and iframes never reach the DOM
+- Production design primitives: keyboard interaction, visible focus behaviour, accessible names,
+  disabled/loading states, and representative mobile/desktop layouts
+- Frontend source guard: production components use CSS Modules/tokens and do not introduce inline
+  style attributes or runtime-injected design markup
 
 Score, Demand, and Mastery are rendered from API responses and are never recomputed in React. MSW provides representative success, loading, validation, unauthorised, and server-error variants per flow.
 

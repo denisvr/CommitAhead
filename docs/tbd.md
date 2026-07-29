@@ -75,12 +75,6 @@ Decisions that must be made before the affected phase begins. No decision here s
 **Constraints:** Markdown must be sanitised before HTML generation; locale formatting applied; page limit enforced
 **Affects:** `docs/product/brief.md` MVP scope, export use case, visual regression fixture strategy
 
-### Component library / UI framework
-**Needed for:** Phase 1
-**Options:** shadcn/ui + Tailwind CSS, Radix UI primitives, MUI, custom
-**Constraints:** Must not require CDN resources (CSP `connect-src 'self'`); any bundled fonts must not require `font-src` exceptions; `unsafe-inline` styles must not be required (CSP `style-src 'self'` only)
-**Affects:** CSP configuration (may require exceptions), bundle size
-
 ---
 
 ## Document Processing

@@ -39,7 +39,8 @@ The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) a
 
 **Outcome:** The daily preparation loop works end-to-end without AI: create a StudyItem, review it, and see deterministic ranking.
 
-**Decide first:** typed StudyItemDetails persistence, EffectiveScore tiebreaker, and component/UI library.
+**Decide first:** typed StudyItemDetails persistence and EffectiveScore tiebreaker. The frontend
+component/styling decision is closed by ADR-0016.
 
 - [ ] Implement StudyItem, four typed details variants, StudyReview, PriorityOverride, ScoringWeights, and EffectiveScorePolicy
 - [ ] Implement ScoringConfig optional override persistence and resolver
@@ -47,6 +48,8 @@ The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) a
 - [ ] Add EF mappings, migration, repositories/query ports, and ranked-list SQL
 - [ ] Implement Create/Update/Archive/Delete StudyItem, SubmitStudyReview, Set/ClearPriorityOverride, Update/ResetScoringConfig, and GetRankedStudyQueue
 - [ ] Add Controllers and OpenAPI contracts
+- [ ] Port the approved Reading Room tokens/assets into `frontend/src/design-system/` and implement
+      only the production primitives required by this slice
 - [ ] Build ranked queue, detail view, typed forms, tag input, review form, and score breakdown UI
 - [ ] Add domain, use-case, PostgreSQL, API, and frontend component tests for the slice
 

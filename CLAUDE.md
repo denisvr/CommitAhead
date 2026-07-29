@@ -26,7 +26,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 | Application | `CommitAhead.Application` | Domain only — no EF Core, no Npgsql, no ASP.NET Core, no Supabase |
 | Infrastructure | `CommitAhead.Infrastructure` | Domain + Application; owns EF Core, Npgsql, Supabase SDK, AI provider adapter |
 | API | `CommitAhead.Api` | Application plus Infrastructure only at the composition root (`Program.cs` / DI registration); controllers depend on Application only |
-| Frontend | `CommitAhead.Web` | Backend via OpenAPI-generated client only |
+| Frontend | `frontend/` | Backend via OpenAPI-generated client only |
 
 **Layer responsibilities:**
 - **Domain** — aggregates, value objects, domain invariants, pure domain policies (e.g. `EffectiveScorePolicy`)
@@ -81,6 +81,28 @@ CommitAhead/
 published backend artifact's `wwwroot` only during `dotnet publish` (see the
 `CopyFrontendBuildToPublishOutput` MSBuild target in `CommitAhead.Api.csproj`).
 
+## Frontend design contract
+
+- The approved identity is **Reading Room** with the **Bookmark** mark. The canonical design
+  documentation is `docs/design/design-system/readme.md`.
+- Before frontend work, read that document plus `components.md` and `page-patterns.md` in the same
+  directory. `CONTEXT.md` and the domain/ADR documents remain authoritative for behaviour and
+  terminology whenever a visual reference disagrees with them.
+- Implement production UI as React 19 + TypeScript components with CSS Modules and shared CSS
+  custom-property tokens, according to ADR-0016. No Tailwind, MUI, shadcn, CSS-in-JS, inline
+  `style` attributes, CDN assets, runtime-injected SVG sprites, or `window` globals.
+- Copy approved tokens and selected local assets into `frontend/src/design-system/` when the first
+  production slice needs them. The files under `docs/design/` are design references, not runtime
+  dependencies.
+- Build components incrementally for the current roadmap slice. Do not pre-build every documented
+  screen or component, and do not implement later-phase behaviour from a mock.
+- Reuse production design-system components and tokens. Do not introduce page-local colour
+  palettes, spacing scales, radii, shadows, or duplicate primitives.
+- Preserve semantic HTML, complete keyboard operation, visible focus, responsive behaviour and
+  the CSP in `docs/security/threat-model.md`. Values computed by the backend, including
+  EffectiveScore, Demand and Mastery, are rendered from API responses and never recomputed in
+  React.
+
 ## CI quality gates (every PR — all blocking)
 
 **Build & static analysis:**
@@ -88,6 +110,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - `vite build` (production frontend build)
 - `dotnet format --verify-no-changes`
 - ESLint
+- ESLint blocks JSX `style` attributes (ADR-0016 / production CSP)
 - `tsc --noEmit`
 - Regenerate + compile OpenAPI TypeScript client (contract drift detection)
 

@@ -65,12 +65,17 @@ ASP.NET Core 10 Web API  ──────────────────�
 - Composition root: references Infrastructure only from startup/DI registration; controllers never resolve Infrastructure types directly
 - No business logic; no direct repository or DbContext access
 
-### Frontend (`CommitAhead.Web`)
+### Frontend (`frontend/`)
 - React 19 + TypeScript + Vite
 - OpenAPI-generated TypeScript client (regenerated and compiled in CI)
 - Feature-folder component structure (mirroring backend features)
+- Custom production components implemented incrementally with CSS Modules and shared CSS
+  custom-property tokens (ADR-0016)
+- Reading Room + Bookmark design contract from `docs/design/design-system/`
 - MSW for component test isolation
 - No Supabase SDK; no direct AI calls; all API calls go through the generated client
+- No UI framework, CSS-in-JS, inline style attributes, CDN assets, runtime-injected SVG sprites,
+  or design-prototype code
 - Production assets are built by Vite and served by Kestrel from the same origin as the API; the local Vite development origin is explicitly allowlisted only in Development
 
 ## Key Flows

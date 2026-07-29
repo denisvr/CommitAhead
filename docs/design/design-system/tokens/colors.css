@@ -1,8 +1,8 @@
 /* Colour — Reading Room.
    Warm paper ground, ink navy accent, warm-neutral dark. Light and dark are
    built independently. Every text/background pair below meets WCAG AA at the
-   size it is used; measured ratios are in the comments and in
-   guidelines/contrast.card.html. Categories are never colour-coded — colour
+   size it is used; measured ratios are in the comments and in the approved
+   identity reference. Categories are never colour-coded — colour
    means severity, or it means "this is the accent". */
 :root,
 :root[data-theme="light"] {

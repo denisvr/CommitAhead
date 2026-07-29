@@ -19,6 +19,14 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='style']",
+          message:
+            'Inline style attributes violate the production CSP and ADR-0016. Use a CSS Module and shared design tokens.',
+        },
+      ],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

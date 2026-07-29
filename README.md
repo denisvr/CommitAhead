@@ -114,7 +114,7 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 | `docs/testing/strategy.md` | Test layers and CI gates |
 | `docs/security/threat-model.md` | Assets, threats, controls, and security tests |
 | `docs/deployment/strategy.md` | Deployment topology and platform requirements |
-| `docs/design/visual-identity.md` | Proposed visual identity (color, type, layout) — not yet implemented in `frontend/` |
+| `docs/design/design-system/readme.md` | Approved Reading Room/Bookmark identity and frontend design contract |
 | `docs/roadmap.md` | Implementation phases |
 | `docs/tbd.md` | Decisions that intentionally remain open |
 | `docs/prompts/phase-0a-claude-kickoff.md` | First implementation prompt for Claude Code |
