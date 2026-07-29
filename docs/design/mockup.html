@@ -1,0 +1,662 @@
+<title>CommitAhead — Visual Identity</title>
+<style>
+  :root {
+    --bg: #F2F4F5;
+    --surface: #FFFFFF;
+    --surface-alt: #E7EAEC;
+    --border: #D6DADD;
+    --border-soft: #E3E6E8;
+    --text: #14181D;
+    --text-muted: #4B535B;
+    --text-faint: #7C848C;
+    --accent: #106A64;
+    --accent-strong: #0B4F4A;
+    --accent-contrast: #FFFFFF;
+    --accent-wash: #E1EDEC;
+    --critical: #B23A32;
+    --critical-wash: #F4E2E0;
+    --caution: #96691E;
+    --caution-wash: #F1E6D2;
+    --good: #3D7F55;
+    --good-wash: #E1EDE4;
+    --shadow: 0 1px 2px rgba(20, 24, 29, 0.06);
+    --font-display: 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+    --font-body: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151A;
+      --surface: #191D23;
+      --surface-alt: #20252C;
+      --border: #2B3038;
+      --border-soft: #21262D;
+      --text: #EDEFF1;
+      --text-muted: #A7AEB6;
+      --text-faint: #6E767E;
+      --accent: #3FBDB4;
+      --accent-strong: #63CFC7;
+      --accent-contrast: #082220;
+      --accent-wash: #172524;
+      --critical: #E2695F;
+      --critical-wash: #2B1917;
+      --caution: #D9A250;
+      --caution-wash: #2A2116;
+      --good: #6AB98A;
+      --good-wash: #182620;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12151A;
+    --surface: #191D23;
+    --surface-alt: #20252C;
+    --border: #2B3038;
+    --border-soft: #21262D;
+    --text: #EDEFF1;
+    --text-muted: #A7AEB6;
+    --text-faint: #6E767E;
+    --accent: #3FBDB4;
+    --accent-strong: #63CFC7;
+    --accent-contrast: #082220;
+    --accent-wash: #172524;
+    --critical: #E2695F;
+    --critical-wash: #2B1917;
+    --caution: #D9A250;
+    --caution-wash: #2A2116;
+    --good: #6AB98A;
+    --good-wash: #182620;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  :root[data-theme="light"] {
+    --bg: #F2F4F5;
+    --surface: #FFFFFF;
+    --surface-alt: #E7EAEC;
+    --border: #D6DADD;
+    --border-soft: #E3E6E8;
+    --text: #14181D;
+    --text-muted: #4B535B;
+    --text-faint: #7C848C;
+    --accent: #106A64;
+    --accent-strong: #0B4F4A;
+    --accent-contrast: #FFFFFF;
+    --accent-wash: #E1EDEC;
+    --critical: #B23A32;
+    --critical-wash: #F4E2E0;
+    --caution: #96691E;
+    --caution-wash: #F1E6D2;
+    --good: #3D7F55;
+    --good-wash: #E1EDE4;
+    --shadow: 0 1px 2px rgba(20, 24, 29, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  .ca-root {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 56px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 64px;
+  }
+
+  .ca-root ::selection { background: var(--accent-wash); color: var(--text); }
+
+  .ca-container {
+    width: 100%;
+    max-width: 880px;
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+
+  /* ---------- Intro ---------- */
+  .ca-intro { display: flex; flex-direction: column; gap: 10px; }
+  .ca-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0;
+  }
+  .ca-wordmark {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+  .ca-wordmark span { color: var(--accent); }
+  .ca-tagline {
+    font-size: 16px;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 46ch;
+  }
+  .ca-branch-rule {
+    width: 100%;
+    height: 22px;
+    margin-top: 4px;
+  }
+
+  /* ---------- Style guide ---------- */
+  .ca-section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .ca-styleguide-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+
+  .ca-swatches { display: flex; flex-direction: column; gap: 10px; }
+  .ca-swatch-row { display: flex; align-items: center; gap: 12px; }
+  .ca-swatch {
+    width: 32px; height: 32px; border-radius: 6px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .ca-swatch-label { font-size: 13px; color: var(--text); }
+  .ca-swatch-hex { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); margin-left: auto; }
+
+  .ca-type-specimen { display: flex; flex-direction: column; gap: 16px; }
+  .ca-type-row { display: flex; flex-direction: column; gap: 2px; }
+  .ca-type-role {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .ca-type-sample-display { font-family: var(--font-display); font-size: 22px; }
+  .ca-type-sample-body { font-family: var(--font-body); font-size: 15px; }
+  .ca-type-sample-mono { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+
+  /* ---------- Frames (screen mockups) ---------- */
+  .ca-screens { display: flex; flex-direction: column; gap: 40px; }
+
+  .ca-frame {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .ca-frame-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+  }
+  .ca-frame-route {
+    font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);
+  }
+  .ca-frame-body { padding: 28px; }
+
+  /* ---------- Nav ---------- */
+  .ca-nav {
+    display: flex; align-items: center; gap: 28px;
+    padding-bottom: 20px; margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .ca-nav-mark { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+  .ca-nav-mark span { color: var(--accent); }
+  .ca-nav-links { display: flex; gap: 20px; margin-left: 8px; }
+  .ca-nav-link { font-size: 13px; color: var(--text-muted); }
+  .ca-nav-link--active { color: var(--text); font-weight: 600; }
+
+  /* ---------- Page header ---------- */
+  .ca-page-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+  .ca-page-title { font-family: var(--font-display); font-size: 26px; font-weight: 600; margin: 0; text-wrap: balance; }
+  .ca-page-meta { font-size: 13px; color: var(--text-faint); font-family: var(--font-mono); }
+
+  /* ---------- Login screen ---------- */
+  .ca-login-wrap { display: flex; justify-content: center; padding: 24px 0 8px; }
+  .ca-login-card { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .ca-login-mark { font-family: var(--font-display); font-size: 28px; font-weight: 600; margin: 0 0 4px; }
+  .ca-login-mark span { color: var(--accent); }
+  .ca-login-tag { color: var(--text-muted); font-size: 14px; margin: 0 0 24px; }
+  .ca-field {
+    width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; margin-bottom: 14px;
+  }
+  .ca-label { font-size: 12px; color: var(--text-muted); letter-spacing: 0.01em; }
+  .ca-input {
+    width: 100%; padding: 10px 12px; border-radius: 5px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 14px; font-family: var(--font-body);
+  }
+  .ca-input:focus-visible, .ca-btn:focus-visible, .ca-chip-btn:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .ca-btn {
+    width: 100%; padding: 10px 16px; border-radius: 5px; border: none;
+    background: var(--accent); color: var(--accent-contrast);
+    font-size: 14px; font-weight: 600; font-family: var(--font-body); cursor: pointer;
+  }
+  .ca-fineprint { font-size: 12px; color: var(--text-faint); margin-top: 18px; }
+
+  /* ---------- Queue rows ---------- */
+  .ca-queue { display: flex; flex-direction: column; }
+  .ca-row {
+    display: grid;
+    grid-template-columns: 28px 108px 1fr 130px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .ca-row:last-child { border-bottom: none; }
+  .ca-row-rank { font-family: var(--font-mono); font-size: 13px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .ca-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .ca-row-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+  .ca-row-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); display: flex; gap: 8px; align-items: center; }
+  .ca-row-meta .ca-demand { color: var(--accent); font-family: var(--font-body); font-weight: 600; }
+
+  .ca-chip {
+    display: inline-flex; align-items: center;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--text-muted);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; white-space: nowrap; width: fit-content;
+  }
+
+  .ca-score { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .ca-score-num { font-family: var(--font-mono); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ca-meter { width: 100px; height: 4px; border-radius: 2px; background: var(--border-soft); overflow: hidden; }
+  .ca-meter-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+  /* ---------- Severity chips ---------- */
+  .ca-sev { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 3px 8px; }
+  .ca-sev::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .ca-sev--high { color: var(--critical); background: var(--critical-wash); }
+  .ca-sev--high::before { background: var(--critical); }
+  .ca-sev--medium { color: var(--caution); background: var(--caution-wash); }
+  .ca-sev--medium::before { background: var(--caution); }
+  .ca-sev--low { color: var(--good); background: var(--good-wash); }
+  .ca-sev--low::before { background: var(--good); }
+
+  /* ---------- Detail / form screen ---------- */
+  .ca-back { font-size: 12px; color: var(--text-faint); margin-bottom: 16px; display: inline-block; }
+  .ca-detail-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; align-items: start; }
+  .ca-detail-tags { display: flex; gap: 8px; margin: 8px 0 20px; }
+  .ca-field-static { display: flex; flex-direction: column; gap: 3px; margin-bottom: 16px; }
+  .ca-field-static-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); }
+  .ca-field-static-value { font-size: 14px; color: var(--text); }
+  .ca-approach { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+  .ca-panel { border: 1px solid var(--border); border-radius: 7px; padding: 20px; background: var(--surface-alt); }
+  .ca-panel-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 14px; }
+  .ca-mastery-num { font-family: var(--font-mono); font-size: 32px; font-weight: 600; line-height: 1; }
+  .ca-mastery-sub { font-size: 12px; color: var(--text-faint); margin: 4px 0 18px; }
+  .ca-sparkline { display: flex; align-items: flex-end; gap: 4px; height: 28px; margin-bottom: 18px; }
+  .ca-spark-bar { width: 10px; background: var(--border); border-radius: 2px 2px 0 0; }
+  .ca-spark-bar--current { background: var(--accent); }
+  .ca-rating-row { display: flex; gap: 6px; margin-bottom: 16px; }
+  .ca-rating-btn {
+    width: 34px; height: 34px; border-radius: 5px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-muted); font-family: var(--font-mono); font-size: 13px;
+  }
+  .ca-rating-btn--selected { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+  /* ---------- Profile screen ---------- */
+  .ca-profile-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+  .ca-profile-name { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .ca-profile-role { font-size: 14px; color: var(--text-muted); margin: 0; }
+  .ca-skill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .ca-skill {
+    font-size: 12.5px; color: var(--text); background: var(--surface-alt);
+    border: 1px solid var(--border); border-radius: 4px; padding: 4px 9px;
+  }
+  .ca-exp-list { display: flex; flex-direction: column; margin-top: 8px; }
+  .ca-exp-row { display: grid; grid-template-columns: 130px 1fr; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--border-soft); }
+  .ca-exp-row:last-child { border-bottom: none; }
+  .ca-exp-dates { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); padding-top: 2px; }
+  .ca-exp-role { font-size: 14.5px; font-weight: 600; margin: 0 0 2px; }
+  .ca-exp-company { font-size: 13px; color: var(--text-muted); margin: 0 0 8px; }
+  .ca-exp-summary { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; margin: 0; }
+  .ca-cv-note { margin-top: 20px; padding: 14px 16px; border: 1px dashed var(--border); border-radius: 6px; font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .ca-cv-note strong { color: var(--text); }
+
+  /* ---------- Job analysis / drafts ---------- */
+  .ca-job-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; gap: 16px; flex-wrap: wrap; }
+  .ca-job-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .ca-job-sub { font-size: 13px; color: var(--text-faint); font-family: var(--font-mono); }
+  .ca-req-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; }
+  .ca-req-row:last-child { border-bottom: none; }
+  .ca-req-priority { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-faint); width: 66px; flex-shrink: 0; }
+
+  .ca-draft { margin-top: 24px; border-top: 1px solid var(--border-soft); padding-top: 20px; }
+  .ca-proposal {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px;
+  }
+  .ca-proposal-text { font-size: 13.5px; color: var(--text); }
+  .ca-proposal-text strong { font-weight: 600; }
+  .ca-proposal-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .ca-chip-btn {
+    font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 5px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-muted); cursor: pointer;
+  }
+  .ca-chip-btn--accept { background: var(--good-wash); border-color: var(--good); color: var(--good); }
+  .ca-chip-btn--reject { color: var(--text-faint); }
+
+  /* ---------- Footer note ---------- */
+  .ca-footnote { font-size: 12.5px; color: var(--text-faint); text-align: center; max-width: 56ch; }
+
+  @media (max-width: 640px) {
+    .ca-styleguide-grid, .ca-detail-grid { grid-template-columns: 1fr; }
+    .ca-row { grid-template-columns: 22px 1fr; grid-template-areas: "rank main" ". score"; }
+    .ca-row-rank { grid-area: rank; }
+    .ca-row-main { grid-area: main; }
+    .ca-score { grid-area: score; align-items: flex-start; }
+    .ca-exp-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+
+<div class="ca-root">
+  <div class="ca-container">
+
+    <!-- Intro -->
+    <div class="ca-intro">
+      <p class="ca-eyebrow">Identidade visual — rascunho para revisão</p>
+      <h1 class="ca-wordmark">Commit<span>Ahead</span></h1>
+      <p class="ca-tagline">Um sistema visual construído em cima do próprio vocabulário do produto: fila priorizada, lacunas de evidência, revisão contínua — não um tema genérico de SaaS por cima.</p>
+      <svg class="ca-branch-rule" viewBox="0 0 400 22" preserveAspectRatio="none" role="presentation">
+        <path d="M0 11 H140 M180 11 H400" stroke="var(--border)" stroke-width="1"/>
+        <circle cx="160" cy="11" r="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+        <circle cx="160" cy="11" r="1.4" fill="var(--accent)"/>
+      </svg>
+    </div>
+
+    <!-- Style guide -->
+    <div>
+      <p class="ca-section-label">Sistema · Cor e Tipografia</p>
+      <div class="ca-styleguide-grid">
+        <div class="ca-swatches">
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--bg)"></div><span class="ca-swatch-label">Ground</span><span class="ca-swatch-hex">bg</span></div>
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--surface)"></div><span class="ca-swatch-label">Surface</span><span class="ca-swatch-hex">surface</span></div>
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--accent)"></div><span class="ca-swatch-label">Accent — brand, ações</span><span class="ca-swatch-hex">accent</span></div>
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--critical)"></div><span class="ca-swatch-label">Critical — gap alto</span><span class="ca-swatch-hex">critical</span></div>
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--caution)"></div><span class="ca-swatch-label">Caution — gap médio</span><span class="ca-swatch-hex">caution</span></div>
+          <div class="ca-swatch-row"><div class="ca-swatch" style="background:var(--good)"></div><span class="ca-swatch-label">Good — mastery / matched</span><span class="ca-swatch-hex">good</span></div>
+        </div>
+        <div class="ca-type-specimen">
+          <div class="ca-type-row">
+            <span class="ca-type-role">Display — títulos de página</span>
+            <span class="ca-type-sample-display">Study Queue</span>
+          </div>
+          <div class="ca-type-row">
+            <span class="ca-type-role">Body — UI, listas, formulários</span>
+            <span class="ca-type-sample-body">12 active items, ranked by EffectiveScore.</span>
+          </div>
+          <div class="ca-type-row">
+            <span class="ca-type-role">Mono — scores, ids, timestamps</span>
+            <span class="ca-type-sample-mono">a3f91c2 · reviewed 3d ago · score 92</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screens -->
+    <div class="ca-screens">
+      <p class="ca-section-label">Telas de referência</p>
+
+      <!-- Login -->
+      <div class="ca-frame">
+        <div class="ca-frame-bar"><span class="ca-frame-route">/login</span></div>
+        <div class="ca-frame-body">
+          <div class="ca-login-wrap">
+            <div class="ca-login-card">
+              <p class="ca-login-mark">Commit<span>Ahead</span></p>
+              <p class="ca-login-tag">Know what to study next, and why.</p>
+              <div class="ca-field">
+                <label class="ca-label">Email</label>
+                <input class="ca-input" value="denis@example.com" readonly />
+              </div>
+              <button class="ca-btn">Send sign-in link</button>
+              <p class="ca-fineprint">Invite-only. Ask for access if you don't have one.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Queue -->
+      <div class="ca-frame">
+        <div class="ca-frame-bar"><span class="ca-frame-route">/queue</span></div>
+        <div class="ca-frame-body">
+          <nav class="ca-nav">
+            <span class="ca-nav-mark">Commit<span>Ahead</span></span>
+            <div class="ca-nav-links">
+              <span class="ca-nav-link ca-nav-link--active">Queue</span>
+              <span class="ca-nav-link">Profile</span>
+              <span class="ca-nav-link">Job Analyses</span>
+              <span class="ca-nav-link">Interview Notes</span>
+            </div>
+          </nav>
+          <div class="ca-page-head">
+            <h2 class="ca-page-title">Study Queue</h2>
+            <span class="ca-page-meta">18 active · ranked by EffectiveScore</span>
+          </div>
+          <div class="ca-queue">
+            <div class="ca-row">
+              <span class="ca-row-rank">01</span>
+              <span class="ca-chip">LeetCode</span>
+              <div class="ca-row-main">
+                <span class="ca-row-title">Merge Intervals</span>
+                <span class="ca-row-meta">a3f91c2 · reviewed 3d ago <span class="ca-demand">· linked from 2 job analyses</span></span>
+              </div>
+              <div class="ca-score">
+                <span class="ca-score-num">92</span>
+                <div class="ca-meter"><div class="ca-meter-fill" style="width:92%"></div></div>
+              </div>
+            </div>
+            <div class="ca-row">
+              <span class="ca-row-rank">02</span>
+              <span class="ca-chip">System Design</span>
+              <div class="ca-row-main">
+                <span class="ca-row-title">Design a Rate Limiter</span>
+                <span class="ca-row-meta">7c02e88 · reviewed 6d ago</span>
+              </div>
+              <div class="ca-score">
+                <span class="ca-score-num">88</span>
+                <div class="ca-meter"><div class="ca-meter-fill" style="width:88%"></div></div>
+              </div>
+            </div>
+            <div class="ca-row">
+              <span class="ca-row-rank">03</span>
+              <span class="ca-chip">Behavioral</span>
+              <div class="ca-row-main">
+                <span class="ca-row-title">Disagreed with a technical decision</span>
+                <span class="ca-row-meta">f1a44d0 · never reviewed</span>
+              </div>
+              <div class="ca-score">
+                <span class="ca-score-num">81</span>
+                <div class="ca-meter"><div class="ca-meter-fill" style="width:81%"></div></div>
+              </div>
+            </div>
+            <div class="ca-row">
+              <span class="ca-row-rank">04</span>
+              <span class="ca-chip">Theory</span>
+              <div class="ca-row-main">
+                <span class="ca-row-title">CAP theorem trade-offs</span>
+                <span class="ca-row-meta">2b6e710 · reviewed 11d ago</span>
+              </div>
+              <div class="ca-score">
+                <span class="ca-score-num">74</span>
+                <div class="ca-meter"><div class="ca-meter-fill" style="width:74%"></div></div>
+              </div>
+            </div>
+            <div class="ca-row">
+              <span class="ca-row-rank">05</span>
+              <span class="ca-chip">LeetCode</span>
+              <div class="ca-row-main">
+                <span class="ca-row-title">LRU Cache</span>
+                <span class="ca-row-meta">9d3f0a1 · reviewed 1d ago</span>
+              </div>
+              <div class="ca-score">
+                <span class="ca-score-num">69</span>
+                <div class="ca-meter"><div class="ca-meter-fill" style="width:69%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- StudyItem detail -->
+      <div class="ca-frame">
+        <div class="ca-frame-bar"><span class="ca-frame-route">/queue/merge-intervals</span></div>
+        <div class="ca-frame-body">
+          <span class="ca-back">← Back to queue</span>
+          <h2 class="ca-page-title">Merge Intervals</h2>
+          <div class="ca-detail-tags">
+            <span class="ca-chip">LeetCode</span>
+            <span class="ca-chip">Medium</span>
+          </div>
+          <div class="ca-detail-grid">
+            <div>
+              <div class="ca-field-static">
+                <span class="ca-field-static-label">Patterns</span>
+                <span class="ca-field-static-value">interval-merge, sorting</span>
+              </div>
+              <div class="ca-field-static">
+                <span class="ca-field-static-label">Expected complexity</span>
+                <span class="ca-field-static-value">O(n log n) time · O(n) space</span>
+              </div>
+              <div class="ca-field-static">
+                <span class="ca-field-static-label">Approach</span>
+                <p class="ca-approach">Sort by start time, then walk once, merging with the last interval on the stack whenever the next one overlaps.</p>
+              </div>
+            </div>
+            <div class="ca-panel">
+              <p class="ca-panel-title">Mastery</p>
+              <div class="ca-mastery-num">3.7</div>
+              <p class="ca-mastery-sub">avg. of last 3 reviews</p>
+              <div class="ca-sparkline">
+                <div class="ca-spark-bar" style="height:40%"></div>
+                <div class="ca-spark-bar" style="height:65%"></div>
+                <div class="ca-spark-bar ca-spark-bar--current" style="height:85%"></div>
+              </div>
+              <p class="ca-panel-title">Submit review</p>
+              <div class="ca-rating-row">
+                <span class="ca-rating-btn">1</span>
+                <span class="ca-rating-btn">2</span>
+                <span class="ca-rating-btn">3</span>
+                <span class="ca-rating-btn ca-rating-btn--selected">4</span>
+                <span class="ca-rating-btn">5</span>
+              </div>
+              <button class="ca-btn">Save review</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile -->
+      <div class="ca-frame">
+        <div class="ca-frame-bar"><span class="ca-frame-route">/profile</span></div>
+        <div class="ca-frame-body">
+          <div class="ca-profile-head">
+            <div>
+              <p class="ca-profile-name">Denis Silva</p>
+              <p class="ca-profile-role">Senior Backend Engineer · 6 yrs</p>
+              <div class="ca-skill-row">
+                <span class="ca-skill">C#</span>
+                <span class="ca-skill">.NET</span>
+                <span class="ca-skill">PostgreSQL</span>
+                <span class="ca-skill">Distributed Systems</span>
+                <span class="ca-skill">React</span>
+              </div>
+            </div>
+          </div>
+          <div class="ca-exp-list">
+            <div class="ca-exp-row">
+              <span class="ca-exp-dates">2022 — present</span>
+              <div>
+                <p class="ca-exp-role">Senior Backend Engineer</p>
+                <p class="ca-exp-company">Ledgerline — Payments infrastructure</p>
+                <p class="ca-exp-summary">Owned the ledger reconciliation service; cut settlement discrepancies from 40/week to near zero by rebuilding the matching engine around idempotent event sourcing.</p>
+              </div>
+            </div>
+            <div class="ca-exp-row">
+              <span class="ca-exp-dates">2019 — 2022</span>
+              <div>
+                <p class="ca-exp-role">Backend Engineer</p>
+                <p class="ca-exp-company">Anchor Systems — Fleet telemetry</p>
+                <p class="ca-exp-summary">Built the ingestion pipeline handling 40k events/sec from field devices, and the on-call rotation that kept it at 99.95% uptime for two years.</p>
+              </div>
+            </div>
+          </div>
+          <div class="ca-cv-note">
+            <span><strong>2 presentations</strong> curated from this profile</span>
+            <span>UK — Senior Backend Engineer · US — Staff-track Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job analysis / draft review -->
+      <div class="ca-frame">
+        <div class="ca-frame-bar"><span class="ca-frame-route">/job-analyses/ledgerline-senior-backend</span></div>
+        <div class="ca-frame-body">
+          <div class="ca-job-head">
+            <div>
+              <p class="ca-job-title">Ledgerline — Senior Backend Engineer</p>
+              <span class="ca-job-sub">analyzed 2h ago</span>
+            </div>
+          </div>
+          <div class="ca-req-row">
+            <span class="ca-req-priority">Required</span>
+            <span>Distributed transaction handling at scale</span>
+            <span class="ca-sev ca-sev--high" style="margin-left:auto">High gap</span>
+          </div>
+          <div class="ca-req-row">
+            <span class="ca-req-priority">Required</span>
+            <span>Rate limiting &amp; backpressure design</span>
+            <span class="ca-sev ca-sev--medium" style="margin-left:auto">Medium gap</span>
+          </div>
+          <div class="ca-req-row">
+            <span class="ca-req-priority">Preferred</span>
+            <span>PostgreSQL query optimization</span>
+            <span class="ca-sev ca-sev--low" style="margin-left:auto">Matched</span>
+          </div>
+          <div class="ca-draft">
+            <p class="ca-panel-title">Draft proposals — 2 pending</p>
+            <div class="ca-proposal">
+              <span class="ca-proposal-text">Link this analysis to <strong>Design a Rate Limiter</strong> — weight 4/5</span>
+              <div class="ca-proposal-actions">
+                <button class="ca-chip-btn ca-chip-btn--accept">Accept</button>
+                <button class="ca-chip-btn ca-chip-btn--reject">Reject</button>
+              </div>
+            </div>
+            <div class="ca-proposal">
+              <span class="ca-proposal-text">New study item — <strong>Distributed transactions &amp; the saga pattern</strong> (System Design)</span>
+              <div class="ca-proposal-actions">
+                <button class="ca-chip-btn ca-chip-btn--accept">Accept</button>
+                <button class="ca-chip-btn ca-chip-btn--reject">Reject</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="ca-footnote">Toggle claro/escuro no visualizador do artifact para ver os dois temas — os tokens foram pensados lado a lado, não é uma inversão automática.</p>
+
+  </div>
+</div>
