@@ -1,0 +1,38 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Forms" subtitle="Field · Input · Textarea · Select · Checkbox · RatingScale" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="../../assets/icons/icons.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans)}#root{padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;align-items:start}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { Field, Input, Textarea, Select, Checkbox, RatingScale } = window.CommitAheadDesignSystem_80fdcb;
+function Demo(){
+  const [v,setV]=React.useState(4); const [c,setC]=React.useState(true);
+  return (<>
+    <Field label="Email" htmlFor="e" hint="Invite-only. Ask for access if you don't have one.">
+      <Input id="e" type="email" defaultValue="denis@example.com" />
+    </Field>
+    <Field label="Category" htmlFor="c">
+      <Select id="c" options={[{value:'SystemDesign',label:'System Design'},{value:'Theory',label:'Theory'},{value:'LeetCode',label:'LeetCode'},{value:'Behavioral',label:'Behavioral'}]} />
+    </Field>
+    <Field label="Title" htmlFor="t" error="A study item needs a title.">
+      <Input id="t" invalid defaultValue="" />
+    </Field>
+    <Field label="Confidence rating" hint="1 = could not start · 5 = could teach it">
+      <RatingScale name="Confidence rating" value={v} onChange={setV} />
+    </Field>
+    <Field label="Approach" htmlFor="a" style={{gridColumn:'1 / -1'}}>
+      <Textarea id="a" rows={3} mono defaultValue={"Sort by start time, then walk once, merging with the last\ninterval on the stack whenever the next one overlaps."} />
+    </Field>
+    <div style={{display:'flex',gap:18,gridColumn:'1 / -1'}}>
+      <Checkbox checked={c} onChange={()=>setC(!c)} label="Include photo" />
+      <Checkbox checked={false} onChange={()=>{}} label="Include address" />
+      <Checkbox checked disabled label="Include email" />
+    </div>
+  </>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

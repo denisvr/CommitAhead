@@ -1,0 +1,256 @@
+<!-- @dsCard group="Directions" viewport="1280x900" name="Direction C — Reading Room" subtitle="Warm paper, ink navy, Public Sans. Airy, borderless, one answer first." -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Direction C — Reading Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.c-light{--bg:#F6F3EC;--surface:#FFFDF8;--surface-alt:#EDE8DE;--border:#DED7C9;--border-soft:#E7E1D5;--text:#1B1A17;--text-muted:#55514A;--text-faint:#8A8478;--accent:#24405C;--accent-contrast:#FFFDF8;--accent-wash:#E3E8EE;--critical:#97362B;--caution:#8A6316;--good:#3A6B45}
+.c-dark{--bg:#171614;--surface:#1E1D1A;--surface-alt:#262421;--border:#34322D;--border-soft:#2A2825;--text:#F0EDE6;--text-muted:#ABA69B;--text-faint:#767065;--accent:#8FB4D9;--accent-contrast:#12212E;--accent-wash:#1C242C;--critical:#D97C6C;--caution:#C79B4E;--good:#71AE81}
+*{box-sizing:border-box}
+body{margin:0;background:#EFEBE2;font:400 15px/1.55 'Public Sans',system-ui,sans-serif;color:#1B1A17;-webkit-font-smoothing:antialiased}
+a{color:#24405C}a:hover{color:#16283A}
+.page{width:1280px;margin:0 auto;padding:56px 64px 80px;display:flex;flex-direction:column;gap:56px}
+.eyebrow{font:500 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A8478;margin:0}
+.dir-title{font:700 42px/1.05 'Public Sans',sans-serif;letter-spacing:-.025em;margin:10px 0 14px}
+.dir-lede{font-size:16.5px;line-height:1.65;color:#55514A;margin:0;max-width:62ch;text-wrap:pretty}
+.sec-label{font:500 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A8478;margin:0 0 20px;padding-bottom:10px;border-bottom:1px solid #DED7C9}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:36px}
+.note{font-size:14px;line-height:1.65;color:#55514A;margin:0;text-wrap:pretty}
+.note strong{color:#1B1A17;font-weight:600}
+.mark-plate{background:#FFFDF8;padding:40px 34px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;border:1px solid #DED7C9}
+.mark-plate--dark{background:#171614;border-color:#34322D}
+.mark-cap{font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A8478}
+.wm{font:700 38px/1 'Public Sans',sans-serif;letter-spacing:-.035em;color:#1B1A17}
+.wm b{font-weight:400;color:#24405C}
+.mark-plate--dark .wm{color:#F0EDE6}.mark-plate--dark .wm b{color:#8FB4D9}
+.wm-rule{width:64px;height:3px;background:#24405C;margin-top:4px}
+.mark-plate--dark .wm-rule{background:#8FB4D9}
+.sw-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.sw-chip{height:64px;border-radius:2px}
+.sw-name{font-size:11.5px;color:#1B1A17;display:block;margin-top:8px}
+.sw-hex{font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:#8A8478}
+.sw-grid--dark .sw-name{color:#F0EDE6}.sw-grid--dark .sw-hex{color:#767065}
+.sw-grid--dark{background:#171614;padding:18px;border:1px solid #34322D}
+.theme-tag{font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A8478;margin:0 0 12px}
+.type-row{display:flex;flex-direction:column;gap:6px;padding:16px 0}
+.type-row+.type-row{border-top:1px solid #E7E1D5}
+.type-role{font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A8478}
+.t-display{font:700 32px/1.1 'Public Sans',sans-serif;letter-spacing:-.03em}
+.t-body{font-size:16px;line-height:1.65;color:#55514A}
+.t-mono{font:400 13px/1.5 'IBM Plex Mono',monospace;color:#55514A;font-variant-numeric:tabular-nums}
+.icon-row{display:flex;gap:22px;align-items:center;color:#1B1A17;padding:6px 0}
+.icon-row svg{width:20px;height:20px;stroke-width:1.25}
+/* ---- screen ---- */
+.screen{background:var(--bg);color:var(--text);border:1px solid var(--border);overflow:hidden;font-family:'Public Sans',sans-serif}
+.chrome{padding:8px 16px;background:var(--surface-alt);border-bottom:1px solid var(--border-soft)}
+.chrome-route{font:400 11.5px/1 'IBM Plex Mono',monospace;color:var(--text-faint)}
+.app{display:grid;grid-template-columns:200px 1fr}
+.side{padding:26px 18px;display:flex;flex-direction:column;gap:26px}
+.side-mark{font:700 18px/1 'Public Sans',sans-serif;letter-spacing:-.03em;padding:0 6px}
+.side-mark b{font-weight:400;color:var(--accent)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;font-size:13.5px;color:var(--text-muted);border-radius:3px}
+.nav-item svg{width:16px;height:16px;stroke-width:1.25;flex:none;opacity:.7}
+.nav-item--on{color:var(--text);font-weight:600;background:var(--surface-alt)}
+.nav-item--on svg{opacity:1;color:var(--accent)}
+.main{background:var(--surface);border-left:1px solid var(--border-soft);padding:38px 44px 44px;min-height:600px}
+.kicker{font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin:0 0 10px}
+.h-title{font:700 30px/1.15 'Public Sans',sans-serif;letter-spacing:-.03em;margin:0 0 6px}
+.h-sub{font-size:15px;color:var(--text-muted);margin:0 0 34px;max-width:56ch}
+/* hero next item */
+.next{display:grid;grid-template-columns:1fr 168px;gap:36px;align-items:start;padding-bottom:30px;border-bottom:1px solid var(--border-soft)}
+.next-cat{font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.next-title{font:600 25px/1.25 'Public Sans',sans-serif;letter-spacing:-.02em;margin:0 0 12px}
+.next-why{font-size:14.5px;line-height:1.6;color:var(--text-muted);margin:0 0 20px;max-width:52ch;text-wrap:pretty}
+.next-why em{font-style:normal;color:var(--text);font-weight:600}
+.next-actions{display:flex;gap:10px;align-items:center}
+.btn{font:600 13.5px/1 'Public Sans',sans-serif;padding:11px 18px;border:0;border-radius:3px;background:var(--accent);color:var(--accent-contrast)}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border);font-weight:500}
+.score-block{text-align:right}
+.score-big{font:400 52px/1 'IBM Plex Mono',monospace;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--text)}
+.score-cap{font:500 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-top:8px}
+.breakdown{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+.bd{display:flex;align-items:center;justify-content:flex-end;gap:9px;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--text-faint)}
+.bd i{display:block;height:3px;background:var(--accent)}
+/* rest of queue */
+.rest-label{font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin:28px 0 4px}
+.qrow{display:grid;grid-template-columns:26px 1fr 108px 54px;align-items:baseline;gap:20px;padding:15px 0;border-bottom:1px solid var(--border-soft)}
+.qrow:last-child{border-bottom:0}
+.q-rank{font:400 12px/1 'IBM Plex Mono',monospace;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.q-title{font-size:15.5px;font-weight:500;color:var(--text)}
+.q-sub{font-size:12.5px;color:var(--text-faint);margin-top:3px}
+.q-cat{font:400 11.5px/1 'IBM Plex Mono',monospace;color:var(--text-muted)}
+.q-score{font:400 15px/1 'IBM Plex Mono',monospace;text-align:right;font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.q-more{margin-top:20px;font-size:13.5px;color:var(--accent);font-weight:500}
+</style></head>
+<body><div class="page">
+
+<header>
+<p class="eyebrow">Visual direction C</p>
+<h1 class="dir-title">Reading Room</h1>
+<p class="dir-lede">The product's promise is a single sentence — <em>what should I study next, and why?</em> — so this direction answers it literally: one item at the top of the page, at reading size, with its justification in prose. Everything else recedes into a quiet ranked list. Warm paper ground, ink-navy accent, one humanist sans across the whole interface, no cards and almost no borders. It is the direction that treats CommitAhead as a study desk rather than a console.</p>
+</header>
+
+<section>
+<p class="sec-label">Rationale</p>
+<div class="three">
+<p class="note"><strong>Paper, not panel.</strong> A slightly warm off-white ground (#F6F3EC) reads as a page rather than a UI. It lowers screen glare during long evening sessions and it distances the product from every graphite AI dashboard on the market.</p>
+<p class="note"><strong>One family, sized honestly.</strong> Public Sans handles everything from 30px titles to 11px metadata; hierarchy comes from size, weight and space, never from a second typeface or a colour. IBM Plex Mono appears only where digits must align.</p>
+<p class="note"><strong>Space is the component system.</strong> No card shadows, no filled chips, one hairline rule between list rows. What's left is the content: a title, a reason, a number. Density stays available — the list rows are 15px tall in the same rhythm — but the page always leads with one decision.</p>
+</div>
+</section>
+
+<section>
+<p class="sec-label">Wordmark</p>
+<div class="two">
+<div class="mark-plate"><span class="mark-cap">Light</span><div class="wm">Commit<b>Ahead</b></div><div class="wm-rule"></div></div>
+<div class="mark-plate mark-plate--dark"><span class="mark-cap">Dark</span><div class="wm">Commit<b>Ahead</b></div><div class="wm-rule"></div></div>
+</div>
+<p class="note" style="margin-top:16px">The compound splits by <strong>weight rather than colour</strong>: Bold “Commit”, Regular “Ahead” in ink navy — the emphasis sits on the deliberate act, the direction trails after it. A short 3px rule underneath acts as the system's only decorative element and doubles as the progress/underline motif in tabs and active nav. No pictorial mark; none exists in the source repository and one should be commissioned, not improvised.</p>
+</section>
+
+<section>
+<p class="sec-label">Palette</p>
+<div style="display:flex;flex-direction:column;gap:26px">
+<div><p class="theme-tag">Light (primary)</p><div class="sw-grid">
+<div><div class="sw-chip" style="background:#F6F3EC;border:1px solid #DED7C9"></div><span class="sw-name">Paper</span><span class="sw-hex">#F6F3EC</span></div>
+<div><div class="sw-chip" style="background:#FFFDF8;border:1px solid #DED7C9"></div><span class="sw-name">Sheet</span><span class="sw-hex">#FFFDF8</span></div>
+<div><div class="sw-chip" style="background:#1B1A17"></div><span class="sw-name">Ink</span><span class="sw-hex">#1B1A17</span></div>
+<div><div class="sw-chip" style="background:#24405C"></div><span class="sw-name">Accent — navy</span><span class="sw-hex">#24405C</span></div>
+<div><div class="sw-chip" style="background:#97362B"></div><span class="sw-name">Critical</span><span class="sw-hex">#97362B</span></div>
+<div><div class="sw-chip" style="background:#3A6B45"></div><span class="sw-name">Good</span><span class="sw-hex">#3A6B45</span></div>
+</div></div>
+<div><p class="theme-tag">Dark — warm-neutral, not blue-black</p><div class="sw-grid sw-grid--dark">
+<div><div class="sw-chip" style="background:#171614;border:1px solid #34322D"></div><span class="sw-name">Paper</span><span class="sw-hex">#171614</span></div>
+<div><div class="sw-chip" style="background:#1E1D1A;border:1px solid #34322D"></div><span class="sw-name">Sheet</span><span class="sw-hex">#1E1D1A</span></div>
+<div><div class="sw-chip" style="background:#F0EDE6"></div><span class="sw-name">Ink</span><span class="sw-hex">#F0EDE6</span></div>
+<div><div class="sw-chip" style="background:#8FB4D9"></div><span class="sw-name">Accent — navy</span><span class="sw-hex">#8FB4D9</span></div>
+<div><div class="sw-chip" style="background:#D97C6C"></div><span class="sw-name">Critical</span><span class="sw-hex">#D97C6C</span></div>
+<div><div class="sw-chip" style="background:#71AE81"></div><span class="sw-name">Good</span><span class="sw-hex">#71AE81</span></div>
+</div></div>
+</div>
+</section>
+
+<section>
+<p class="sec-label">Typography &amp; icons</p>
+<div class="two">
+<div>
+<div class="type-row"><span class="type-role">Display — Public Sans Bold, −3% tracking</span><span class="t-display">Study Queue</span></div>
+<div class="type-row"><span class="type-role">Body — Public Sans Regular, 16px / 1.65</span><span class="t-body">Merge Intervals is first because two of your open job analyses ask for interval work and you last rated yourself 3 of 5.</span></div>
+<div class="type-row"><span class="type-role">Mono — IBM Plex Mono, digits only</span><span class="t-mono">92 · 88 · 81 · 74 · 69</span></div>
+</div>
+<div>
+<p class="note"><strong>Icons: Lucide at 1.25px stroke, round caps, 16px.</strong> Lighter than either other direction so glyphs sit at the same optical weight as Public Sans Regular. Used in navigation only — never inside content, never as bullets, never coloured.</p>
+<div class="icon-row" style="margin-top:14px">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2M6 16a2 2 0 1 0-2 2h2v-2Z"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-12 0"/><circle cx="12" cy="8" r="5"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+</div>
+<p class="note" style="margin-top:16px"><strong>Component character.</strong> Radii 2–3px, so corners read as trimmed paper rather than as software. Buttons are the only filled surfaces in the interface. Focus is a 2px navy underline-plus-outline. Section separation is whitespace first, one hairline second, a background tint never.</p>
+</div>
+</div>
+</section>
+
+<section>
+<p class="sec-label">Study Queue — light (primary)</p>
+<div class="screen c-light">
+<div class="chrome"><span class="chrome-route">commitahead.app/queue</span></div>
+<div class="app">
+<aside class="side">
+<div class="side-mark">Commit<b>Ahead</b></div>
+<nav class="nav">
+<span class="nav-item nav-item--on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2M6 16a2 2 0 1 0-2 2h2v-2Z"/></svg>Study Queue</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Study Items</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-12 0"/><circle cx="12" cy="8" r="5"/></svg>Profile &amp; CVs</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Job Analyses</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/></svg>Interview Notes</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Settings</span>
+</nav>
+</aside>
+<main class="main">
+<p class="kicker">Tuesday · 18 active items</p>
+<h2 class="h-title">Study Queue</h2>
+<p class="h-sub">Ranked by importance, evidence of demand, and how long ago you last proved you knew it.</p>
+<div class="next">
+<div>
+<p class="next-cat">Next · LeetCode</p>
+<h3 class="next-title">Merge Intervals</h3>
+<p class="next-why">First because <em>two open job analyses</em> ask for interval and scheduling work, you rated yourself <em>3 of 5</em> eleven days ago, and you marked it <em>importance 5</em> yourself.</p>
+<div class="next-actions"><button class="btn">Start review</button><button class="btn btn-ghost">Open item</button></div>
+</div>
+<div class="score-block">
+<div class="score-big">92</div>
+<div class="score-cap">Effective score</div>
+<div class="breakdown">
+<span class="bd">Importance<i style="width:40px"></i>37</span>
+<span class="bd">Demand<i style="width:34px"></i>32</span>
+<span class="bd">Mastery gap<i style="width:24px"></i>23</span>
+</div>
+</div>
+</div>
+<p class="rest-label">Then</p>
+<div class="qrow"><span class="q-rank">02</span><div><div class="q-title">Design a Rate Limiter</div><div class="q-sub">Linked from Ledgerline — Senior Backend · reviewed 6d ago</div></div><span class="q-cat">System Design</span><span class="q-score">88</span></div>
+<div class="qrow"><span class="q-rank">03</span><div><div class="q-title">Disagreed with a technical decision</div><div class="q-sub">Never reviewed · STAR story incomplete</div></div><span class="q-cat">Behavioral</span><span class="q-score">81</span></div>
+<div class="qrow"><span class="q-rank">04</span><div><div class="q-title">CAP theorem trade-offs</div><div class="q-sub">Reviewed 11d ago · mastery 3.3</div></div><span class="q-cat">Theory</span><span class="q-score">74</span></div>
+<div class="qrow"><span class="q-rank">05</span><div><div class="q-title">LRU Cache</div><div class="q-sub">Reviewed 1d ago · mastery 4.0</div></div><span class="q-cat">LeetCode</span><span class="q-score">69</span></div>
+<div class="qrow"><span class="q-rank">06</span><div><div class="q-title">Idempotency in payment flows</div><div class="q-sub">Reviewed 18d ago · mastery 3.7</div></div><span class="q-cat">System Design</span><span class="q-score">63</span></div>
+<p class="q-more">Show all 18 items →</p>
+</main>
+</div>
+</div>
+<p class="note" style="margin-top:16px">The justification is written as a <strong>sentence, not a chart</strong> — the three score inputs are named in plain language and repeated as a small right-hand breakdown for anyone who wants the arithmetic. Rows 2–18 stay a plain list; the page never shows two competing focal points.</p>
+</section>
+
+<section>
+<p class="sec-label">Study Queue — dark</p>
+<div class="screen c-dark">
+<div class="chrome"><span class="chrome-route">commitahead.app/queue</span></div>
+<div class="app">
+<aside class="side">
+<div class="side-mark">Commit<b>Ahead</b></div>
+<nav class="nav">
+<span class="nav-item nav-item--on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2M6 16a2 2 0 1 0-2 2h2v-2Z"/></svg>Study Queue</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Study Items</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-12 0"/><circle cx="12" cy="8" r="5"/></svg>Profile &amp; CVs</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Job Analyses</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/></svg>Interview Notes</span>
+<span class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Settings</span>
+</nav>
+</aside>
+<main class="main">
+<p class="kicker">Tuesday · 18 active items</p>
+<h2 class="h-title">Study Queue</h2>
+<p class="h-sub">Ranked by importance, evidence of demand, and how long ago you last proved you knew it.</p>
+<div class="next">
+<div>
+<p class="next-cat">Next · LeetCode</p>
+<h3 class="next-title">Merge Intervals</h3>
+<p class="next-why">First because <em>two open job analyses</em> ask for interval and scheduling work, you rated yourself <em>3 of 5</em> eleven days ago, and you marked it <em>importance 5</em> yourself.</p>
+<div class="next-actions"><button class="btn">Start review</button><button class="btn btn-ghost">Open item</button></div>
+</div>
+<div class="score-block">
+<div class="score-big">92</div>
+<div class="score-cap">Effective score</div>
+<div class="breakdown">
+<span class="bd">Importance<i style="width:40px"></i>37</span>
+<span class="bd">Demand<i style="width:34px"></i>32</span>
+<span class="bd">Mastery gap<i style="width:24px"></i>23</span>
+</div>
+</div>
+</div>
+<p class="rest-label">Then</p>
+<div class="qrow"><span class="q-rank">02</span><div><div class="q-title">Design a Rate Limiter</div><div class="q-sub">Linked from Ledgerline — Senior Backend · reviewed 6d ago</div></div><span class="q-cat">System Design</span><span class="q-score">88</span></div>
+<div class="qrow"><span class="q-rank">03</span><div><div class="q-title">Disagreed with a technical decision</div><div class="q-sub">Never reviewed · STAR story incomplete</div></div><span class="q-cat">Behavioral</span><span class="q-score">81</span></div>
+<div class="qrow"><span class="q-rank">04</span><div><div class="q-title">CAP theorem trade-offs</div><div class="q-sub">Reviewed 11d ago · mastery 3.3</div></div><span class="q-cat">Theory</span><span class="q-score">74</span></div>
+<div class="qrow"><span class="q-rank">05</span><div><div class="q-title">LRU Cache</div><div class="q-sub">Reviewed 1d ago · mastery 4.0</div></div><span class="q-cat">LeetCode</span><span class="q-score">69</span></div>
+<div class="qrow"><span class="q-rank">06</span><div><div class="q-title">Idempotency in payment flows</div><div class="q-sub">Reviewed 18d ago · mastery 3.7</div></div><span class="q-cat">System Design</span><span class="q-score">63</span></div>
+<p class="q-more">Show all 18 items →</p>
+</main>
+</div>
+</div>
+</section>
+
+</div></body></html>

@@ -1,0 +1,300 @@
+<!-- @dsCard group="Brand" viewport="1280x900" name="Reading Room — refined identity" subtitle="Approved direction, AA-corrected, locally bundled. Palette, type, density, marks." -->
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="utf-8"><title>CommitAhead — Reading Room, refined</title>
+<link rel="icon" href="../assets/logo/rule/favicon.svg">
+<link rel="stylesheet" href="../styles.css">
+<script src="../assets/icons/icons.js" defer></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:var(--weight-regular) var(--text-base)/var(--leading-ui) var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hover);text-decoration:underline}
+.page{width:1280px;margin:0 auto;padding:48px 56px 80px;display:flex;flex-direction:column;gap:56px}
+.eyebrow{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint);margin:0}
+h1{font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font-sans);letter-spacing:var(--track-display);margin:12px 0 14px}
+.lede{font-size:var(--text-lg);line-height:var(--leading-prose);color:var(--text-muted);margin:0;max-width:70ch;text-wrap:pretty}
+.sec{display:flex;flex-direction:column;gap:20px}
+.sec-label{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint);margin:0;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.note{font-size:var(--text-sm);line-height:var(--leading-prose);color:var(--text-muted);margin:0;text-wrap:pretty;max-width:78ch}
+.note strong{color:var(--text);font-weight:var(--weight-semibold)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px}
+/* palette */
+.pal{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.pal-dark{background:#171614;padding:20px;border:1px solid #3A3833;border-radius:var(--radius-sm)}
+.chip{height:60px;border-radius:var(--radius-xs);border:1px solid rgba(127,127,127,.2)}
+.pal .n{display:block;margin-top:9px;font-size:var(--text-xs);color:var(--text)}
+.pal .h{display:block;font:var(--weight-regular) var(--text-micro)/1.5 var(--font-mono);color:var(--text-faint)}
+.pal .cr{display:inline-block;margin-top:4px;font:var(--weight-medium) var(--text-micro)/1.3 var(--font-mono);letter-spacing:.04em;color:var(--good);background:var(--good-wash);padding:2px 5px;border-radius:var(--radius-xs)}
+.pal-dark .n{color:#F0EDE6}.pal-dark .h{color:#8F897C}
+.pal-dark .cr{color:#71AE81;background:#16241B}
+/* type scale */
+.tt{display:grid;grid-template-columns:150px 1fr 96px;gap:20px;align-items:baseline;padding:13px 0;border-bottom:1px solid var(--border-soft)}
+.tt:last-child{border-bottom:0}
+.tt .k{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)}
+.tt .s{font:var(--weight-regular) var(--text-xs)/1.4 var(--font-mono);color:var(--text-faint);text-align:right}
+/* marks */
+.mark{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;display:flex;flex-direction:column}
+.mark-top{padding:18px 20px 14px;border-bottom:1px solid var(--border-soft)}
+.mark-n{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint)}
+.mark-t{font-size:var(--text-lead);font-weight:var(--weight-semibold);letter-spacing:var(--track-headline);margin:8px 0 6px}
+.mark-d{font-size:var(--text-sm);color:var(--text-muted);margin:0;min-height:66px;text-wrap:pretty}
+.stage{padding:26px 20px;display:flex;align-items:center;justify-content:center;min-height:96px}
+.stage img{max-width:100%;height:auto}
+.stage--light{background:var(--sheet,#FFFDF8)}
+.stage--dark{background:#171614}
+.stage--mono{background:var(--surface-alt)}
+.strip-cap{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint);padding:8px 20px;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft);background:var(--surface-alt)}
+.favs{display:flex;gap:14px;padding:18px 20px;align-items:center}
+.favs img{width:44px;height:44px;border-radius:8px}
+.favs .fc{font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint);margin-left:auto}
+/* icons */
+.icons{display:flex;flex-wrap:wrap;gap:22px;align-items:center;color:var(--text)}
+.icons svg{width:20px;height:20px;fill:none;stroke:currentColor}
+/* density demo */
+.demo{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);overflow:hidden}
+.demo-head{padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--surface-alt);font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint)}
+.demo-body{padding:22px 24px}
+.qrow{display:grid;grid-template-columns:26px 1fr 110px 46px;align-items:baseline;gap:var(--row-gap);padding:var(--row-pad-y) var(--row-pad-x);border-bottom:1px solid var(--border-soft)}
+.qrow:last-child{border-bottom:0}
+.q-rank{font:var(--weight-regular) var(--text-xs)/1 var(--font-mono);color:var(--text-faint);font-variant-numeric:var(--numeric-tabular)}
+.q-title{font-size:var(--row-title-size);font-weight:var(--weight-medium)}
+.q-sub{font-size:var(--row-meta-size);color:var(--text-faint);margin-top:3px}
+.q-cat{font:var(--weight-regular) var(--text-xs)/1 var(--font-mono);color:var(--text-muted)}
+.q-score{font:var(--weight-regular) var(--text-md)/1 var(--font-mono);text-align:right;font-variant-numeric:var(--numeric-tabular);color:var(--text-muted)}
+.dense-wrap{--row-pad-y:7px;--row-pad-x:10px;--row-gap:12px;--row-title-size:var(--text-sm)}
+.dense-wrap .qrow{grid-template-columns:26px 1fr 96px 62px 46px;align-items:center}
+.dense-wrap .qrow:nth-child(even){background:color-mix(in srgb,var(--surface-alt) 45%,transparent)}
+.dense-wrap .q-sub{display:none}
+.thead{display:grid;grid-template-columns:26px 1fr 96px 62px 46px;gap:12px;padding:8px 10px;border-bottom:1px solid var(--border);font:var(--weight-medium) 10px/1.4 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.thead .r,.dense-wrap .q-score{text-align:right}
+/* states */
+.btn{font:var(--weight-semibold) var(--text-sm)/1 var(--font-sans);height:var(--control-height);padding:0 18px;white-space:nowrap;border:0;border-radius:var(--radius-sm);background:var(--accent);color:var(--accent-contrast);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-standard)}
+.btn:hover{background:var(--accent-hover)}
+.btn:focus-visible{outline:var(--focus-width) solid var(--focus-ring);outline-offset:var(--focus-offset)}
+.btn--ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border-strong);font-weight:var(--weight-medium)}
+.btn--ghost:hover{background:var(--surface-alt);color:var(--text)}
+.btn--danger{background:transparent;color:var(--critical);border:1px solid var(--critical)}
+.btn--disabled{opacity:.45;cursor:not-allowed}
+.btn--focus{outline:var(--focus-width) solid var(--focus-ring);outline-offset:var(--focus-offset)}
+.states{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.sev{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-xs);font-weight:var(--weight-semibold);border-radius:var(--radius-xs);padding:4px 9px}
+.sev b{width:6px;height:6px;border-radius:50%;display:block}
+.callout{padding:18px 20px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-sm);background:var(--surface);font-size:var(--text-sm);color:var(--text-muted)}
+</style></head>
+<body><div class="page">
+
+<header>
+<p class="eyebrow">CommitAhead · approved direction</p>
+<h1>Reading Room</h1>
+<p class="lede">Warm paper, ink navy, one humanist sans. The interface reads as a study desk rather than a console: the page leads with a single decision and its written justification, and everything else recedes into a quiet ranked list. This revision fixes every contrast failure in the original study, bundles all fonts and icons locally, adds a density scale for analytical tables, and proposes three marks.</p>
+</header>
+
+<section class="sec">
+<p class="sec-label">What changed since the direction study</p>
+<div class="three">
+<p class="note"><strong>Contrast, corrected.</strong> The study's faint text (<code>#8A8478</code> light, <code>#767065</code> dark) failed AA at 3.5:1. Both were retuned to clear 4.5:1 at 12.5px <strong>on the tint as well as the sheet</strong> — the tint is the tighter constraint — and a <code>--border-strong</code> was added at 3:1 for control edges, which the hairline rules cannot carry.</p>
+<p class="note"><strong>No CDN.</strong> Public Sans (variable) and IBM Plex Mono ship as files in <code>assets/fonts/</code> with their OFL licences; 25 Lucide glyphs ship in <code>assets/icons/</code> as individual SVGs plus a sprite. Nothing in this project reaches the network at runtime.</p>
+<p class="note"><strong>Density, from Direction B.</strong> Comfortable is the default and governs the queue, item detail and CV editor. <code>data-density="dense"</code> is opt-in per region for analytical tables only — never for a whole page.</p>
+</div>
+</section>
+
+<section class="sec">
+<p class="sec-label">Palette — light (primary) · ratios measured on the sheet, #FFFDF8</p>
+<div class="pal">
+<div><div class="chip" style="background:#F6F3EC"></div><span class="n">Paper — page ground</span><span class="h">#F6F3EC</span></div>
+<div><div class="chip" style="background:#FFFDF8"></div><span class="n">Sheet — content</span><span class="h">#FFFDF8</span></div>
+<div><div class="chip" style="background:#1B1A17"></div><span class="n">Ink — primary text</span><span class="h">#1B1A17</span><span class="cr">16.4:1 AAA</span></div>
+<div><div class="chip" style="background:#55514A"></div><span class="n">Ink 2 — secondary</span><span class="h">#55514A</span><span class="cr">7.5:1 AAA</span></div>
+<div><div class="chip" style="background:#6A6659"></div><span class="n">Ink 3 — metadata</span><span class="h">#6A6659</span><span class="cr">5.7:1 AA</span></div>
+<div><div class="chip" style="background:#24405C"></div><span class="n">Navy — accent</span><span class="h">#24405C</span><span class="cr">10.1:1 AAA</span></div>
+<div><div class="chip" style="background:#8C8578"></div><span class="n">Rule strong — edges</span><span class="h">#8C8578</span><span class="cr">3.4:1 AA·UI</span></div>
+<div><div class="chip" style="background:#D3CBB9"></div><span class="n">Rule — structure</span><span class="h">#D3CBB9</span></div>
+<div><div class="chip" style="background:#E2DBCD"></div><span class="n">Rule soft — dividers</span><span class="h">#E2DBCD</span></div>
+<div><div class="chip" style="background:#97362B"></div><span class="n">Brick — critical</span><span class="h">#97362B</span><span class="cr">7.9:1 AAA</span></div>
+<div><div class="chip" style="background:#7E5A12"></div><span class="n">Ochre — caution</span><span class="h">#7E5A12</span><span class="cr">6.5:1 AAA</span></div>
+<div><div class="chip" style="background:#2F6B45"></div><span class="n">Moss — good</span><span class="h">#2F6B45</span><span class="cr">6.0:1 AAA</span></div>
+</div>
+</section>
+
+<section class="sec">
+<p class="sec-label">Palette — dark · ratios measured on the sheet, #1E1D1A</p>
+<div class="pal pal-dark">
+<div><div class="chip" style="background:#171614"></div><span class="n">Paper</span><span class="h">#171614</span></div>
+<div><div class="chip" style="background:#1E1D1A"></div><span class="n">Sheet</span><span class="h">#1E1D1A</span></div>
+<div><div class="chip" style="background:#F0EDE6"></div><span class="n">Ink</span><span class="h">#F0EDE6</span><span class="cr">15.1:1 AAA</span></div>
+<div><div class="chip" style="background:#ABA69B"></div><span class="n">Ink 2</span><span class="h">#ABA69B</span><span class="cr">7.0:1 AAA</span></div>
+<div><div class="chip" style="background:#938D80"></div><span class="n">Ink 3</span><span class="h">#938D80</span><span class="cr">5.1:1 AA</span></div>
+<div><div class="chip" style="background:#8FB4D9"></div><span class="n">Navy</span><span class="h">#8FB4D9</span><span class="cr">7.9:1 AAA</span></div>
+<div><div class="chip" style="background:#757066"></div><span class="n">Rule strong</span><span class="h">#757066</span><span class="cr">3.2:1 AA·UI</span></div>
+<div><div class="chip" style="background:#3A3833"></div><span class="n">Rule</span><span class="h">#3A3833</span></div>
+<div><div class="chip" style="background:#2C2A26"></div><span class="n">Rule soft</span><span class="h">#2C2A26</span></div>
+<div><div class="chip" style="background:#D97C6C"></div><span class="n">Brick</span><span class="h">#D97C6C</span><span class="cr">5.3:1 AA</span></div>
+<div><div class="chip" style="background:#C79B4E"></div><span class="n">Ochre</span><span class="h">#C79B4E</span><span class="cr">6.5:1 AAA</span></div>
+<div><div class="chip" style="background:#71AE81"></div><span class="n">Moss</span><span class="h">#71AE81</span><span class="cr">6.6:1 AAA</span></div>
+</div>
+<p class="note">Ratios are quoted against the sheet; every text token also clears 4.5:1 against the tint (<code>#EDE8DE</code> / <code>#262421</code>), which is the tighter of the two grounds — metadata measures 4.7:1 light and 4.8:1 dark there. The dark theme is warm-neutral (<code>#171614</code>), not blue-black — it is the same paper, at night. Filled buttons invert: navy <code>#8FB4D9</code> with <code>#12212E</code> text is 7.4:1.</p>
+</section>
+
+<section class="sec">
+<p class="sec-label">Type — Public Sans (variable) · IBM Plex Mono, both bundled</p>
+<div>
+<div class="tt"><span class="k">Numeral</span><span style="font:var(--weight-regular) var(--text-numeral)/1 var(--font-mono);font-variant-numeric:var(--numeric-tabular)">92</span><span class="s">Mono 52 / 1.0</span></div>
+<div class="tt"><span class="k">Display</span><span style="font:var(--weight-bold) var(--text-display)/var(--leading-display) var(--font-sans);letter-spacing:var(--track-display)">CommitAhead</span><span class="s">700 · 42 / −3.5%</span></div>
+<div class="tt"><span class="k">Page title</span><span style="font:var(--weight-bold) var(--text-title)/var(--leading-title) var(--font-sans);letter-spacing:var(--track-title)">Study Queue</span><span class="s">700 · 30 / −3%</span></div>
+<div class="tt"><span class="k">Headline</span><span style="font:var(--weight-semibold) var(--text-headline)/1.25 var(--font-sans);letter-spacing:var(--track-headline)">Merge Intervals</span><span class="s">600 · 25 / −2%</span></div>
+<div class="tt"><span class="k">Prose</span><span style="font-size:var(--text-lg);line-height:var(--leading-prose);color:var(--text-muted)">Ranked by importance, evidence of demand, and how long ago you last proved you knew it.</span><span class="s">400 · 16.5 / 1.65</span></div>
+<div class="tt"><span class="k">Row title</span><span style="font-size:var(--text-md);font-weight:var(--weight-medium)">Design a Rate Limiter</span><span class="s">500 · 15.5</span></div>
+<div class="tt"><span class="k">Secondary</span><span style="font-size:var(--text-sm);color:var(--text-muted)">Reviewed 6 days ago · mastery 3.0 of 5</span><span class="s">400 · 13.5</span></div>
+<div class="tt"><span class="k">Metadata (floor)</span><span style="font-size:var(--text-xs);color:var(--text-faint)">Linked from one job analysis</span><span class="s">400 · 12.5 · 5.2:1</span></div>
+<div class="tt"><span class="k">Micro label</span><span style="font:var(--weight-medium) var(--text-micro)/1.4 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-faint)">Effective score</span><span class="s">Mono 500 · 11 · +14%</span></div>
+</div>
+<p class="note"><strong>12.5px is the floor for any text a user reads.</strong> The 11px mono micro-label is permitted only for uppercase, tracked, non-essential labels that duplicate information available elsewhere on the screen — and it is set in <code>--text-faint</code>, which clears AA at that size in both themes.</p>
+</section>
+
+<section class="sec">
+<p class="sec-label">Wordmark — three proposals · Bookmark approved</p>
+<div class="three">
+
+<div class="mark">
+<div class="mark-top">
+<span class="mark-n">Proposal 1</span>
+<div class="mark-t">Rule</div>
+<p class="mark-d">Type only. Bold “Commit”, Regular “Ahead” in navy, with a rule the exact width of the first word. The rule is the system's one recurring motif — it reappears as the active-tab underline and the section divider.</p>
+</div>
+<div class="stage stage--light"><img src="../assets/logo/rule/lockup-light.svg" alt="CommitAhead — Rule lockup, light" width="300"></div>
+<div class="strip-cap">light</div>
+<div class="stage stage--dark"><img src="../assets/logo/rule/lockup-dark.svg" alt="CommitAhead — Rule lockup, dark" width="300"></div>
+<div class="strip-cap">dark</div>
+<div class="stage stage--mono"><img src="../assets/logo/rule/lockup-mono-ink.svg" alt="CommitAhead — Rule lockup, monochrome" width="300"></div>
+<div class="strip-cap">monochrome (ink · paper variant alongside)</div>
+<div class="favs"><img src="../assets/logo/rule/favicon.svg" alt="favicon"><img src="../assets/logo/rule/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/rule/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
+</div>
+
+<div class="mark">
+<div class="mark-top">
+<span class="mark-n">Proposal 2</span>
+<div class="mark-t">Bookmark <span style="font:var(--weight-medium) var(--text-micro)/1 var(--font-mono);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--good);background:var(--good-wash);padding:4px 7px;border-radius:var(--radius-xs);vertical-align:middle;margin-left:6px">Approved</span></div>
+<p class="mark-d">A ribbon bookmark set before the wordmark — the place you are at in the material, which is precisely what the study queue holds. The only proposal with a symbol that survives alone at 16px.</p>
+</div>
+<div class="stage stage--light"><img src="../assets/logo/bookmark/lockup-light.svg" alt="CommitAhead — Bookmark lockup, light" width="300"></div>
+<div class="strip-cap">light</div>
+<div class="stage stage--dark"><img src="../assets/logo/bookmark/lockup-dark.svg" alt="CommitAhead — Bookmark lockup, dark" width="300"></div>
+<div class="strip-cap">dark</div>
+<div class="stage stage--mono"><img src="../assets/logo/bookmark/lockup-mono-ink.svg" alt="CommitAhead — Bookmark lockup, monochrome" width="300"></div>
+<div class="strip-cap">monochrome (ink · paper variant alongside)</div>
+<div class="favs"><img src="../assets/logo/bookmark/favicon.svg" alt="favicon"><img src="../assets/logo/bookmark/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/bookmark/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
+</div>
+
+<div class="mark">
+<div class="mark-top">
+<span class="mark-n">Proposal 3</span>
+<div class="mark-t">Queue</div>
+<p class="mark-d">Three rules of decreasing length and weight: the ranked queue itself, with the top item emphasised. The most literal mark, and the one that would age best if the product ever grows past interview preparation.</p>
+</div>
+<div class="stage stage--light"><img src="../assets/logo/queue/lockup-light.svg" alt="CommitAhead — Queue lockup, light" width="310"></div>
+<div class="strip-cap">light</div>
+<div class="stage stage--dark"><img src="../assets/logo/queue/lockup-dark.svg" alt="CommitAhead — Queue lockup, dark" width="310"></div>
+<div class="strip-cap">dark</div>
+<div class="stage stage--mono"><img src="../assets/logo/queue/lockup-mono-ink.svg" alt="CommitAhead — Queue lockup, monochrome" width="310"></div>
+<div class="strip-cap">monochrome (ink · paper variant alongside)</div>
+<div class="favs"><img src="../assets/logo/queue/favicon.svg" alt="favicon"><img src="../assets/logo/queue/favicon-dark.svg" alt="favicon dark"><img src="../assets/logo/queue/favicon-mono.svg" alt="favicon mono"><span class="fc">favicon 64px</span></div>
+</div>
+
+</div>
+<p class="callout"><strong>Decided: Bookmark</strong>, then refined away from the stock glyph — an off-centre squared notch and two descending cut slots. Its lockup type is now <strong>converted to paths</strong>, so it renders identically without Public Sans installed. Construction, clear space, the three size cuts and misuse rules are in <a href="Wordmark.html">identity/Wordmark.html</a>. Rule and Queue are kept here as the record of the choice; their lockups still reference the font by name and would need outlining if either were ever revived.</p>
+</section>
+
+<section class="sec">
+<p class="sec-label">Density — comfortable (default) vs dense (analytical tables only)</p>
+<div class="two">
+<div class="demo">
+<div class="demo-head">Comfortable · Study Queue</div>
+<div class="demo-body">
+<div class="qrow"><span class="q-rank">02</span><div><div class="q-title">Design a Rate Limiter</div><div class="q-sub">Linked from Ledgerline — Senior Backend · reviewed 6 days ago</div></div><span class="q-cat">System Design</span><span class="q-score">88</span></div>
+<div class="qrow"><span class="q-rank">03</span><div><div class="q-title">Disagreed with a technical decision</div><div class="q-sub">Never reviewed · STAR story incomplete</div></div><span class="q-cat">Behavioral</span><span class="q-score">81</span></div>
+<div class="qrow"><span class="q-rank">04</span><div><div class="q-title">CAP theorem trade-offs</div><div class="q-sub">Reviewed 11 days ago · mastery 3.3</div></div><span class="q-cat">Theory</span><span class="q-score">74</span></div>
+</div>
+</div>
+<div class="demo">
+<div class="demo-head">Dense · Study Items table</div>
+<div class="demo-body dense-wrap" data-density="dense">
+<div class="thead"><span>#</span><span>Item</span><span>Category</span><span class="r">Mastery</span><span class="r">Score</span></div>
+<div class="qrow"><span class="q-rank">01</span><div class="q-title">Merge Intervals</div><span class="q-cat">LeetCode</span><span class="q-score">2.7</span><span class="q-score">92</span></div>
+<div class="qrow"><span class="q-rank">02</span><div class="q-title">Design a Rate Limiter</div><span class="q-cat">System Design</span><span class="q-score">3.0</span><span class="q-score">88</span></div>
+<div class="qrow"><span class="q-rank">03</span><div class="q-title">Disagreed with a technical decision</div><span class="q-cat">Behavioral</span><span class="q-score">2.0</span><span class="q-score">81</span></div>
+<div class="qrow"><span class="q-rank">04</span><div class="q-title">CAP theorem trade-offs</div><span class="q-cat">Theory</span><span class="q-score">3.3</span><span class="q-score">74</span></div>
+<div class="qrow"><span class="q-rank">05</span><div class="q-title">LRU Cache</div><span class="q-cat">LeetCode</span><span class="q-score">4.0</span><span class="q-score">69</span></div>
+<div class="qrow"><span class="q-rank">06</span><div class="q-title">Idempotency in payment flows</div><span class="q-cat">System Design</span><span class="q-score">3.7</span><span class="q-score">63</span></div>
+<div class="qrow"><span class="q-rank">07</span><div class="q-title">SOLID in practice, not in slogans</div><span class="q-cat">Theory</span><span class="q-score">4.0</span><span class="q-score">58</span></div>
+</div>
+</div>
+</div>
+<p class="note">Dense keeps the same type family, colours and rules — it changes only vertical padding, row title size and the presence of a zebra tint. Row height drops from 52px to 30px. Dense is never used where a row is a tap target on mobile; there the comfortable scale applies regardless.</p>
+</section>
+
+<section class="sec">
+<p class="sec-label">Icons — 25 Lucide glyphs, bundled locally</p>
+<div class="icons">
+<svg><use href="#icon-list-ordered"></use></svg>
+<svg><use href="#icon-book-marked"></use></svg>
+<svg><use href="#icon-user-round"></use></svg>
+<svg><use href="#icon-briefcase"></use></svg>
+<svg><use href="#icon-notebook-text"></use></svg>
+<svg><use href="#icon-settings"></use></svg>
+<svg><use href="#icon-search"></use></svg>
+<svg><use href="#icon-plus"></use></svg>
+<svg><use href="#icon-pencil"></use></svg>
+<svg><use href="#icon-check"></use></svg>
+<svg><use href="#icon-x"></use></svg>
+<svg><use href="#icon-trash-2"></use></svg>
+<svg><use href="#icon-sparkles"></use></svg>
+<svg><use href="#icon-link"></use></svg>
+<svg><use href="#icon-download"></use></svg>
+<svg><use href="#icon-circle-alert"></use></svg>
+<svg><use href="#icon-loader-circle"></use></svg>
+<svg><use href="#icon-chevron-down"></use></svg>
+<svg><use href="#icon-chevron-right"></use></svg>
+<svg><use href="#icon-arrow-right"></use></svg>
+<svg><use href="#icon-arrow-left"></use></svg>
+<svg><use href="#icon-eye"></use></svg>
+<svg><use href="#icon-eye-off"></use></svg>
+<svg><use href="#icon-sun"></use></svg>
+<svg><use href="#icon-moon"></use></svg>
+</div>
+<p class="note"><strong>Lucide, stroke-width 1.75 on the 24 grid</strong> — roughly 1.17px optical at the 16px display size, matching Public Sans Regular. Files were copied from the Lucide repository (ISC licence included) and the stroke rewritten; nothing is loaded from a CDN. Icons appear in navigation and in confirm/destructive affordances only — never beside a heading, never as a bullet, never coloured except by inheriting <code>currentColor</code> from an active nav item.</p>
+</section>
+
+<section class="sec">
+<p class="sec-label">Controls, states, severity</p>
+<div class="two">
+<div>
+<div class="states" style="margin-bottom:18px">
+<button class="btn">Start review</button>
+<button class="btn btn--focus">Focused</button>
+<button class="btn btn--ghost">Open item</button>
+<button class="btn btn--danger">Delete item</button>
+<button class="btn btn--disabled" disabled>Unavailable</button>
+</div>
+<p class="note">Buttons are the only filled surfaces in the interface. Hover darkens navy to <code>#16283A</code> (lightens to <code>#B0CBE6</code> in dark) — never an opacity change, never a lift or shadow. Press steps one value further, with no transform. Disabled is 45% opacity plus <code>cursor: not-allowed</code>. Destructive actions are outlined in <code>--critical</code> and always require a second confirmation.</p>
+</div>
+<div>
+<div class="states" style="margin-bottom:18px">
+<span class="sev" style="color:var(--critical);background:var(--critical-wash)"><b style="background:var(--critical)"></b>High gap</span>
+<span class="sev" style="color:var(--caution);background:var(--caution-wash)"><b style="background:var(--caution)"></b>Medium gap</span>
+<span class="sev" style="color:var(--good);background:var(--good-wash)"><b style="background:var(--good)"></b>Matched</span>
+<span class="sev" style="color:var(--accent);background:var(--accent-wash)"><b style="background:var(--accent)"></b>Draft — needs your review</span>
+</div>
+<p class="note">Severity is the only place colour carries meaning, plus the accent used once for “AI draft awaiting confirmation”. Every severity chip pairs a colour with a word, so the meaning survives greyscale and colour-blindness. Focus is <code>2px solid var(--accent)</code> at <code>2px</code> offset on every interactive element, in both themes, never removed and never replaced by a shadow ring.</p>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<p class="sec-label">Standing rules</p>
+<div class="three">
+<p class="note"><strong>No fictional data.</strong> Mocks use only values the domain actually produces: integer effective scores 0–100, mastery to one decimal 1.0–5.0, importance 1–5, demand 0–5, relative dates. <strong>No commit hashes, no fake IDs, no invented telemetry</strong> — the earlier study's <code>a3f91c2</code>-style metadata is gone, because the product has no such identifier and it was decoration.</p>
+<p class="note"><strong>No decoration.</strong> No gradients, no imagery, no texture, no glass, no card shadows, no coloured left borders on cards, no charts that do not answer a question the user asked. The only permitted graphic is the score breakdown, because it is the product's explanation of itself.</p>
+<p class="note"><strong>Keyboard first.</strong> Full operation without a mouse, including the 1–5 rating control (arrow keys) and Accept/Reject proposal pairs. Visible focus everywhere. Motion is 80–180ms, functional only, and zeroed under <code>prefers-reduced-motion</code>.</p>
+</div>
+</section>
+
+</div></body></html>

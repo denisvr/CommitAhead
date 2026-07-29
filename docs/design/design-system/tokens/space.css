@@ -1,0 +1,64 @@
+/* Space is the component system: separation is whitespace first, one hairline
+   second, a background tint never. 4px base. */
+:root {
+  --space-0: 0px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-10: 20px;
+  --space-12: 24px;
+  --space-14: 28px;
+  --space-16: 32px;
+  --space-18: 36px;
+  --space-20: 40px;
+  --space-22: 44px;
+  --space-28: 56px;
+  --space-32: 64px;
+
+  /* Trimmed-paper corners. Nothing in the product exceeds 4px. */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  --border-hairline: 1px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  --sidebar-width: 200px;
+  --content-max: 820px;
+  --page-pad-x: 44px;
+  --page-pad-y: 38px;
+
+  --control-height: 40px;
+  --control-height-sm: 32px;
+  --tap-min: 44px;
+}
+
+/* Density. Comfortable is the default and governs the Study Queue, item detail
+   and CV editor. Dense is opt-in per region — analytical tables only: Study
+   Items, Job Analysis requirements, AI usage. Set data-density="dense" on the
+   table's wrapper, never on the page. */
+:root,
+:root[data-density="comfortable"] {
+  --row-pad-y: 15px;
+  --row-pad-x: 0px;
+  --row-gap: 20px;
+  --row-title-size: var(--text-md);
+  --row-meta-size: var(--text-xs);
+  --section-gap: var(--space-28);
+}
+
+:root[data-density="dense"] {
+  --row-pad-y: 7px;
+  --row-pad-x: 10px;
+  --row-gap: 12px;
+  --row-title-size: var(--text-sm);
+  --row-meta-size: var(--text-xs);
+  --section-gap: var(--space-16);
+}

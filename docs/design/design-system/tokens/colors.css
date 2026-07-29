@@ -1,0 +1,97 @@
+/* Colour — Reading Room.
+   Warm paper ground, ink navy accent, warm-neutral dark. Light and dark are
+   built independently. Every text/background pair below meets WCAG AA at the
+   size it is used; measured ratios are in the comments and in
+   guidelines/contrast.card.html. Categories are never colour-coded — colour
+   means severity, or it means "this is the accent". */
+:root,
+:root[data-theme="light"] {
+  /* base ramp */
+  --paper: #F6F3EC;
+  --sheet: #FFFDF8;
+  --tint: #EDE8DE;
+  --rule-soft: #E2DBCD;
+  --rule: #D3CBB9;
+  --rule-strong: #8C8578;   /* 3.4:1 on sheet — control edges */
+  --ink: #1B1A17;           /* 16.4:1 on sheet */
+  --ink-2: #55514A;         /* 7.5:1  on sheet */
+  --ink-3: #6A6659;         /* 5.7:1 on sheet · 4.7:1 on tint — AA at 12.5px on both */
+  --navy: #24405C;          /* 10.1:1 on sheet */
+  --navy-hover: #16283A;
+  --navy-wash: #E3E8EE;
+  --brick: #97362B;         /* 7.9:1 */
+  --brick-wash: #F3E4E0;
+  --ochre: #7E5A12;         /* 6.5:1 */
+  --ochre-wash: #F1E9D6;
+  --moss: #2F6B45;          /* 6.0:1 */
+  --moss-wash: #E2EDE4;
+
+  /* semantic aliases — components use only these */
+  --bg: var(--paper);
+  --surface: var(--sheet);
+  --surface-alt: var(--tint);
+  --border-soft: var(--rule-soft);
+  --border: var(--rule);
+  --border-strong: var(--rule-strong);
+  --text: var(--ink);
+  --text-muted: var(--ink-2);
+  --text-faint: var(--ink-3);
+  --accent: var(--navy);
+  --accent-hover: var(--navy-hover);
+  --accent-wash: var(--navy-wash);
+  --accent-contrast: var(--sheet);
+  --critical: var(--brick);
+  --critical-wash: var(--brick-wash);
+  --caution: var(--ochre);
+  --caution-wash: var(--ochre-wash);
+  --good: var(--moss);
+  --good-wash: var(--moss-wash);
+  --focus-ring: var(--navy);
+  --selection-bg: var(--navy-wash);
+}
+
+:root[data-theme="dark"] {
+  --paper: #171614;
+  --sheet: #1E1D1A;
+  --tint: #262421;
+  --rule-soft: #2C2A26;
+  --rule: #3A3833;
+  --rule-strong: #757066;   /* 3.2:1 on sheet */
+  --ink: #F0EDE6;           /* 15.1:1 on sheet */
+  --ink-2: #ABA69B;         /* 7.0:1  on sheet */
+  --ink-3: #938D80;         /* 5.1:1 on sheet · 4.8:1 on tint — AA at 12.5px on both */
+  --navy: #8FB4D9;          /* 7.9:1 */
+  --navy-hover: #B0CBE6;
+  --navy-wash: #1C242C;
+  --accent-contrast: #12212E;
+  --brick: #D97C6C;         /* 5.3:1 */
+  --brick-wash: #2A1A16;
+  --ochre: #C79B4E;         /* 6.5:1 */
+  --ochre-wash: #262014;
+  --moss: #71AE81;          /* 6.6:1 */
+  --moss-wash: #16241B;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171614;
+    --sheet: #1E1D1A;
+    --tint: #262421;
+    --rule-soft: #2C2A26;
+    --rule: #3A3833;
+    --rule-strong: #757066;
+    --ink: #F0EDE6;
+    --ink-2: #ABA69B;
+    --ink-3: #938D80;
+    --navy: #8FB4D9;
+    --navy-hover: #B0CBE6;
+    --navy-wash: #1C242C;
+    --accent-contrast: #12212E;
+    --brick: #D97C6C;
+    --brick-wash: #2A1A16;
+    --ochre: #C79B4E;
+    --ochre-wash: #262014;
+    --moss: #71AE81;
+    --moss-wash: #16241B;
+  }
+}

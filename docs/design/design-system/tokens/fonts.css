@@ -1,0 +1,32 @@
+/* Webfonts — bundled locally, no CDN. Binaries live in assets/fonts/ and are
+   imported from google/fonts (SIL Open Font License, licence text alongside).
+   Public Sans is a variable font (wght 100–900); IBM Plex Mono ships as two
+   static weights because only Regular and Medium are ever used. */
+@font-face {
+  font-family: 'Public Sans';
+  src: url('../assets/fonts/PublicSans[wght].ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Public Sans';
+  src: url('../assets/fonts/PublicSans-Italic[wght].ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('../assets/fonts/IBMPlexMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('../assets/fonts/IBMPlexMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
