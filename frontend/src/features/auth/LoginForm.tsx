@@ -1,5 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { apiClient } from '../../api/client'
+import { Button } from '../../design-system/components/Button'
+import { Field } from '../../design-system/components/Field'
+import inputStyles from '../../design-system/components/Input.module.css'
+import styles from './LoginForm.module.css'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -19,22 +23,19 @@ export function LoginForm() {
   }
 
   if (message) {
-    return <p>{message}</p>
+    return <p className={styles.message}>{message}</p>
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        required
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-      />
-      <button type="submit" disabled={isSubmitting}>
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <Field label="Email">
+        {(fieldProps) => (
+          <input {...fieldProps} type="email" required className={inputStyles.input} value={email} onChange={(event) => setEmail(event.target.value)} />
+        )}
+      </Field>
+      <Button type="submit" variant="primary" isLoading={isSubmitting}>
         Send sign-in link
-      </button>
+      </Button>
     </form>
   )
 }

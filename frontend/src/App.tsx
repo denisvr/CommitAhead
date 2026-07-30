@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react'
 import { apiClient, ensureFreshSession } from './api/client'
+import { AppShell } from './design-system/components/AppShell'
 import { LoginForm } from './features/auth/LoginForm'
+import { NewStudyItemPage } from './features/study-items/NewStudyItemPage'
+import { StudyItemDetailPage } from './features/study-items/StudyItemDetailPage'
+import { StudyQueuePage } from './features/study-items/StudyQueuePage'
 
 type AuthState = 'loading' | 'authenticated' | 'anonymous'
+
+type View = { name: 'queue' } | { name: 'detail'; id: string } | { name: 'new' }
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [email, setEmail] = useState<string | null>(null)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [view, setView] = useState<View>({ name: 'queue' })
 
   useEffect(() => {
     apiClient.GET('/api/me').then(({ data, response }) => {
@@ -62,21 +69,33 @@ function App() {
     )
   }
 
-  return (
-    <main>
-      <h1>CommitAhead</h1>
-      {authState === 'anonymous' ? (
+  if (authState === 'anonymous') {
+    return (
+      <main>
+        <h1>CommitAhead</h1>
         <LoginForm />
-      ) : (
-        <>
-          <p>Signed in as {email}</p>
-          <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
-            Log out
-          </button>
-          {logoutError && <p role="alert">{logoutError}</p>}
-        </>
+      </main>
+    )
+  }
+
+  return (
+    <AppShell
+      destinations={[{ key: 'queue', label: 'Study queue' }]}
+      activeDestination="queue"
+      onNavigate={() => setView({ name: 'queue' })}
+      email={email ?? ''}
+      onLogout={handleLogout}
+      isLoggingOut={isLoggingOut}
+    >
+      {logoutError && <p role="alert">{logoutError}</p>}
+      {view.name === 'queue' && (
+        <StudyQueuePage onSelectItem={(id) => setView({ name: 'detail', id })} onCreateNew={() => setView({ name: 'new' })} />
       )}
-    </main>
+      {view.name === 'detail' && (
+        <StudyItemDetailPage key={view.id} itemId={view.id} onBack={() => setView({ name: 'queue' })} onDeleted={() => setView({ name: 'queue' })} />
+      )}
+      {view.name === 'new' && <NewStudyItemPage onCreated={(id) => setView({ name: 'detail', id })} onCancel={() => setView({ name: 'queue' })} />}
+    </AppShell>
   )
 }
 

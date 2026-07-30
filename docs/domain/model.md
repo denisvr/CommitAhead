@@ -46,7 +46,7 @@ The primary unit of preparation and the only entity ranked in the study queue, s
 | `demand` | `min(Σ EvidenceLink.weight for existing links targeting the item, 5)` |
 | `effectiveScore` | `(importance/5)×importanceWeight + (demand/5)×demandWeight + ((5−mastery)/4)×masteryGapWeight`, or `priorityOverride.score` |
 
-The default weights are 40/35/25. Tiebreaking between equal EffectiveScores remains a Phase 1 decision in `docs/tbd.md`.
+The default weights are 40/35/25. The ranked queue orders by `EffectiveScore DESC, CreatedAt ASC, Id ASC` — see `docs/architecture/persistence.md` ("Ranked-list ordering").
 
 ---
 

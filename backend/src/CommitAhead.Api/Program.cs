@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CommitAhead.Api.DependencyInjection;
 using CommitAhead.Api.Security;
 using CommitAhead.Application.DependencyInjection;
@@ -5,7 +6,14 @@ using CommitAhead.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Microsoft.AspNetCore.OpenApi's schema generator reads Http.Json.JsonOptions, not MVC's
+// JsonOptions above — without this, the OpenAPI document (and the frontend's generated
+// TypeScript client) would describe enums as plain numbers while every actual response, per the
+// MVC option, serializes them as strings. Both must agree.
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 builder.Services.AddApplication();

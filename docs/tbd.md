@@ -51,22 +51,6 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ---
 
-## Domain / Architecture
-
-### Typed detail storage strategy (StudyItem discriminated union)
-**Needed for:** Phase 1
-**Option A:** JSONB column on `StudyItems` — simple, no joins; queries on detail fields require JSON operators
-**Option B:** Four dedicated 1:1 detail tables keyed by `study_item_id`; relational and strongly constrained but adds joins. This is explicit composition mapping, not EF inheritance/TPT/TPC.
-**Affects:** `docs/architecture/persistence.md`, EF Core mapping, migration complexity, any query that filters by detail fields
-
-### Tiebreaking for equal EffectiveScore
-**Needed for:** Phase 1 (ranked-list query)
-**Question:** When two StudyItems have identical EffectiveScore, what is the secondary sort key?
-**Options:** `createdAt ASC` (oldest first), `title ASC` (alphabetical), `updatedAt DESC` (most recently touched), random (non-deterministic)
-**Affects:** `docs/domain/model.md`, ranked-list query, integration tests for ordering
-
----
-
 ## Frontend
 
 ### CV export format

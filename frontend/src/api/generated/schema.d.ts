@@ -4,6 +4,382 @@
  */
 
 export interface paths {
+    "/api/scoring-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScoringConfigResponse"];
+                        "application/json": components["schemas"]["ScoringConfigResponse"];
+                        "text/json": components["schemas"]["ScoringConfigResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateScoringConfigRequest"];
+                    "text/json": components["schemas"]["UpdateScoringConfigRequest"];
+                    "application/*+json": components["schemas"]["UpdateScoringConfigRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateStudyItemRequest"];
+                    "text/json": components["schemas"]["CreateStudyItemRequest"];
+                    "application/*+json": components["schemas"]["CreateStudyItemRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StudyItemCreatedResponse"];
+                        "application/json": components["schemas"]["StudyItemCreatedResponse"];
+                        "text/json": components["schemas"]["StudyItemCreatedResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StudyItemResponse"];
+                        "application/json": components["schemas"]["StudyItemResponse"];
+                        "text/json": components["schemas"]["StudyItemResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateStudyItemRequest"];
+                    "text/json": components["schemas"]["UpdateStudyItemRequest"];
+                    "application/*+json": components["schemas"]["UpdateStudyItemRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items/{id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SubmitStudyReviewRequest"];
+                    "text/json": components["schemas"]["SubmitStudyReviewRequest"];
+                    "application/*+json": components["schemas"]["SubmitStudyReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items/{id}/priority-override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetPriorityOverrideRequest"];
+                    "text/json": components["schemas"]["SetPriorityOverrideRequest"];
+                    "application/*+json": components["schemas"]["SetPriorityOverrideRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RankedStudyItemResponse"][];
+                        "application/json": components["schemas"]["RankedStudyItemResponse"][];
+                        "text/json": components["schemas"]["RankedStudyItemResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -259,9 +635,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CreateStudyItemRequest: {
+            title: string;
+            category: components["schemas"]["StudyItemCategory"];
+            /** Format: int32 */
+            importance: number | string;
+            /** Format: int32 */
+            initialMastery: number | string;
+            tags: string[];
+            details: components["schemas"]["StudyItemDetailsDto"];
+        };
         CsrfResponse: {
             token: string;
         };
+        /** @enum {unknown} */
+        Difficulty: "Easy" | "Medium" | "Hard";
         LoginRequest: {
             email: string;
         };
@@ -270,6 +658,159 @@ export interface components {
         };
         MeResponse: {
             email: string;
+        };
+        RankedStudyItemResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            category: components["schemas"]["StudyItemCategory"];
+            /** Format: int32 */
+            importance: number | string;
+            /** Format: double */
+            mastery: number | string;
+            /** Format: double */
+            demand: number | string;
+            /** Format: int32 */
+            effectiveScore: number | string;
+            /** Format: int32 */
+            priorityOverrideScore: null | number | string;
+            priorityOverrideReason: null | string;
+            /** Format: date-time */
+            lastReviewedAtUtc: null | string;
+            /** Format: date-time */
+            createdAtUtc: string;
+        };
+        ScoreBreakdownResponse: {
+            /** Format: double */
+            importanceContribution: number | string;
+            /** Format: double */
+            demandContribution: number | string;
+            /** Format: double */
+            masteryGapContribution: number | string;
+            /** Format: int32 */
+            total: number | string;
+        };
+        ScoringConfigResponse: {
+            /** Format: int32 */
+            importanceWeight: number | string;
+            /** Format: int32 */
+            demandWeight: number | string;
+            /** Format: int32 */
+            masteryGapWeight: number | string;
+            isOverridden: boolean;
+        };
+        SetPriorityOverrideRequest: {
+            /** Format: int32 */
+            score: number | string;
+            reason: string;
+        };
+        /** @enum {unknown} */
+        StudyItemCategory: "Theory" | "LeetCode" | "SystemDesign" | "Behavioral";
+        StudyItemCreatedResponse: {
+            /** Format: uuid */
+            id: string;
+        };
+        StudyItemDetailsDto: components["schemas"]["StudyItemDetailsDtoLeetCodeDetailsDto"] | components["schemas"]["StudyItemDetailsDtoSystemDesignDetailsDto"] | components["schemas"]["StudyItemDetailsDtoBehavioralDetailsDto"] | components["schemas"]["StudyItemDetailsDtoTheoryDetailsDto"];
+        StudyItemDetailsDtoBehavioralDetailsDto: {
+            /** @enum {string} */
+            kind?: "Behavioral";
+            competencies: string[];
+            questionVariants: string[];
+            situation: string;
+            task: string;
+            action: string;
+            result: string;
+            reflection: null | string;
+        };
+        StudyItemDetailsDtoLeetCodeDetailsDto: {
+            /** @enum {string} */
+            kind?: "LeetCode";
+            /** Format: int32 */
+            problemNumber: null | number | string;
+            url: null | string;
+            difficulty: components["schemas"]["Difficulty"];
+            patterns: string[];
+            expectedTimeComplexity: string;
+            expectedSpaceComplexity: string;
+            approachMarkdown: string;
+            cSharpSolution: null | string;
+        };
+        StudyItemDetailsDtoSystemDesignDetailsDto: {
+            /** @enum {string} */
+            kind?: "SystemDesign";
+            promptMarkdown: string;
+            clarifyingQuestions: string[];
+            functionalRequirements: string[];
+            nonFunctionalRequirements: string[];
+            evaluationChecklist: string[];
+            referenceSolutionMarkdown: string;
+        };
+        StudyItemDetailsDtoTheoryDetailsDto: {
+            /** @enum {string} */
+            kind?: "Theory";
+            summaryMarkdown: string;
+            keyPoints: string[];
+            interviewQuestions: string[];
+            references: string[];
+        };
+        StudyItemResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            category: components["schemas"]["StudyItemCategory"];
+            status: components["schemas"]["StudyItemStatus"];
+            /** Format: int32 */
+            importance: number | string;
+            /** Format: int32 */
+            initialMastery: number | string;
+            tags: string[];
+            details: components["schemas"]["StudyItemDetailsDto"];
+            /** Format: int32 */
+            priorityOverrideScore: null | number | string;
+            priorityOverrideReason: null | string;
+            /** Format: double */
+            mastery: number | string;
+            /** Format: double */
+            demand: number | string;
+            /** Format: int32 */
+            effectiveScore: number | string;
+            scoreBreakdown: components["schemas"]["ScoreBreakdownResponse"];
+            reviews: components["schemas"]["StudyReviewResponse"][];
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        /** @enum {unknown} */
+        StudyItemStatus: "Active" | "Archived";
+        StudyReviewResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            reviewedAtUtc: string;
+            /** Format: int32 */
+            confidenceRating: number | string;
+            notesMarkdown: null | string;
+        };
+        SubmitStudyReviewRequest: {
+            /** Format: int32 */
+            confidenceRating: number | string;
+            notesMarkdown: null | string;
+        };
+        UpdateScoringConfigRequest: {
+            /** Format: int32 */
+            importanceWeight: number | string;
+            /** Format: int32 */
+            demandWeight: number | string;
+            /** Format: int32 */
+            masteryGapWeight: number | string;
+        };
+        UpdateStudyItemRequest: {
+            title: string;
+            /** Format: int32 */
+            importance: number | string;
+            tags: string[];
+            details: components["schemas"]["StudyItemDetailsDto"];
         };
     };
     responses: never;

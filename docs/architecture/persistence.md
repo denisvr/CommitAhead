@@ -7,11 +7,14 @@ EF Core 10 code-first migrations against PostgreSQL (Supabase). The `CommitAhead
 ## Key Mapping Decisions
 
 ### Typed category details (discriminated union)
-`StudyItem.details` is a discriminated union of `LeetCodeDetails`, `SystemDesignDetails`, `BehavioralDetails`, and `TheoryDetails`. The persistence strategy for this union is **TBD** (see `docs/tbd.md`). Candidates:
-- **JSONB column** on `StudyItems` table — simple, schema-less, but queries on detail fields are less ergonomic.
-- **Four explicit 1:1 detail tables** — `LeetCodeDetails`, `SystemDesignDetails`, etc. keyed by a FK to `StudyItems`. More relational, but adds joins. This is composition mapping, not EF inheritance/TPT/TPC.
+`StudyItem.details` is a discriminated union of `LeetCodeDetails`, `SystemDesignDetails`, `BehavioralDetails`, and `TheoryDetails`, persisted as a single `jsonb` column (`details`) on `study_items`. The `category` column is the discriminator for domain validation (invariant 6), but the JSON payload is self-describing — it carries its own `kind` tag — because an EF Core `ValueConverter` operates on one column at a time and cannot read a sibling column during (de)serialization.
 
-The chosen approach will be documented here once decided.
+The Domain layer never references JSON: `StudyItemDetails` and its four subtypes are plain C# types with no serialization attributes. A dedicated converter in `CommitAhead.Infrastructure` (`StudyItemDetailsJsonConverter`, a `System.Text.Json.Serialization.JsonConverter<StudyItemDetails>`) owns the `kind` tag and the mapping to/from each concrete type; the EF `ValueConverter` wraps it and maps the column with `HasColumnType("jsonb")`. This keeps JSON serialization entirely an Infrastructure concern.
+
+No joins are needed to load or rank a StudyItem. Nothing in Phase 1 filters the ranked query by a category-specific detail field — if that need arises later, it is answered by adding a computed/expression index on the `jsonb` column rather than migrating to relational detail tables.
+
+### Ranked-list ordering
+The ranked-list query (`IRankedStudyQueueQuery`) orders by `EffectiveScore DESC, CreatedAt ASC, Id ASC`. `CreatedAt ASC` is the tiebreak for equal `EffectiveScore` — between two equally-prioritised items, the one waiting longer surfaces first. `Id ASC` is a final tiebreak for the (currently impossible without sub-second `CreatedAt` collisions) case where both are also equal, guaranteeing a fully deterministic order for tests and pagination.
 
 ### Polymorphic source reference (EvidenceLink, AnalysisDraft)
 Both `EvidenceLink` and `AnalysisDraft` carry `sourceType` (enum column) + `sourceId` (UUID column). No database foreign key can enforce this across three different target tables. Referential integrity is enforced by the application layer (use case validates existence before creating a link or draft).

@@ -1,0 +1,20 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-28) 0;
+  border-top: var(--border-hairline) solid var(--border-soft);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: var(--weight-semibold);
+}
+
+.description {
+  margin: 0;
+  color: var(--text-muted);
+  max-width: 52ch;
+}

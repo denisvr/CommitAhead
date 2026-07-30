@@ -1,0 +1,27 @@
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  padding: var(--space-4) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--text);
+  background: var(--surface);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--critical);
+}
+
+textarea.input {
+  min-height: calc(var(--control-height) * 2);
+  resize: vertical;
+  line-height: var(--leading-prose);
+}

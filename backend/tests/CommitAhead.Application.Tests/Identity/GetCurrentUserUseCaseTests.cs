@@ -4,12 +4,6 @@ namespace CommitAhead.Application.Tests.Identity;
 
 public class GetCurrentUserUseCaseTests
 {
-    private sealed class StubCurrentUser : ICurrentUser
-    {
-        public required Guid UserId { get; init; }
-        public required string Email { get; init; }
-    }
-
     [Fact]
     public void Execute_ReturnsTheCurrentUsersIdAndEmail()
     {

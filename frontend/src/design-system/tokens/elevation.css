@@ -1,0 +1,20 @@
+/* There is effectively no elevation. Paper does not float. The only shadow in
+   the system belongs to things that genuinely sit above the page: dialogs,
+   popovers, the mobile sheet. */
+:root {
+  --shadow-flat: none;
+  --shadow-overlay: 0 12px 32px rgba(27, 26, 23, 0.16), 0 2px 6px rgba(27, 26, 23, 0.10);
+  --scrim: rgba(27, 26, 23, 0.32);
+}
+
+:root[data-theme="dark"] {
+  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
+    --scrim: rgba(0, 0, 0, 0.55);
+  }
+}

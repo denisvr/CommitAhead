@@ -1,0 +1,38 @@
+/* Type — one humanist sans for everything, one mono for digits.
+   Hierarchy is size, weight and space. There is no second display family and
+   no colour-as-hierarchy. Minimum type size in the product is 12.5px, and every
+   size at or below 15px is paired only with --text, --text-muted or
+   --text-faint, all of which clear 4.5:1 in both themes. */
+:root {
+  --font-sans: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+  --text-numeral: 52px;   /* the single effective-score figure */
+  --text-display: 42px;   /* wordmark, login */
+  --text-title: 30px;     /* page title */
+  --text-headline: 25px;  /* the "next" item */
+  --text-lead: 19px;
+  --text-lg: 16.5px;      /* prose */
+  --text-md: 15.5px;      /* list row title */
+  --text-base: 15px;      /* default UI */
+  --text-sm: 13.5px;      /* secondary UI, dense rows */
+  --text-xs: 12.5px;      /* metadata — floor for body text */
+  --text-micro: 11px;     /* mono uppercase labels only, tracked +0.14em */
+
+  --leading-display: 1.05;
+  --leading-title: 1.15;
+  --leading-ui: 1.5;
+  --leading-prose: 1.65;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --track-display: -0.035em;
+  --track-title: -0.03em;
+  --track-headline: -0.02em;
+  --track-label: 0.14em;
+
+  --numeric-tabular: tabular-nums; /* @kind other */
+}
