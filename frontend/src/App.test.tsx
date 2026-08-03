@@ -52,6 +52,26 @@ describe('App', () => {
     expect(await screen.findByLabelText('Email')).toBeInTheDocument()
   })
 
+  it('shows a retryable connection error when the initial /api/me check throws, never the login form', async () => {
+    getMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(<App />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach commitahead/i)
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+  })
+
+  it('retrying after a connection error re-checks /api/me and succeeds', async () => {
+    getMock.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 401 }) })
+
+    render(<App />)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument()
+  })
+
   it('shows the study queue and the signed-in email once authenticated', async () => {
     mockAuthenticated()
 
@@ -69,7 +89,7 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
 
     expect(await screen.findByLabelText('Email')).toBeInTheDocument()
     expect(postMock).toHaveBeenCalledWith('/auth/logout', { headers: { 'X-CSRF-TOKEN': 'csrf-token' } })
@@ -96,7 +116,7 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
@@ -112,7 +132,7 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
@@ -126,7 +146,7 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
@@ -142,10 +162,10 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
     expect(await screen.findByRole('alert')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
 
     expect(await screen.findByLabelText('Email')).toBeInTheDocument()
   })

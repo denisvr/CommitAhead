@@ -2,9 +2,10 @@ import createClient from 'openapi-fetch'
 import type { paths } from './generated/schema'
 
 // The API is always same-origin (Kestrel serves the production build; Vite's dev proxy forwards
-// /api and /auth locally) — window.location.origin resolves correctly in every environment,
-// including jsdom in tests, where a bare relative baseUrl fails to construct a valid Request.
-export const apiClient = createClient<paths>({ baseUrl: window.location.origin, credentials: 'include' })
+// /api and /auth locally), so production/dev never set VITE_API_BASE_URL and every path stays
+// relative — no window global needed. Vitest (see vite.config.ts) sets it because Node's
+// fetch/Request, unlike a real browser, has no document to resolve a relative URL against.
+export const apiClient = createClient<paths>({ baseUrl: import.meta.env.VITE_API_BASE_URL, credentials: 'include' })
 
 const RetryHeader = 'X-CommitAhead-Retry'
 

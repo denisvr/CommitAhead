@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../../design-system/components/Button'
 import { Chip } from '../../design-system/components/Chip'
 import { Icon } from '../../design-system/Icon'
+import { RestrictedMarkdown } from '../../design-system/components/RestrictedMarkdown'
 import { ScoreBreakdown } from '../../design-system/components/ScoreBreakdown'
 import {
   archiveStudyItem,
@@ -298,7 +299,7 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
                 <span className={styles.reviewMeta}>
                   {new Date(review.reviewedAtUtc).toLocaleDateString()} · confidence {review.confidenceRating}
                 </span>
-                {review.notesMarkdown && <p className={styles.reviewNotes}>{review.notesMarkdown}</p>}
+                {review.notesMarkdown && <RestrictedMarkdown className={styles.reviewNotes}>{review.notesMarkdown}</RestrictedMarkdown>}
               </li>
             ))}
           </ul>

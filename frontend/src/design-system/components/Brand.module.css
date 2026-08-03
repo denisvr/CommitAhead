@@ -1,0 +1,26 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.mark {
+  color: var(--accent);
+}
+
+.wordmark {
+  font-size: var(--text-md);
+  letter-spacing: var(--track-headline);
+}
+
+.wordmarkStrong {
+  font-weight: var(--weight-bold);
+}
+
+.wordmarkLight {
+  font-weight: var(--weight-regular);
+}
+
+.large .wordmark {
+  font-size: var(--text-title);
+}

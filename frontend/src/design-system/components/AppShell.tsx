@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Brand } from './Brand'
 import styles from './AppShell.module.css'
 
 export type NavDestination = {
@@ -16,34 +17,31 @@ type AppShellProps = {
   children: ReactNode
 }
 
-// Owns the desktop sidebar / responsive mobile bar (components.md "AppShell"). Only lists
-// destinations this slice actually built — StudyItem categories are filters, never nav
+// Owns the desktop sidebar and the mobile top bar + bottom nav (components.md "AppShell",
+// page-patterns.md "mobile replaces the sidebar below 768px; it does not merely squeeze it").
+// Renders the same destinations twice — once for the desktop sidebar, once for the mobile bottom
+// nav — each hidden by the other viewport's media query rather than by JS breakpoint detection.
+// Only lists destinations this slice actually built — StudyItem categories are filters, never nav
 // destinations, and the remaining product areas (profile, job analyses, ...) aren't built yet.
 export function AppShell({ destinations, activeDestination, onNavigate, email, onLogout, isLoggingOut, children }: AppShellProps) {
+  const renderNavButton = (destination: NavDestination) => (
+    <button
+      key={destination.key}
+      type="button"
+      className={[styles.navLink, destination.key === activeDestination ? styles.navLinkActive : ''].join(' ').trim()}
+      aria-current={destination.key === activeDestination ? 'page' : undefined}
+      onClick={() => onNavigate(destination.key)}
+    >
+      {destination.label}
+    </button>
+  )
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <svg className={styles.mark} viewBox="0 0 32 46" width="16" height="23" fill="currentColor" fillRule="evenodd" role="img" aria-label="CommitAhead">
-            <path d="M2 0h28a2 2 0 0 1 2 2v44l-9.6-11.4h-4L0 46V2a2 2 0 0 1 2-2Z M6 11.5h20v3.5H6z" />
-          </svg>
-          <span className={styles.wordmark}>
-            <span className={styles.wordmarkStrong}>Commit</span>
-            <span className={styles.wordmarkLight}>Ahead</span>
-          </span>
-        </div>
+        <Brand />
         <nav className={styles.nav} aria-label="Primary">
-          {destinations.map((destination) => (
-            <button
-              key={destination.key}
-              type="button"
-              className={[styles.navLink, destination.key === activeDestination ? styles.navLinkActive : ''].join(' ').trim()}
-              aria-current={destination.key === activeDestination ? 'page' : undefined}
-              onClick={() => onNavigate(destination.key)}
-            >
-              {destination.label}
-            </button>
-          ))}
+          {destinations.map(renderNavButton)}
         </nav>
         <div className={styles.footer}>
           <p className={styles.email}>{email}</p>
@@ -52,7 +50,19 @@ export function AppShell({ destinations, activeDestination, onNavigate, email, o
           </button>
         </div>
       </aside>
+
+      <header className={styles.mobileHeader}>
+        <Brand className={styles.mobileBrand} />
+        <button type="button" className={styles.mobileLogout} onClick={onLogout} disabled={isLoggingOut}>
+          Log out
+        </button>
+      </header>
+
       <main className={styles.content}>{children}</main>
+
+      <nav className={styles.mobileNav} aria-label="Primary">
+        {destinations.map(renderNavButton)}
+      </nav>
     </div>
   )
 }

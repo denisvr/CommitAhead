@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { Button } from '../../../design-system/components/Button'
 import { Chip } from '../../../design-system/components/Chip'
+import { RestrictedMarkdown } from '../../../design-system/components/RestrictedMarkdown'
 import type { StudyItemDetailsDto } from '../api'
 import type { BehavioralDetailsValue, LeetCodeDetailsValue, SystemDesignDetailsValue, TheoryDetailsValue } from './types'
 import styles from './DetailsSummary.module.css'
 
-function Row({ label, value }: { label: string; value: string }) {
+// markdown fields (ApproachMarkdown, PromptMarkdown, ReferenceSolutionMarkdown, SummaryMarkdown)
+// go through RestrictedMarkdown; everything else (Situation/Task/Action/Result, complexities,
+// URLs) is a plain string per the domain model, not Markdown, and stays as-is.
+function Row({ label, value, markdown }: { label: string; value: string; markdown?: boolean }) {
   return (
     <div className={styles.row}>
       <span className={styles.label}>{label}</span>
-      <p className={styles.value}>{value}</p>
+      {markdown ? <RestrictedMarkdown className={styles.value}>{value}</RestrictedMarkdown> : <p className={styles.value}>{value}</p>}
     </div>
   )
 }
@@ -58,7 +62,7 @@ function LeetCodeSummary({ details }: { details: LeetCodeDetailsValue }) {
       <TagsRow label="Patterns" tags={details.patterns} />
       <Row label="Expected time complexity" value={details.expectedTimeComplexity} />
       <Row label="Expected space complexity" value={details.expectedSpaceComplexity} />
-      <Row label="Approach" value={details.approachMarkdown} />
+      <Row label="Approach" value={details.approachMarkdown} markdown />
       {details.cSharpSolution && <Row label="C# solution" value={details.cSharpSolution} />}
     </div>
   )
@@ -69,7 +73,7 @@ function SystemDesignSummary({ details }: { details: SystemDesignDetailsValue })
 
   return (
     <div className={styles.summary}>
-      <Row label="Prompt" value={details.promptMarkdown} />
+      <Row label="Prompt" value={details.promptMarkdown} markdown />
       <TagsRow label="Clarifying questions" tags={details.clarifyingQuestions} />
       <TagsRow label="Functional requirements" tags={details.functionalRequirements} />
       <TagsRow label="Non-functional requirements" tags={details.nonFunctionalRequirements} />
@@ -77,7 +81,7 @@ function SystemDesignSummary({ details }: { details: SystemDesignDetailsValue })
       <div className={styles.row}>
         <span className={styles.label}>Reference solution</span>
         {revealed ? (
-          <p className={styles.value}>{details.referenceSolutionMarkdown}</p>
+          <RestrictedMarkdown className={styles.value}>{details.referenceSolutionMarkdown}</RestrictedMarkdown>
         ) : (
           <Button type="button" variant="secondary" onClick={() => setRevealed(true)}>
             Reveal reference solution
@@ -105,7 +109,7 @@ function BehavioralSummary({ details }: { details: BehavioralDetailsValue }) {
 function TheorySummary({ details }: { details: TheoryDetailsValue }) {
   return (
     <div className={styles.summary}>
-      <Row label="Summary" value={details.summaryMarkdown} />
+      <Row label="Summary" value={details.summaryMarkdown} markdown />
       <TagsRow label="Key points" tags={details.keyPoints} />
       <TagsRow label="Interview questions" tags={details.interviewQuestions} />
       <TagsRow label="References" tags={details.references} />

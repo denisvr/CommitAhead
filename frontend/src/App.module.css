@@ -1,0 +1,36 @@
+.authScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  min-height: 100vh;
+  padding: var(--space-16);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  text-align: center;
+}
+
+.mark {
+  color: var(--accent);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-title);
+  letter-spacing: var(--track-title);
+}
+
+.headingStrong {
+  font-weight: var(--weight-bold);
+}
+
+.headingLight {
+  font-weight: var(--weight-regular);
+}
+
+.message {
+  max-width: 40ch;
+  color: var(--text-muted);
+}
