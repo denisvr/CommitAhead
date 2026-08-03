@@ -231,4 +231,29 @@ public class StudyItemTests
         // here, both are included, but the ordering itself must not throw and must be stable.
         Assert.Equal(3m, item.ComputeMastery());
     }
+
+    [Fact]
+    public void Archive_SetsStatusToArchived_AndBumpsUpdatedAt()
+    {
+        var item = CreateItem();
+        var archivedAt = Now.AddDays(1);
+
+        item.Archive(archivedAt);
+
+        Assert.Equal(StudyItemStatus.Archived, item.Status);
+        Assert.Equal(archivedAt, item.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Restore_AfterArchive_SetsStatusBackToActive_AndBumpsUpdatedAt()
+    {
+        var item = CreateItem();
+        item.Archive(Now.AddDays(1));
+        var restoredAt = Now.AddDays(2);
+
+        item.Restore(restoredAt);
+
+        Assert.Equal(StudyItemStatus.Active, item.Status);
+        Assert.Equal(restoredAt, item.UpdatedAtUtc);
+    }
 }

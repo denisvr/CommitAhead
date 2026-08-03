@@ -19,6 +19,12 @@ public sealed class FakeStudyItemRepository : IStudyItemRepository
         return Task.FromResult(item);
     }
 
+    public Task<IReadOnlyList<StudyItem>> GetAllAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<StudyItem> items = _items.Where(i => i.OwnerUserId == ownerUserId).ToList();
+        return Task.FromResult(items);
+    }
+
     public Task AddAsync(StudyItem item, CancellationToken cancellationToken)
     {
         _items.Add(item);

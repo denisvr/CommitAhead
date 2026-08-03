@@ -162,6 +162,80 @@ public class StudyItemsEndpointTests
     }
 
     [Fact]
+    public async Task Restore_AfterArchive_SetsStatusBackToActive()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
+        var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{created!.Id}/archive", accessCookie);
+
+        var restoreResponse = await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{created.Id}/restore", accessCookie);
+        Assert.Equal(HttpStatusCode.NoContent, restoreResponse.StatusCode);
+
+        var getResponse = await client.SendGetAsync($"/api/study-items/{created.Id}", accessCookie);
+        var item = await getResponse.Content.ReadFromJsonAsync<StudyItemResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal(StudyItemStatus.Active, item!.Status);
+    }
+
+    [Fact]
+    public async Task Restore_ForNonexistentId_ReturnsNotFound()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{Guid.NewGuid()}/restore", accessCookie);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_WithoutStatusFilter_ReturnsActiveAndArchivedItems()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var activeResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest("Active item"));
+        var active = await activeResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var archivedResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest("Archived item"));
+        var archived = await archivedResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{archived!.Id}/archive", accessCookie);
+
+        var listResponse = await client.SendGetAsync("/api/study-items", accessCookie);
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var items = await listResponse.Content.ReadFromJsonAsync<List<StudyItemSummaryResponse>>(StudyItemsApiTestHelpers.JsonOptions);
+
+        Assert.Equal(2, items!.Count);
+        Assert.Contains(items, i => i.Id == active!.Id && i.Status == StudyItemStatus.Active);
+        Assert.Contains(items, i => i.Id == archived.Id && i.Status == StudyItemStatus.Archived);
+    }
+
+    [Fact]
+    public async Task Get_WithActiveStatusFilter_ExcludesArchivedItems()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var activeResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest("Active item"));
+        var active = await activeResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var archivedResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest("Archived item"));
+        var archived = await archivedResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{archived!.Id}/archive", accessCookie);
+
+        var listResponse = await client.SendGetAsync("/api/study-items?status=Active", accessCookie);
+        var items = await listResponse.Content.ReadFromJsonAsync<List<StudyItemSummaryResponse>>(StudyItemsApiTestHelpers.JsonOptions);
+
+        Assert.Equal([active!.Id], items!.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task Get_IsScopedToOwner()
+    {
+        var (ownerClient, ownerCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        await ownerClient.SendMutatingAsync(HttpMethod.Post, "/api/study-items", ownerCookie, ValidCreateRequest());
+
+        var (otherClient, otherCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var listResponse = await otherClient.SendGetAsync("/api/study-items", otherCookie);
+        var items = await listResponse.Content.ReadFromJsonAsync<List<StudyItemSummaryResponse>>(StudyItemsApiTestHelpers.JsonOptions);
+
+        Assert.Empty(items!);
+    }
+
+    [Fact]
     public async Task Delete_WithNoReviews_Succeeds()
     {
         var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());

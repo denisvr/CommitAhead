@@ -182,4 +182,23 @@ public class StudyItemRepositoryTests : IAsyncLifetime
         Assert.NotNull(stillThere);
         Assert.Single(stillThere.Reviews);
     }
+
+    [Fact]
+    public async Task GetAllAsync_ReturnsActiveAndArchivedItems_ScopedToOwner()
+    {
+        var repository = new StudyItemRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var otherOwnerUserId = await TestUsers.CreateAsync(_dbContext);
+        var active = CreateItem(ownerUserId);
+        var archived = CreateItem(ownerUserId, priorityOverride: null);
+        archived.Archive(DateTime.UtcNow);
+        await repository.AddAsync(active, CancellationToken.None);
+        await repository.AddAsync(archived, CancellationToken.None);
+        await repository.AddAsync(CreateItem(otherOwnerUserId), CancellationToken.None);
+
+        var items = await repository.GetAllAsync(ownerUserId, CancellationToken.None);
+
+        Assert.Equal(2, items.Count);
+        Assert.All(items, item => Assert.Equal(ownerUserId, item.OwnerUserId));
+    }
 }

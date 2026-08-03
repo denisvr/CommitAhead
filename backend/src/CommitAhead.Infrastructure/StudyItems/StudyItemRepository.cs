@@ -21,6 +21,13 @@ public sealed class StudyItemRepository : IStudyItemRepository
             .SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<StudyItem>> GetAllAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.StudyItems
+            .Where(item => item.OwnerUserId == ownerUserId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(StudyItem item, CancellationToken cancellationToken)
     {
         _dbContext.StudyItems.Add(item);

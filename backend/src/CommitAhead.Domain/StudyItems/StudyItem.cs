@@ -86,6 +86,13 @@ public sealed class StudyItem
         UpdatedAtUtc = updatedAtUtc;
     }
 
+    /// <summary>The reverse of Archive — also purely user-initiated (invariant 1).</summary>
+    public void Restore(DateTime updatedAtUtc)
+    {
+        Status = StudyItemStatus.Active;
+        UpdatedAtUtc = updatedAtUtc;
+    }
+
     public void AddReview(StudyReview review, DateTime updatedAtUtc)
     {
         _reviews.Add(review);

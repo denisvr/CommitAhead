@@ -6,6 +6,7 @@ export type StudyItemStatus = components['schemas']['StudyItemStatus']
 export type Difficulty = components['schemas']['Difficulty']
 export type StudyItemDetailsDto = components['schemas']['StudyItemDetailsDto']
 export type StudyItemResponse = components['schemas']['StudyItemResponse']
+export type StudyItemSummaryResponse = components['schemas']['StudyItemSummaryResponse']
 export type RankedStudyItemResponse = components['schemas']['RankedStudyItemResponse']
 export type ScoringConfigResponse = components['schemas']['ScoringConfigResponse']
 export type StudyReviewResponse = components['schemas']['StudyReviewResponse']
@@ -50,6 +51,15 @@ export async function fetchStudyQueue(): Promise<RankedStudyItemResponse[]> {
   return data
 }
 
+export async function fetchStudyItems(status?: StudyItemStatus): Promise<StudyItemSummaryResponse[]> {
+  const { data, response } = await apiClient.GET('/api/study-items', { params: { query: status ? { status } : {} } })
+  if (!response.ok || !data) {
+    throw new Error(await describeError(response, `Could not load your study items (status ${response.status}).`))
+  }
+
+  return data
+}
+
 export async function fetchStudyItem(id: string): Promise<StudyItemResponse | null> {
   const { data, response } = await apiClient.GET('/api/study-items/{id}', { params: { path: { id } } })
   if (response.status === 404) {
@@ -86,6 +96,14 @@ export async function archiveStudyItem(id: string): Promise<void> {
   const { response } = await apiClient.POST('/api/study-items/{id}/archive', { headers, params: { path: { id } } })
   if (!response.ok) {
     throw new Error(await describeError(response, `Could not archive this study item (status ${response.status}).`))
+  }
+}
+
+export async function restoreStudyItem(id: string): Promise<void> {
+  const headers = await csrfHeaders()
+  const { response } = await apiClient.POST('/api/study-items/{id}/restore', { headers, params: { path: { id } } })
+  if (!response.ok) {
+    throw new Error(await describeError(response, `Could not restore this study item (status ${response.status}).`))
   }
 }
 

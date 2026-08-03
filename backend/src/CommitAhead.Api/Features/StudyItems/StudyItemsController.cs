@@ -11,9 +11,11 @@ namespace CommitAhead.Api.Features.StudyItems;
 public sealed class StudyItemsController : ControllerBase
 {
     private readonly CreateStudyItemUseCase _createUseCase;
+    private readonly GetStudyItemsUseCase _getListUseCase;
     private readonly GetStudyItemUseCase _getUseCase;
     private readonly UpdateStudyItemUseCase _updateUseCase;
     private readonly ArchiveStudyItemUseCase _archiveUseCase;
+    private readonly RestoreStudyItemUseCase _restoreUseCase;
     private readonly DeleteStudyItemUseCase _deleteUseCase;
     private readonly SubmitStudyReviewUseCase _submitReviewUseCase;
     private readonly SetPriorityOverrideUseCase _setPriorityOverrideUseCase;
@@ -21,22 +23,33 @@ public sealed class StudyItemsController : ControllerBase
 
     public StudyItemsController(
         CreateStudyItemUseCase createUseCase,
+        GetStudyItemsUseCase getListUseCase,
         GetStudyItemUseCase getUseCase,
         UpdateStudyItemUseCase updateUseCase,
         ArchiveStudyItemUseCase archiveUseCase,
+        RestoreStudyItemUseCase restoreUseCase,
         DeleteStudyItemUseCase deleteUseCase,
         SubmitStudyReviewUseCase submitReviewUseCase,
         SetPriorityOverrideUseCase setPriorityOverrideUseCase,
         ClearPriorityOverrideUseCase clearPriorityOverrideUseCase)
     {
         _createUseCase = createUseCase;
+        _getListUseCase = getListUseCase;
         _getUseCase = getUseCase;
         _updateUseCase = updateUseCase;
         _archiveUseCase = archiveUseCase;
+        _restoreUseCase = restoreUseCase;
         _deleteUseCase = deleteUseCase;
         _submitReviewUseCase = submitReviewUseCase;
         _setPriorityOverrideUseCase = setPriorityOverrideUseCase;
         _clearPriorityOverrideUseCase = clearPriorityOverrideUseCase;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<StudyItemSummaryResponse>>> Get([FromQuery] string? status, CancellationToken cancellationToken)
+    {
+        var results = await _getListUseCase.ExecuteAsync(status, cancellationToken);
+        return Ok(results.Select(StudyItemSummaryResponse.FromResult).ToList());
     }
 
     [HttpPost]
@@ -67,6 +80,13 @@ public sealed class StudyItemsController : ControllerBase
     public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
     {
         var result = await _archiveUseCase.ExecuteAsync(id, cancellationToken);
+        return result == StudyItemMutationResult.NotFound ? NotFound() : NoContent();
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _restoreUseCase.ExecuteAsync(id, cancellationToken);
         return result == StudyItemMutationResult.NotFound ? NotFound() : NoContent();
     }
 
@@ -106,6 +126,19 @@ public sealed class StudyItemsController : ControllerBase
 }
 
 public sealed record StudyItemCreatedResponse(Guid Id);
+
+public sealed record StudyItemSummaryResponse(
+    Guid Id,
+    string Title,
+    StudyItemCategory Category,
+    StudyItemStatus Status,
+    int Importance,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc)
+{
+    public static StudyItemSummaryResponse FromResult(StudyItemSummary result) => new(
+        result.Id, result.Title, result.Category, result.Status, result.Importance, result.CreatedAtUtc, result.UpdatedAtUtc);
+}
 
 public sealed record SubmitStudyReviewRequest(int ConfidenceRating, string? NotesMarkdown);
 

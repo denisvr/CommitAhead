@@ -88,7 +88,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StudyItemSummaryResponse"][];
+                        "application/json": components["schemas"]["StudyItemSummaryResponse"][];
+                        "text/json": components["schemas"]["StudyItemSummaryResponse"][];
+                    };
+                };
+            };
+        };
         put?: never;
         post: {
             parameters: {
@@ -208,6 +231,41 @@ export interface paths {
         trace?: never;
     };
     "/api/study-items/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/study-items/{id}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -784,6 +842,19 @@ export interface components {
         };
         /** @enum {unknown} */
         StudyItemStatus: "Active" | "Archived";
+        StudyItemSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            category: components["schemas"]["StudyItemCategory"];
+            status: components["schemas"]["StudyItemStatus"];
+            /** Format: int32 */
+            importance: number | string;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
         StudyReviewResponse: {
             /** Format: uuid */
             id: string;

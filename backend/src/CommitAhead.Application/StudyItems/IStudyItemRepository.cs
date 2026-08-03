@@ -7,6 +7,13 @@ public interface IStudyItemRepository
     /// <summary>Scoped to ownerUserId — never returns another user's StudyItem (ADR-0015).</summary>
     Task<StudyItem?> GetByIdAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Every StudyItem owned by ownerUserId, Active and Archived alike — status filtering for the
+    /// Study Items list view happens in GetStudyItemsUseCase, not here, the same in-memory
+    /// approach RankedStudyQueueQuery already uses for a small, owner-scoped dataset.
+    /// </summary>
+    Task<IReadOnlyList<StudyItem>> GetAllAsync(Guid ownerUserId, CancellationToken cancellationToken);
+
     Task AddAsync(StudyItem item, CancellationToken cancellationToken);
 
     /// <summary>

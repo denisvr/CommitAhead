@@ -18,8 +18,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CreateStudyItemUseCase>();
         services.AddScoped<UpdateStudyItemUseCase>();
         services.AddScoped<ArchiveStudyItemUseCase>();
+        services.AddScoped<RestoreStudyItemUseCase>();
         services.AddScoped<DeleteStudyItemUseCase>();
         services.AddScoped<GetStudyItemUseCase>();
+        services.AddScoped<GetStudyItemsUseCase>();
         services.AddScoped<SubmitStudyReviewUseCase>();
         services.AddScoped<SetPriorityOverrideUseCase>();
         services.AddScoped<ClearPriorityOverrideUseCase>();

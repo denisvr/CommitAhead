@@ -4,11 +4,24 @@ import { AppShell } from './design-system/components/AppShell'
 import { LoginForm } from './features/auth/LoginForm'
 import { NewStudyItemPage } from './features/study-items/NewStudyItemPage'
 import { StudyItemDetailPage } from './features/study-items/StudyItemDetailPage'
+import { StudyItemsListPage } from './features/study-items/StudyItemsListPage'
 import { StudyQueuePage } from './features/study-items/StudyQueuePage'
 
 type AuthState = 'loading' | 'authenticated' | 'anonymous'
 
-type View = { name: 'queue' } | { name: 'detail'; id: string } | { name: 'new' }
+// "from" remembers which list a detail/creation flow was opened from, so Back/Delete/Created
+// return there instead of always assuming the ranked queue.
+type Origin = 'queue' | 'items'
+
+type View =
+  | { name: 'queue' }
+  | { name: 'items' }
+  | { name: 'detail'; id: string; from: Origin }
+  | { name: 'new'; from: Origin }
+
+function originView(origin: Origin): View {
+  return origin === 'items' ? { name: 'items' } : { name: 'queue' }
+}
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('loading')
@@ -78,23 +91,38 @@ function App() {
     )
   }
 
+  const activeDestination = view.name === 'items' || (view.name !== 'queue' && view.name !== 'new' && view.from === 'items') ? 'items' : 'queue'
+
   return (
     <AppShell
-      destinations={[{ key: 'queue', label: 'Study queue' }]}
-      activeDestination="queue"
-      onNavigate={() => setView({ name: 'queue' })}
+      destinations={[
+        { key: 'queue', label: 'Study queue' },
+        { key: 'items', label: 'Study items' },
+      ]}
+      activeDestination={activeDestination}
+      onNavigate={(key) => setView(key === 'items' ? { name: 'items' } : { name: 'queue' })}
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
     >
       {logoutError && <p role="alert">{logoutError}</p>}
       {view.name === 'queue' && (
-        <StudyQueuePage onSelectItem={(id) => setView({ name: 'detail', id })} onCreateNew={() => setView({ name: 'new' })} />
+        <StudyQueuePage onSelectItem={(id) => setView({ name: 'detail', id, from: 'queue' })} onCreateNew={() => setView({ name: 'new', from: 'queue' })} />
+      )}
+      {view.name === 'items' && (
+        <StudyItemsListPage onSelectItem={(id) => setView({ name: 'detail', id, from: 'items' })} onCreateNew={() => setView({ name: 'new', from: 'items' })} />
       )}
       {view.name === 'detail' && (
-        <StudyItemDetailPage key={view.id} itemId={view.id} onBack={() => setView({ name: 'queue' })} onDeleted={() => setView({ name: 'queue' })} />
+        <StudyItemDetailPage
+          key={view.id}
+          itemId={view.id}
+          onBack={() => setView(originView(view.from))}
+          onDeleted={() => setView(originView(view.from))}
+        />
       )}
-      {view.name === 'new' && <NewStudyItemPage onCreated={(id) => setView({ name: 'detail', id })} onCancel={() => setView({ name: 'queue' })} />}
+      {view.name === 'new' && (
+        <NewStudyItemPage onCreated={(id) => setView({ name: 'detail', id, from: view.from })} onCancel={() => setView(originView(view.from))} />
+      )}
     </AppShell>
   )
 }

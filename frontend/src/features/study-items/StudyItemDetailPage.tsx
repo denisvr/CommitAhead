@@ -8,6 +8,7 @@ import {
   clearPriorityOverride,
   deleteStudyItem,
   fetchStudyItem,
+  restoreStudyItem,
   setPriorityOverride,
   submitStudyReview,
   toNumber,
@@ -140,6 +141,19 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
     }
   }
 
+  const handleRestore = async () => {
+    setIsBusy(true)
+    setActionError(null)
+    try {
+      await restoreStudyItem(data.id)
+      await load()
+    } catch (caught) {
+      setActionError(describeError(caught, 'Something went wrong restoring this study item.'))
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   const handleDelete = async () => {
     setIsBusy(true)
     setActionError(null)
@@ -198,6 +212,11 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
           {data.status === 'Active' && (
             <Button variant="secondary" onClick={handleArchive} disabled={isBusy}>
               Archive
+            </Button>
+          )}
+          {data.status === 'Archived' && (
+            <Button variant="secondary" onClick={handleRestore} disabled={isBusy}>
+              Restore
             </Button>
           )}
           {canHardDelete &&
