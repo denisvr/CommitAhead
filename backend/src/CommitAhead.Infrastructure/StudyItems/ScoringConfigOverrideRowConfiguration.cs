@@ -1,3 +1,4 @@
+using CommitAhead.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,6 +14,13 @@ internal sealed class ScoringConfigOverrideRowConfiguration : IEntityTypeConfigu
 
         builder.Property(row => row.OwnerUserId)
             .HasColumnName("owner_user_id");
+
+        // Real FK, not just a plain UUID column (model.md: OwnerUserId references User) — shares
+        // this table's own primary key, the standard "owned 1:1 via shared PK" shape.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(row => row.OwnerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(row => row.ImportanceWeight)
             .HasColumnName("importance_weight")

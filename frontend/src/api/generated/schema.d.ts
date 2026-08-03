@@ -775,6 +775,7 @@ export interface components {
             /** Format: int32 */
             effectiveScore: number | string;
             scoreBreakdown: components["schemas"]["ScoreBreakdownResponse"];
+            canHardDelete: boolean;
             reviews: components["schemas"]["StudyReviewResponse"][];
             /** Format: date-time */
             createdAtUtc: string;

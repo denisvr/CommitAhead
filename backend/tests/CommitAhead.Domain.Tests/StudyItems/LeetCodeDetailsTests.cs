@@ -30,4 +30,41 @@ public class LeetCodeDetailsTests
 
         Assert.Null(details.ProblemNumber);
     }
+
+    [Theory]
+    [InlineData("http://leetcode.com/problems/two-sum")]
+    [InlineData("not a url")]
+    [InlineData("javascript:alert(1)")]
+    public void Constructor_WithNonHttpsUrl_Throws(string url)
+    {
+        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, url, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null));
+    }
+
+    [Fact]
+    public void Constructor_WithHttpsUrl_Succeeds()
+    {
+        var details = new LeetCodeDetails(1, "https://leetcode.com/problems/two-sum", Difficulty.Easy, [], "O(n)", "O(1)", "approach", null);
+
+        Assert.Equal("https://leetcode.com/problems/two-sum", details.Url);
+    }
+
+    [Fact]
+    public void Constructor_WithUndefinedDifficulty_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new LeetCodeDetails(1, null, (Difficulty)999, [], "O(n)", "O(1)", "approach", null));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_WithBlankExpectedTimeComplexity_Throws(string value)
+    {
+        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], value, "O(1)", "approach", null));
+    }
+
+    [Fact]
+    public void Constructor_WithBlankApproachMarkdown_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "   ", null));
+    }
 }

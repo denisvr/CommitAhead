@@ -36,7 +36,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Post_WithoutCsrfToken_IsRejected()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/study-items");
         request.Headers.Add("Cookie", accessCookie);
         request.Content = JsonContent.Create(ValidCreateRequest(), options: StudyItemsApiTestHelpers.JsonOptions);
@@ -49,7 +49,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Post_ThenGetById_RoundTripsTheItem()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
@@ -73,7 +73,7 @@ public class StudyItemsEndpointTests
     {
         // The frontend's OpenAPI-generated client depends on this: if enums serialized as plain
         // ints, generated-client callers would see raw numbers instead of "Theory"/"Active"/etc.
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -85,23 +85,23 @@ public class StudyItemsEndpointTests
     }
 
     [Fact]
-    public async Task Post_WithBlankTitle_ReturnsBadRequest()
+    public async Task Post_WithBlankTitle_ReturnsUnprocessableEntity()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var response = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest(title: "   "));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
     [Fact]
     public async Task GetById_ForAnotherOwnersItem_ReturnsNotFound()
     {
-        var (ownerClient, ownerCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (ownerClient, ownerCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await ownerClient.SendMutatingAsync(HttpMethod.Post, "/api/study-items", ownerCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
-        var (otherClient, otherCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (otherClient, otherCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var response = await otherClient.SendGetAsync($"/api/study-items/{created!.Id}", otherCookie);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -110,7 +110,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task GetById_ForNonexistentId_ReturnsNotFound()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var response = await client.SendGetAsync($"/api/study-items/{Guid.NewGuid()}", accessCookie);
 
@@ -120,7 +120,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Put_UpdatesTitleImportanceAndTags()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -138,7 +138,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Put_ForNonexistentId_ReturnsNotFound()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var updateRequest = new UpdateStudyItemRequest("Title", 3, [], new TheoryDetailsDto("s", [], [], []));
 
         var response = await client.SendMutatingAsync(HttpMethod.Put, $"/api/study-items/{Guid.NewGuid()}", accessCookie, updateRequest);
@@ -149,7 +149,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Archive_SetsStatusToArchived()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -164,7 +164,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Delete_WithNoReviews_Succeeds()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -178,7 +178,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task Delete_WithReviews_ReturnsConflict()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
         await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{created!.Id}/reviews", accessCookie, new SubmitStudyReviewRequest(4, "Went well"));
@@ -191,7 +191,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task SubmitReview_AddsAReviewAndRecomputesMastery()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -208,7 +208,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task SetPriorityOverride_ThenGet_ShowsTheOverrideAsTheEffectiveScore()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
 
@@ -225,7 +225,7 @@ public class StudyItemsEndpointTests
     [Fact]
     public async Task ClearPriorityOverride_RemovesIt()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, ValidCreateRequest());
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
         await client.SendMutatingAsync(HttpMethod.Put, $"/api/study-items/{created!.Id}/priority-override", accessCookie, new SetPriorityOverrideRequest(95, "Interview next week"));

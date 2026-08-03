@@ -69,7 +69,7 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     public async Task Execute_OrdersByEffectiveScoreDescending()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var now = DateTime.UtcNow;
 
         await repository.AddAsync(CreateItem(ownerUserId, "Low", importance: 1, initialMastery: 5, now), CancellationToken.None);
@@ -86,7 +86,7 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     public async Task Execute_WithTiedEffectiveScore_BreaksTiesByCreatedAtThenId()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var earlier = DateTime.UtcNow.AddDays(-1);
         var later = DateTime.UtcNow;
 
@@ -105,7 +105,7 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     public async Task Execute_ExcludesArchivedItems()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var now = DateTime.UtcNow;
 
         await repository.AddAsync(CreateItem(ownerUserId, "Archived", importance: 5, initialMastery: 1, now, StudyItemStatus.Archived), CancellationToken.None);
@@ -122,7 +122,8 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     {
         var repository = new StudyItemRepository(_dbContext);
         var now = DateTime.UtcNow;
-        await repository.AddAsync(CreateItem(Guid.NewGuid(), "Someone else's", importance: 3, initialMastery: 3, now), CancellationToken.None);
+        var itemOwnerId = await TestUsers.CreateAsync(_dbContext);
+        await repository.AddAsync(CreateItem(itemOwnerId, "Someone else's", importance: 3, initialMastery: 3, now), CancellationToken.None);
 
         var query = new RankedStudyQueueQuery(_dbContext);
         var ranked = await query.ExecuteAsync(Guid.NewGuid(), ScoringWeights.Default, CancellationToken.None);
@@ -134,7 +135,7 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     public async Task Execute_WithPriorityOverride_UsesTheOverrideScoreInstead()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId, "Overridden", importance: 1, initialMastery: 5, DateTime.UtcNow);
         item.SetPriorityOverride(new PriorityOverride(95, "Interview tomorrow"), DateTime.UtcNow);
         await repository.AddAsync(item, CancellationToken.None);
@@ -151,7 +152,7 @@ public class RankedStudyQueueQueryTests : IAsyncLifetime
     public async Task Execute_IncludesDemandFromEvidenceLinksTargetingTheItem()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId, "Linked", importance: 1, initialMastery: 5, DateTime.UtcNow);
         await repository.AddAsync(item, CancellationToken.None);
         _dbContext.EvidenceLinks.Add(new EvidenceLink(Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), item.Id, 5m, "Mentioned in job posting", DateTime.UtcNow));

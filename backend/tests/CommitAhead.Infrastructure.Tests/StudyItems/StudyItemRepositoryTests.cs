@@ -66,7 +66,7 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task AddThenGetById_RoundTripsTheItem_IncludingDetailsAndTags()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId);
 
         await repository.AddAsync(item, CancellationToken.None);
@@ -84,7 +84,7 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task GetById_ScopedToADifferentOwner_ReturnsNull()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var item = CreateItem(Guid.NewGuid());
+        var item = CreateItem(await TestUsers.CreateAsync(_dbContext));
         await repository.AddAsync(item, CancellationToken.None);
 
         var found = await repository.GetByIdAsync(Guid.NewGuid(), item.Id, CancellationToken.None);
@@ -96,7 +96,7 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task AddThenGetById_WithPriorityOverride_RoundTripsIt()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId, new PriorityOverride(90, "Interview next week"));
 
         await repository.AddAsync(item, CancellationToken.None);
@@ -111,7 +111,7 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task AddThenGetById_WithoutPriorityOverride_RoundTripsAsNull()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId);
 
         await repository.AddAsync(item, CancellationToken.None);
@@ -124,7 +124,7 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task AddThenAddReviewThenGetById_RoundTripsTheReview()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId);
         await repository.AddAsync(item, CancellationToken.None);
 
@@ -143,13 +143,43 @@ public class StudyItemRepositoryTests : IAsyncLifetime
     public async Task Delete_WithNoReviews_RemovesTheItem()
     {
         var repository = new StudyItemRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var item = CreateItem(ownerUserId);
         await repository.AddAsync(item, CancellationToken.None);
 
-        await repository.DeleteAsync(item, CancellationToken.None);
+        var deleted = await repository.DeleteAsync(item, CancellationToken.None);
 
+        Assert.True(deleted);
         var found = await repository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None);
         Assert.Null(found);
+    }
+
+    [Fact]
+    public async Task Delete_WithAConcurrentlyInsertedReview_IsRejectedByTheDatabase()
+    {
+        // The database is the final protection (model.md invariant 2) for the race
+        // DeleteStudyItemUseCase's own CanBeHardDeleted guard cannot close by itself: a review
+        // inserted through a SEPARATE DbContext (a different request) after this repository's own
+        // `item` was loaded/created. `item`'s own tracked Reviews collection is still empty, so
+        // only the database's Restrict FK — not EF's client-side cascade check, which only sees
+        // what THIS context already has loaded — can catch it.
+        var repository = new StudyItemRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var item = CreateItem(ownerUserId);
+        await repository.AddAsync(item, CancellationToken.None);
+
+        var otherOptions = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var otherDbContext = new CommitAheadDbContext(otherOptions);
+        var otherRepository = new StudyItemRepository(otherDbContext);
+        var trackedElsewhere = await otherRepository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None);
+        trackedElsewhere!.AddReview(new StudyReview(Guid.NewGuid(), DateTime.UtcNow, 4, null), DateTime.UtcNow);
+        await otherRepository.SaveChangesAsync(CancellationToken.None);
+
+        var deleted = await repository.DeleteAsync(item, CancellationToken.None);
+
+        Assert.False(deleted);
+        var stillThere = await repository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None);
+        Assert.NotNull(stillThere);
+        Assert.Single(stillThere.Reviews);
     }
 }

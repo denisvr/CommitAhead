@@ -1,4 +1,5 @@
 using CommitAhead.Domain.EvidenceLinks;
+using CommitAhead.Domain.Identity;
 using CommitAhead.Domain.StudyItems;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -48,13 +49,24 @@ public sealed class EvidenceLinkConfiguration : IEntityTypeConfiguration<Evidenc
             .HasColumnName("created_at_utc")
             .IsRequired();
 
-        // No cascade: a StudyItem cannot be hard-deleted while any EvidenceLink still targets it
-        // (model.md invariant 2) even if the application-level guard were ever bypassed. The
+        // Real FK, not just a plain UUID column (model.md: OwnerUserId references User).
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(link => link.OwnerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Composite FK to StudyItem's (owner_user_id, id) alternate key — not just
+        // target_study_item_id -> study_items.id. This is the database-level "same owner"
+        // guarantee model.md invariant 29 asks for: a link's own owner_user_id must match the
+        // StudyItem it targets, so cross-owner linking is impossible even if application code is
+        // bypassed. No cascade: a StudyItem cannot be hard-deleted while any EvidenceLink still
+        // targets it (invariant 2) even if the application-level guard were ever bypassed. The
         // sourceType/sourceId side is polymorphic and has no database FK (model.md, "cross-aggregate
         // references"); it is validated by whatever use case creates the link.
         builder.HasOne<StudyItem>()
             .WithMany()
-            .HasForeignKey(link => link.TargetStudyItemId)
+            .HasForeignKey(link => new { link.OwnerUserId, link.TargetStudyItemId })
+            .HasPrincipalKey(item => new { item.OwnerUserId, item.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(link => new { link.SourceType, link.SourceId, link.TargetStudyItemId })

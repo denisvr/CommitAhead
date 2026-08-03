@@ -26,13 +26,18 @@ public sealed class LeetCodeDetails : StudyItemDetails
             throw new ArgumentOutOfRangeException(nameof(problemNumber), "ProblemNumber must be positive when provided.");
         }
 
+        if (!Enum.IsDefined(difficulty))
+        {
+            throw new ArgumentOutOfRangeException(nameof(difficulty));
+        }
+
         ProblemNumber = problemNumber;
-        Url = url;
+        Url = TextValidation.ValidateOptionalAbsoluteUrl(url, nameof(url), "https");
         Difficulty = difficulty;
         Patterns = TagNormalizer.Normalize(patterns);
-        ExpectedTimeComplexity = expectedTimeComplexity;
-        ExpectedSpaceComplexity = expectedSpaceComplexity;
-        ApproachMarkdown = approachMarkdown;
-        CSharpSolution = csharpSolution;
+        ExpectedTimeComplexity = TextValidation.RequireNonBlank(expectedTimeComplexity, nameof(expectedTimeComplexity), ValidationLimits.ShortTextMaxLength);
+        ExpectedSpaceComplexity = TextValidation.RequireNonBlank(expectedSpaceComplexity, nameof(expectedSpaceComplexity), ValidationLimits.ShortTextMaxLength);
+        ApproachMarkdown = TextValidation.RequireNonBlank(approachMarkdown, nameof(approachMarkdown), ValidationLimits.MarkdownMaxLength);
+        CSharpSolution = TextValidation.TrimToNullOrValidate(csharpSolution, nameof(csharpSolution), ValidationLimits.MarkdownMaxLength);
     }
 }

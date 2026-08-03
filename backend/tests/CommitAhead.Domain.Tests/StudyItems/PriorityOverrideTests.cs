@@ -38,4 +38,22 @@ public class PriorityOverrideTests
 
         Assert.Equal("Interview next week", priorityOverride.Reason);
     }
+
+    [Fact]
+    public void Constructor_WithReasonLongerThanMaxLength_Throws()
+    {
+        var reason = new string('a', ValidationLimits.PriorityOverrideReasonMaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() => new PriorityOverride(50, reason));
+    }
+
+    [Fact]
+    public void Constructor_WithReasonAtMaxLength_Succeeds()
+    {
+        var reason = new string('a', ValidationLimits.PriorityOverrideReasonMaxLength);
+
+        var priorityOverride = new PriorityOverride(50, reason);
+
+        Assert.Equal(reason, priorityOverride.Reason);
+    }
 }

@@ -1,12 +1,13 @@
 using System.Text.Json.Serialization;
 using CommitAhead.Api.DependencyInjection;
+using CommitAhead.Api.Filters;
 using CommitAhead.Api.Security;
 using CommitAhead.Application.DependencyInjection;
 using CommitAhead.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => options.Filters.Add<DomainValidationExceptionFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Microsoft.AspNetCore.OpenApi's schema generator reads Http.Json.JsonOptions, not MVC's
@@ -49,6 +50,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseMiddleware<CsrfMiddleware>();
+
+// After CSRF (a rejected request never opens a transaction) and after UseAuthorization (which
+// populates ICurrentUser) — see RlsContextMiddleware for why this must wrap request execution.
+app.UseMiddleware<RlsContextMiddleware>();
 
 app.MapControllers();
 

@@ -1,3 +1,4 @@
+using CommitAhead.Domain.Identity;
 using CommitAhead.Domain.StudyItems;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -19,9 +20,22 @@ public sealed class StudyItemConfiguration : IEntityTypeConfiguration<StudyItem>
             .HasColumnName("owner_user_id")
             .IsRequired();
 
+        // Real FK, not just a plain UUID column (model.md: OwnerUserId references User). Restrict,
+        // not cascade: this app has no user-deletion use case, so a delete attempt should fail
+        // loudly rather than silently cascading through every owned aggregate.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(item => item.OwnerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // (owner_user_id, id) alternate key — the composite FK target for EvidenceLink
+        // (EvidenceLinkConfiguration), so a link's own owner_user_id must match the StudyItem it
+        // targets at the database level, not only in application code.
+        builder.HasAlternateKey(item => new { item.OwnerUserId, item.Id });
+
         builder.Property(item => item.Title)
             .HasColumnName("title")
-            .HasMaxLength(200)
+            .HasMaxLength(ValidationLimits.TitleMaxLength)
             .IsRequired();
 
         builder.Property(item => item.Category)
@@ -71,17 +85,23 @@ public sealed class StudyItemConfiguration : IEntityTypeConfiguration<StudyItem>
         builder.OwnsOne(item => item.PriorityOverride, priorityOverride =>
         {
             priorityOverride.Property(p => p.Score).HasColumnName("priority_override_score");
-            priorityOverride.Property(p => p.Reason).HasColumnName("priority_override_reason").HasMaxLength(500);
+            priorityOverride.Property(p => p.Reason).HasColumnName("priority_override_reason").HasMaxLength(ValidationLimits.PriorityOverrideReasonMaxLength);
         });
 
         // StudyReview has no public back-reference to its owning StudyItem (model.md describes
         // it as a one-directional child collection) — StudyItemId is a shadow FK. Reviews is a
         // read-only computed property (=> _reviews), so EF's backing-field convention resolves
         // the navigation straight to the private "_reviews" list for both reads and writes.
+        //
+        // Restrict, not cascade: review history is the final protection against a StudyItem being
+        // hard-deleted while reviews still exist (model.md invariant 2). The application-level
+        // guard (StudyItem.CanBeHardDeleted) checks this first, but if it were ever bypassed, or a
+        // review is inserted concurrently between that check and the DELETE, the database must
+        // still refuse the delete rather than silently cascading review history away.
         builder.HasMany(item => item.Reviews)
             .WithOne()
             .HasForeignKey("StudyItemId")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(item => new { item.OwnerUserId, item.Status });
     }

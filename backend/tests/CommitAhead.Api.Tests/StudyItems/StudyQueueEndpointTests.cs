@@ -36,11 +36,11 @@ public class StudyQueueEndpointTests
     [Fact]
     public async Task Get_OrdersByEffectiveScoreDescending_AndOmitsOtherOwnersItems()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, Request("Low priority", importance: 1, initialMastery: 5));
         await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, Request("High priority", importance: 5, initialMastery: 1));
 
-        var (otherClient, otherCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (otherClient, otherCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         await otherClient.SendMutatingAsync(HttpMethod.Post, "/api/study-items", otherCookie, Request("Someone else's item", importance: 5, initialMastery: 1));
 
         var response = await client.SendGetAsync("/api/study-queue", accessCookie);
@@ -55,7 +55,7 @@ public class StudyQueueEndpointTests
     [Fact]
     public async Task Get_ExcludesArchivedItems()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var createResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/study-items", accessCookie, Request("Archived item", importance: 5, initialMastery: 1));
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
         await client.SendMutatingAsync(HttpMethod.Post, $"/api/study-items/{created!.Id}/archive", accessCookie);

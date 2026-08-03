@@ -1,5 +1,6 @@
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.Identity;
+using CommitAhead.Application.Persistence;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Infrastructure.Auth;
 using CommitAhead.Infrastructure.EvidenceLinks;
@@ -25,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IScoringConfigRepository, ScoringConfigRepository>();
         services.AddScoped<IRankedStudyQueueQuery, RankedStudyQueueQuery>();
         services.AddScoped<IEvidenceLinkQuery, EvidenceLinkQuery>();
+        services.AddScoped<IRlsSessionContext, RlsSessionContext>();
 
         // No .ValidateOnStart(): the build-time OpenAPI document generator actually runs the host
         // (not just builds it) without user-secrets loaded, so eager validation here would break

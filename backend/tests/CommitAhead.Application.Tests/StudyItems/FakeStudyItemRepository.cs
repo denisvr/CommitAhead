@@ -10,6 +10,9 @@ public sealed class FakeStudyItemRepository : IStudyItemRepository
 
     public IReadOnlyList<StudyItem> Items => _items;
 
+    /// <summary>Simulates the database rejecting a delete (a concurrent Restrict FK violation) so DeleteStudyItemUseCase's mapping to Blocked can be tested without EF Core.</summary>
+    public bool RejectNextDelete { get; set; }
+
     public Task<StudyItem?> GetByIdAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken)
     {
         var item = _items.SingleOrDefault(i => i.OwnerUserId == ownerUserId && i.Id == id);
@@ -22,10 +25,16 @@ public sealed class FakeStudyItemRepository : IStudyItemRepository
         return Task.CompletedTask;
     }
 
-    public Task DeleteAsync(StudyItem item, CancellationToken cancellationToken)
+    public Task<bool> DeleteAsync(StudyItem item, CancellationToken cancellationToken)
     {
+        if (RejectNextDelete)
+        {
+            RejectNextDelete = false;
+            return Task.FromResult(false);
+        }
+
         _items.RemoveAll(i => i.Id == item.Id);
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

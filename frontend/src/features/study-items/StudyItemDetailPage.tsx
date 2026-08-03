@@ -125,7 +125,7 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
     )
   }
 
-  const canHardDelete = data.reviews.length === 0
+  const canHardDelete = data.canHardDelete
 
   const handleArchive = async () => {
     setIsBusy(true)
@@ -221,8 +221,7 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
 
       {!canHardDelete && (
         <p className={styles.guard}>
-          This study item has {data.reviews.length} review{data.reviews.length === 1 ? '' : 's'} and can&apos;t be deleted. Archive it instead to remove it from the
-          queue.
+          This study item has review or evidence-link history and can&apos;t be deleted. Archive it instead to remove it from the queue.
         </p>
       )}
 

@@ -3,7 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using CommitAhead.Api.Tests.Auth;
 using CommitAhead.Domain.Identity;
+using CommitAhead.Infrastructure.Identity;
+using CommitAhead.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 
 namespace CommitAhead.Api.Tests.StudyItems;
 
@@ -19,10 +22,17 @@ internal static class StudyItemsApiTestHelpers
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public static (HttpClient Client, string AccessCookie) CreateAuthenticatedClient(this StudyItemsTestWebApplicationFactory factory, Guid userId)
+    public static async Task<(HttpClient Client, string AccessCookie)> CreateAuthenticatedClientAsync(this StudyItemsTestWebApplicationFactory factory, Guid userId)
     {
         var supabaseSub = $"sub-{userId}";
-        factory.Users.Add(new User(userId, supabaseSub, $"{supabaseSub}@example.com", DateTime.UtcNow));
+
+        // study_items/scoring_config_overrides have a real FK to users.id (Group A of the Phase 1
+        // corrective pass) — the owner must be a genuine row in the same Testcontainers database,
+        // not an in-memory stand-in, or every insert in these tests would fail with a FK violation.
+        var options = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(factory.ConnectionString).Options;
+        await using var dbContext = new CommitAheadDbContext(options);
+        await new UserRepository(dbContext).AddAsync(new User(userId, supabaseSub, $"{supabaseSub}@example.com", DateTime.UtcNow), CancellationToken.None);
+
         var token = JwtTestTokenFactory.CreateAccessToken(supabaseSub);
 
         // HandleCookies=false: every request in these tests carries its own explicit Cookie

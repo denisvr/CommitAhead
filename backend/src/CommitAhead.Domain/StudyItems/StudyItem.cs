@@ -52,13 +52,18 @@ public sealed class StudyItem
             throw new ArgumentException("OwnerUserId is required.", nameof(ownerUserId));
         }
 
+        if (!Enum.IsDefined(category))
+        {
+            throw new ArgumentOutOfRangeException(nameof(category));
+        }
+
         Id = id;
         OwnerUserId = ownerUserId;
         Category = category;
         Title = ValidateTitle(title);
         Importance = ValidateRating(importance, nameof(importance));
         InitialMastery = ValidateRating(initialMastery, nameof(initialMastery));
-        Tags = TagNormalizer.Normalize(tags);
+        Tags = ValidateTags(tags);
         Details = ValidateDetails(category, details);
         Status = StudyItemStatus.Active;
         CreatedAtUtc = createdAtUtc;
@@ -69,7 +74,7 @@ public sealed class StudyItem
     {
         Title = ValidateTitle(title);
         Importance = ValidateRating(importance, nameof(importance));
-        Tags = TagNormalizer.Normalize(tags);
+        Tags = ValidateTags(tags);
         Details = ValidateDetails(Category, details);
         UpdatedAtUtc = updatedAtUtc;
     }
@@ -134,14 +139,22 @@ public sealed class StudyItem
         return details;
     }
 
-    private static string ValidateTitle(string title)
+    private static string ValidateTitle(string title) => TextValidation.RequireNonBlank(title, nameof(title), ValidationLimits.TitleMaxLength);
+
+    private static IReadOnlyList<string> ValidateTags(IEnumerable<string> tags)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        var normalized = TagNormalizer.Normalize(tags);
+        if (normalized.Count > ValidationLimits.MaxTagCount)
         {
-            throw new ArgumentException("Title is required.", nameof(title));
+            throw new ArgumentException($"Tags must have at most {ValidationLimits.MaxTagCount} entries.", nameof(tags));
         }
 
-        return title.Trim();
+        if (normalized.Any(tag => tag.Length > ValidationLimits.TagMaxLength))
+        {
+            throw new ArgumentException($"Each tag must be at most {ValidationLimits.TagMaxLength} characters.", nameof(tags));
+        }
+
+        return normalized;
     }
 
     private static int ValidateRating(int value, string paramName)

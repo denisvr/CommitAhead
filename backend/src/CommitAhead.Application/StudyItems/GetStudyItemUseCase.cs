@@ -35,6 +35,12 @@ public sealed class GetStudyItemUseCase
         var breakdown = EffectiveScorePolicy.ComputeBreakdown(item.Importance, demand, mastery, weights);
         var effectiveScore = EffectiveScorePolicy.Resolve(item.Importance, demand, mastery, weights, item.PriorityOverride);
 
+        // The authoritative half of DeleteStudyItemUseCase's own guard (invariant 2), computed
+        // here so the frontend never has to reimplement it from a partial view of the item (it
+        // only sees Reviews, never EvidenceLinks) and risk offering a delete the backend rejects.
+        var hasEvidenceLinks = await _evidenceLinkQuery.AnyTargetingStudyItemAsync(_currentUser.UserId, id, cancellationToken);
+        var canHardDelete = item.CanBeHardDeleted && !hasEvidenceLinks;
+
         return new StudyItemDetailResult(
             item.Id,
             item.Title,
@@ -50,6 +56,7 @@ public sealed class GetStudyItemUseCase
             demand,
             effectiveScore,
             breakdown,
+            canHardDelete,
             item.Reviews.Select(review => new StudyReviewResult(review.Id, review.ReviewedAtUtc, review.ConfidenceRating, review.NotesMarkdown)).ToList(),
             item.CreatedAtUtc,
             item.UpdatedAtUtc);
@@ -71,6 +78,7 @@ public sealed record StudyItemDetailResult(
     decimal Demand,
     int EffectiveScore,
     ScoreBreakdown ScoreBreakdown,
+    bool CanHardDelete,
     IReadOnlyList<StudyReviewResult> Reviews,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);

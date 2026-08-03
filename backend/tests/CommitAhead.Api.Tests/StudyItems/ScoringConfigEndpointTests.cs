@@ -27,7 +27,7 @@ public class ScoringConfigEndpointTests
     [Fact]
     public async Task Get_WithNoOverride_ReturnsDefaultsAndIsOverriddenFalse()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var response = await client.SendGetAsync("/api/scoring-config", accessCookie);
         var config = await response.Content.ReadFromJsonAsync<ScoringConfigResponse>(StudyItemsApiTestHelpers.JsonOptions);
@@ -41,7 +41,7 @@ public class ScoringConfigEndpointTests
     [Fact]
     public async Task Put_ThenGet_RoundTripsTheOverride()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var putResponse = await client.SendMutatingAsync(HttpMethod.Put, "/api/scoring-config", accessCookie, new UpdateScoringConfigRequest(50, 30, 20));
         Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
@@ -53,19 +53,19 @@ public class ScoringConfigEndpointTests
     }
 
     [Fact]
-    public async Task Put_WithWeightsNotSummingTo100_ReturnsBadRequest()
+    public async Task Put_WithWeightsNotSummingTo100_ReturnsUnprocessableEntity()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var response = await client.SendMutatingAsync(HttpMethod.Put, "/api/scoring-config", accessCookie, new UpdateScoringConfigRequest(50, 30, 30));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
     [Fact]
     public async Task Delete_RemovesAnExistingOverride()
     {
-        var (client, accessCookie) = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         await client.SendMutatingAsync(HttpMethod.Put, "/api/scoring-config", accessCookie, new UpdateScoringConfigRequest(50, 30, 20));
 
         var deleteResponse = await client.SendMutatingAsync(HttpMethod.Delete, "/api/scoring-config", accessCookie);

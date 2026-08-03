@@ -1,5 +1,4 @@
 using CommitAhead.Api.Tests.Auth;
-using CommitAhead.Application.Identity;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -8,7 +7,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace CommitAhead.Api.Tests.StudyItems;
@@ -17,9 +15,10 @@ namespace CommitAhead.Api.Tests.StudyItems;
 /// Runs StudyItems endpoints against a real Testcontainers Postgres with migrations applied —
 /// unlike AuthTestWebApplicationFactory's stubbed repository, these endpoints exercise the actual
 /// EF mappings (JSONB details, ranked-list query), so a fake repository would prove nothing about
-/// them. Still stubs IUserRepository and the JWT signing key for the ADR-0015 enabled-user check,
-/// reusing AuthTestWebApplicationFactory's constants — that part is unrelated to what this fixture
-/// verifies and shouldn't be duplicated.
+/// them. Uses the real EF-backed IUserRepository (not a stub): study_items/scoring_config_overrides
+/// now have a real FK to users.id, so a StudyItem's owner must be a genuine row in this same
+/// database, not just an in-memory stand-in. Still reuses AuthTestWebApplicationFactory's JWT
+/// signing key/issuer constants — that part is unrelated to what this fixture verifies.
 /// </summary>
 public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -29,7 +28,7 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
         .WithPassword("commitahead_api_test")
         .Build();
 
-    public StubUserRepository Users { get; } = new();
+    public string ConnectionString => _container.GetConnectionString();
 
     async Task IAsyncLifetime.InitializeAsync()
     {
@@ -69,9 +68,6 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
                 options.TokenValidationParameters.ValidAudience = "authenticated";
                 options.TokenValidationParameters.IssuerSigningKey = AuthTestWebApplicationFactory.SigningKey;
             });
-
-            services.RemoveAll<IUserRepository>();
-            services.AddSingleton<IUserRepository>(Users);
         });
     }
 }

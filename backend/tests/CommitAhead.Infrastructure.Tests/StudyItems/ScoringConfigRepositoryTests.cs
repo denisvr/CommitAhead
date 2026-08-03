@@ -47,7 +47,7 @@ public class ScoringConfigRepositoryTests : IAsyncLifetime
     public async Task SetThenGetOverride_RoundTripsTheWeights()
     {
         var repository = new ScoringConfigRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
 
         await repository.SetOverrideAsync(ownerUserId, new ScoringWeights(50, 30, 20), CancellationToken.None);
         var found = await repository.GetOverrideAsync(ownerUserId, CancellationToken.None);
@@ -62,7 +62,7 @@ public class ScoringConfigRepositoryTests : IAsyncLifetime
     public async Task SetOverrideTwice_UpdatesTheExistingRowRatherThanDuplicating()
     {
         var repository = new ScoringConfigRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
 
         await repository.SetOverrideAsync(ownerUserId, new ScoringWeights(50, 30, 20), CancellationToken.None);
         await repository.SetOverrideAsync(ownerUserId, new ScoringWeights(60, 20, 20), CancellationToken.None);
@@ -76,7 +76,7 @@ public class ScoringConfigRepositoryTests : IAsyncLifetime
     public async Task Reset_RemovesTheOverride()
     {
         var repository = new ScoringConfigRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         await repository.SetOverrideAsync(ownerUserId, new ScoringWeights(50, 30, 20), CancellationToken.None);
 
         await repository.ResetAsync(ownerUserId, CancellationToken.None);

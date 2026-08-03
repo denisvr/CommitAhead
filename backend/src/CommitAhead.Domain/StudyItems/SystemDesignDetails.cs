@@ -21,11 +21,11 @@ public sealed class SystemDesignDetails : StudyItemDetails
         IEnumerable<string> evaluationChecklist,
         string referenceSolutionMarkdown)
     {
-        PromptMarkdown = promptMarkdown;
-        ClarifyingQuestions = clarifyingQuestions.ToList();
-        FunctionalRequirements = functionalRequirements.ToList();
-        NonFunctionalRequirements = nonFunctionalRequirements.ToList();
-        EvaluationChecklist = evaluationChecklist.ToList();
-        ReferenceSolutionMarkdown = referenceSolutionMarkdown;
+        PromptMarkdown = TextValidation.RequireNonBlank(promptMarkdown, nameof(promptMarkdown), ValidationLimits.MarkdownMaxLength);
+        ClarifyingQuestions = TextValidation.RequireEntries(clarifyingQuestions, nameof(clarifyingQuestions));
+        FunctionalRequirements = TextValidation.RequireEntries(functionalRequirements, nameof(functionalRequirements));
+        NonFunctionalRequirements = TextValidation.RequireEntries(nonFunctionalRequirements, nameof(nonFunctionalRequirements));
+        EvaluationChecklist = TextValidation.RequireEntries(evaluationChecklist, nameof(evaluationChecklist));
+        ReferenceSolutionMarkdown = TextValidation.RequireNonBlank(referenceSolutionMarkdown, nameof(referenceSolutionMarkdown), ValidationLimits.MarkdownMaxLength);
     }
 }

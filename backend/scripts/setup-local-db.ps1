@@ -1,4 +1,4 @@
-# CommitAhead - reproducible local dev database bootstrap: roles -> migrations -> RLS.
+# CommitAhead - reproducible local dev database bootstrap: roles -> migrations -> RLS(users) -> RLS(Phase 1).
 #
 # EF Core migrations are the authoritative source for tables; this script and the versioned SQL
 # under scripts/database/ are the authoritative source for roles and RLS (see
@@ -12,8 +12,8 @@
 # roles end up present regardless of the volume's prior state.
 #
 # Safe to re-run: docker compose up is idempotent, 001_roles.sql only creates roles that don't
-# already exist, EF migrations only apply what's pending, and 002_rls_users.sql drops+recreates
-# its policy instead of failing on a second run.
+# already exist, EF migrations only apply what's pending, and 002_rls_users.sql/003_rls_phase1.sql
+# both drop+recreate their policies instead of failing on a second run.
 #
 # NOTE: keep this file plain ASCII. Windows PowerShell 5.1 misparses non-ASCII characters (e.g.
 # an em dash) in a .ps1 file that has no UTF-8 BOM, producing confusing "missing terminator"
@@ -93,6 +93,10 @@ try {
 
     Write-Host "Applying RLS (scripts/database/002_rls_users.sql - authoritative source for roles/RLS)..."
     Get-Content "scripts/database/002_rls_users.sql" -Raw | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    Write-Host "Applying Phase 1 grants/RLS (scripts/database/003_rls_phase1.sql)..."
+    Get-Content "scripts/database/003_rls_phase1.sql" -Raw | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Local DB ready: roles + migrations + RLS applied."

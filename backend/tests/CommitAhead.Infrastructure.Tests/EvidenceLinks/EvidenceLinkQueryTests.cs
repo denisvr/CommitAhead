@@ -52,7 +52,7 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
     [Fact]
     public async Task GetDemandAsync_WithNoLinks_ReturnsZero()
     {
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var targetStudyItemId = await CreateStudyItemAsync(ownerUserId);
         var query = new EvidenceLinkQuery(_dbContext);
 
@@ -64,7 +64,7 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
     [Fact]
     public async Task GetDemandAsync_SumsWeightsTargetingTheItem_ClampedAtFive()
     {
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var targetStudyItemId = await CreateStudyItemAsync(ownerUserId);
         var otherStudyItemId = await CreateStudyItemAsync(ownerUserId);
         _dbContext.EvidenceLinks.AddRange(
@@ -82,7 +82,7 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
     [Fact]
     public async Task GetDemandAsync_ScopedToADifferentOwner_ReturnsZero()
     {
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var targetStudyItemId = await CreateStudyItemAsync(ownerUserId);
         _dbContext.EvidenceLinks.Add(CreateLink(ownerUserId, targetStudyItemId, 3m));
         await _dbContext.SaveChangesAsync(CancellationToken.None);
@@ -96,7 +96,7 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
     [Fact]
     public async Task AnyTargetingStudyItemAsync_WithNoLinks_ReturnsFalse()
     {
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var targetStudyItemId = await CreateStudyItemAsync(ownerUserId);
         var query = new EvidenceLinkQuery(_dbContext);
 
@@ -106,7 +106,7 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
     [Fact]
     public async Task AnyTargetingStudyItemAsync_WithALink_ReturnsTrue()
     {
-        var ownerUserId = Guid.NewGuid();
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var targetStudyItemId = await CreateStudyItemAsync(ownerUserId);
         _dbContext.EvidenceLinks.Add(CreateLink(ownerUserId, targetStudyItemId, 1m));
         await _dbContext.SaveChangesAsync(CancellationToken.None);
@@ -114,5 +114,28 @@ public class EvidenceLinkQueryTests : IAsyncLifetime
         var query = new EvidenceLinkQuery(_dbContext);
 
         Assert.True(await query.AnyTargetingStudyItemAsync(ownerUserId, targetStudyItemId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Insert_WithOwnerUserIdNotMatchingTheTargetStudyItemsOwner_IsRejectedByTheDatabase()
+    {
+        // The composite FK (owner_user_id, target_study_item_id) -> study_items(owner_user_id, id)
+        // is the database-level "same owner" guarantee (model.md invariant 29) — cross-owner
+        // linking must be impossible even if application code is bypassed.
+        var itemOwnerId = await TestUsers.CreateAsync(_dbContext);
+        var targetStudyItemId = await CreateStudyItemAsync(itemOwnerId);
+        var differentOwnerId = await TestUsers.CreateAsync(_dbContext);
+        _dbContext.EvidenceLinks.Add(CreateLink(differentOwnerId, targetStudyItemId, 1m));
+
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() => _dbContext.SaveChangesAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Insert_TargetingANonexistentStudyItem_IsRejectedByTheDatabase()
+    {
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        _dbContext.EvidenceLinks.Add(CreateLink(ownerUserId, Guid.NewGuid(), 1m));
+
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() => _dbContext.SaveChangesAsync(CancellationToken.None));
     }
 }

@@ -68,6 +68,38 @@ public class StudyItemTests
             Guid.NewGuid(), Guid.NewGuid(), title!, StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
+    [Fact]
+    public void Constructor_WithTitleLongerThanMaxLength_Throws()
+    {
+        var title = new string('a', ValidationLimits.TitleMaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() => new StudyItem(
+            Guid.NewGuid(), Guid.NewGuid(), title, StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
+    }
+
+    [Fact]
+    public void Constructor_WithUndefinedCategory_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new StudyItem(
+            Guid.NewGuid(), Guid.NewGuid(), "Title", (StudyItemCategory)999, 3, 2, [], ValidTheoryDetails(), Now));
+    }
+
+    [Fact]
+    public void Constructor_WithMoreTagsThanMaxCount_Throws()
+    {
+        var tags = Enumerable.Range(0, ValidationLimits.MaxTagCount + 1).Select(i => $"tag-{i}").ToList();
+
+        Assert.Throws<ArgumentException>(() => CreateItem(tags: tags));
+    }
+
+    [Fact]
+    public void Constructor_WithATagLongerThanMaxLength_Throws()
+    {
+        var tag = new string('a', ValidationLimits.TagMaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() => CreateItem(tags: [tag]));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(6)]

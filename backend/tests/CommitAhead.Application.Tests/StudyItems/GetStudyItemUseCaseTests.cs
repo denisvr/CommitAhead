@@ -75,4 +75,47 @@ public class GetStudyItemUseCaseTests
         Assert.Equal(43, result.EffectiveScore);
         Assert.Equal(35m, result.ScoreBreakdown.DemandContribution);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WithNoReviewsAndNoEvidenceLinks_CanHardDeleteIsTrue()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var item = new StudyItem(Guid.NewGuid(), ownerUserId, "Title", StudyItemCategory.Theory, 3, 3, [], new TheoryDetails("s", [], [], []), Now);
+        var repository = new FakeStudyItemRepository();
+        await repository.AddAsync(item, CancellationToken.None);
+        var useCase = new GetStudyItemUseCase(repository, new FakeScoringConfigRepository(), new FakeEvidenceLinkQuery(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+
+        var result = await useCase.ExecuteAsync(item.Id, CancellationToken.None);
+
+        Assert.True(result!.CanHardDelete);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithAnEvidenceLinkTargetingTheItem_CanHardDeleteIsFalse_EvenWithoutReviews()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var item = new StudyItem(Guid.NewGuid(), ownerUserId, "Title", StudyItemCategory.Theory, 3, 3, [], new TheoryDetails("s", [], [], []), Now);
+        var repository = new FakeStudyItemRepository();
+        await repository.AddAsync(item, CancellationToken.None);
+        var useCase = new GetStudyItemUseCase(repository, new FakeScoringConfigRepository(), new FakeEvidenceLinkQuery { AnyTargeting = true }, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+
+        var result = await useCase.ExecuteAsync(item.Id, CancellationToken.None);
+
+        Assert.False(result!.CanHardDelete);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithAReview_CanHardDeleteIsFalse()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var item = new StudyItem(Guid.NewGuid(), ownerUserId, "Title", StudyItemCategory.Theory, 3, 3, [], new TheoryDetails("s", [], [], []), Now);
+        item.AddReview(new StudyReview(Guid.NewGuid(), Now, 4, null), Now);
+        var repository = new FakeStudyItemRepository();
+        await repository.AddAsync(item, CancellationToken.None);
+        var useCase = new GetStudyItemUseCase(repository, new FakeScoringConfigRepository(), new FakeEvidenceLinkQuery(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+
+        var result = await useCase.ExecuteAsync(item.Id, CancellationToken.None);
+
+        Assert.False(result!.CanHardDelete);
+    }
 }

@@ -1,3 +1,4 @@
+using CommitAhead.Api.Security;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Domain.StudyItems;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ namespace CommitAhead.Api.Features.StudyItems;
 
 [ApiController]
 [Route("api/study-queue")]
+[UsesOwnerScopedData]
 public sealed class StudyQueueController : ControllerBase
 {
     private readonly GetRankedStudyQueueUseCase _useCase;

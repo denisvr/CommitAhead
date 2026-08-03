@@ -37,8 +37,8 @@ public sealed class DeleteStudyItemUseCase
             return DeleteStudyItemResult.Blocked;
         }
 
-        await _repository.DeleteAsync(item, cancellationToken);
+        var deleted = await _repository.DeleteAsync(item, cancellationToken);
 
-        return DeleteStudyItemResult.Success;
+        return deleted ? DeleteStudyItemResult.Success : DeleteStudyItemResult.Blocked;
     }
 }

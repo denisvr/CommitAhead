@@ -1,3 +1,4 @@
+using CommitAhead.Api.Security;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Domain.StudyItems;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ namespace CommitAhead.Api.Features.StudyItems;
 
 [ApiController]
 [Route("api/study-items")]
+[UsesOwnerScopedData]
 public sealed class StudyItemsController : ControllerBase
 {
     private readonly CreateStudyItemUseCase _createUseCase;
@@ -41,18 +43,9 @@ public sealed class StudyItemsController : ControllerBase
     public async Task<ActionResult<StudyItemCreatedResponse>> Post([FromBody] CreateStudyItemRequest request, CancellationToken cancellationToken)
     {
         // StudyItem's constructor validates title/importance/initialMastery/category-details
-        // agreement and throws ArgumentException; there is no generic exception-to-4xx
-        // middleware in this API, so each mutating action maps it locally (see ScoringConfigController.Put).
-        Guid id;
-        try
-        {
-            id = await request.CreateAsync(_createUseCase, cancellationToken);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-
+        // agreement and throws ArgumentException; DomainValidationExceptionFilter maps that to
+        // 422 for every controller in this API, so no local try/catch is needed here.
+        var id = await request.CreateAsync(_createUseCase, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id }, new StudyItemCreatedResponse(id));
     }
 
@@ -66,16 +59,7 @@ public sealed class StudyItemsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateStudyItemRequest request, CancellationToken cancellationToken)
     {
-        StudyItemMutationResult result;
-        try
-        {
-            result = await request.UpdateAsync(_updateUseCase, id, cancellationToken);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-
+        var result = await request.UpdateAsync(_updateUseCase, id, cancellationToken);
         return result == StudyItemMutationResult.NotFound ? NotFound() : NoContent();
     }
 
@@ -102,32 +86,14 @@ public sealed class StudyItemsController : ControllerBase
     [HttpPost("{id:guid}/reviews")]
     public async Task<IActionResult> SubmitReview(Guid id, [FromBody] SubmitStudyReviewRequest request, CancellationToken cancellationToken)
     {
-        StudyItemMutationResult result;
-        try
-        {
-            result = await _submitReviewUseCase.ExecuteAsync(id, request.ConfidenceRating, request.NotesMarkdown, cancellationToken);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-
+        var result = await _submitReviewUseCase.ExecuteAsync(id, request.ConfidenceRating, request.NotesMarkdown, cancellationToken);
         return result == StudyItemMutationResult.NotFound ? NotFound() : NoContent();
     }
 
     [HttpPut("{id:guid}/priority-override")]
     public async Task<IActionResult> SetPriorityOverride(Guid id, [FromBody] SetPriorityOverrideRequest request, CancellationToken cancellationToken)
     {
-        StudyItemMutationResult result;
-        try
-        {
-            result = await _setPriorityOverrideUseCase.ExecuteAsync(id, request.Score, request.Reason, cancellationToken);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-
+        var result = await _setPriorityOverrideUseCase.ExecuteAsync(id, request.Score, request.Reason, cancellationToken);
         return result == StudyItemMutationResult.NotFound ? NotFound() : NoContent();
     }
 
@@ -191,6 +157,7 @@ public sealed record StudyItemResponse(
     decimal Demand,
     int EffectiveScore,
     ScoreBreakdownResponse ScoreBreakdown,
+    bool CanHardDelete,
     IReadOnlyList<StudyReviewResponse> Reviews,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc)
@@ -210,6 +177,7 @@ public sealed record StudyItemResponse(
         result.Demand,
         result.EffectiveScore,
         ScoreBreakdownResponse.FromDomain(result.ScoreBreakdown),
+        result.CanHardDelete,
         result.Reviews.Select(StudyReviewResponse.FromResult).ToList(),
         result.CreatedAtUtc,
         result.UpdatedAtUtc);

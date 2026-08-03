@@ -19,12 +19,12 @@ public sealed class BehavioralDetails : StudyItemDetails
         string result,
         string? reflection)
     {
-        Competencies = competencies.ToList();
-        QuestionVariants = questionVariants.ToList();
-        Situation = situation;
-        Task = task;
-        Action = action;
-        Result = result;
-        Reflection = reflection;
+        Competencies = TextValidation.RequireEntries(competencies, nameof(competencies));
+        QuestionVariants = TextValidation.RequireEntries(questionVariants, nameof(questionVariants));
+        Situation = TextValidation.RequireNonBlank(situation, nameof(situation), ValidationLimits.MarkdownMaxLength);
+        Task = TextValidation.RequireNonBlank(task, nameof(task), ValidationLimits.MarkdownMaxLength);
+        Action = TextValidation.RequireNonBlank(action, nameof(action), ValidationLimits.MarkdownMaxLength);
+        Result = TextValidation.RequireNonBlank(result, nameof(result), ValidationLimits.MarkdownMaxLength);
+        Reflection = TextValidation.TrimToNullOrValidate(reflection, nameof(reflection), ValidationLimits.MarkdownMaxLength);
     }
 }

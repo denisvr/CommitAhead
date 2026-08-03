@@ -1,3 +1,4 @@
+using CommitAhead.Api.Security;
 using CommitAhead.Application.StudyItems;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,6 +6,7 @@ namespace CommitAhead.Api.Features.StudyItems;
 
 [ApiController]
 [Route("api/scoring-config")]
+[UsesOwnerScopedData]
 public sealed class ScoringConfigController : ControllerBase
 {
     private readonly GetScoringConfigUseCase _getUseCase;
@@ -29,19 +31,9 @@ public sealed class ScoringConfigController : ControllerBase
     public async Task<IActionResult> Put([FromBody] UpdateScoringConfigRequest request, CancellationToken cancellationToken)
     {
         // ScoringWeights' constructor validates non-negativity and the sum-to-100 invariant and
-        // throws ArgumentException; there is no generic exception-to-4xx middleware in this API
-        // (see docs/architecture/persistence.md), so this is the one place that maps it — the
-        // alternative would be re-checking the same invariant here and risking drift from the
-        // domain's own validation.
-        try
-        {
-            await _updateUseCase.ExecuteAsync(request.ImportanceWeight, request.DemandWeight, request.MasteryGapWeight, cancellationToken);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-
+        // throws ArgumentException; DomainValidationExceptionFilter maps that to 422 for every
+        // controller in this API, so no local try/catch is needed here.
+        await _updateUseCase.ExecuteAsync(request.ImportanceWeight, request.DemandWeight, request.MasteryGapWeight, cancellationToken);
         return NoContent();
     }
 

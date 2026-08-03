@@ -1,5 +1,6 @@
 using System.Reflection;
 using CommitAhead.Application.Identity;
+using CommitAhead.Application.StudyItems;
 using NetArchTest.Rules;
 
 namespace CommitAhead.Api.Tests.Architecture;
@@ -96,27 +97,43 @@ public class ArchitectureTests
         Assert.Empty(violations);
     }
 
+    // Explicit, non-vacuous list of every production persistence/query port declared in
+    // Application — a suffix-only rule (e.g. "type name ends with Repository") would pass even
+    // if a new port were added and never checked here, so each one is named individually and
+    // each is asserted to have a real Infrastructure implementation, not just "none elsewhere."
+    private static readonly Type[] PersistencePorts =
+    [
+        typeof(IUserRepository),
+        typeof(IStudyItemRepository),
+        typeof(IScoringConfigRepository),
+        typeof(IRankedStudyQueueQuery),
+        typeof(IEvidenceLinkQuery),
+    ];
+
     [Fact]
     public void RepositoryImplementations_ShouldOnlyExistInInfrastructure()
     {
         var nonInfrastructureAssemblies = new[] { DomainAssembly, ApplicationAssembly, ApiAssembly };
 
-        foreach (var assembly in nonInfrastructureAssemblies)
+        foreach (var port in PersistencePorts)
         {
-            var matchingTypes = Types.InAssembly(assembly)
+            foreach (var assembly in nonInfrastructureAssemblies)
+            {
+                var matchingTypes = Types.InAssembly(assembly)
+                    .That()
+                    .ImplementInterface(port)
+                    .GetTypes();
+
+                Assert.Empty(matchingTypes);
+            }
+
+            var infrastructureImplementations = Types.InAssembly(InfrastructureAssembly)
                 .That()
-                .ImplementInterface(typeof(IUserRepository))
+                .ImplementInterface(port)
                 .GetTypes();
 
-            Assert.Empty(matchingTypes);
+            Assert.NotEmpty(infrastructureImplementations);
         }
-
-        var infrastructureImplementations = Types.InAssembly(InfrastructureAssembly)
-            .That()
-            .ImplementInterface(typeof(IUserRepository))
-            .GetTypes();
-
-        Assert.NotEmpty(infrastructureImplementations);
     }
 
     [Fact(Skip =

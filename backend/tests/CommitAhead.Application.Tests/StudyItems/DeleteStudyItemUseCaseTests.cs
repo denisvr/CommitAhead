@@ -55,6 +55,23 @@ public class DeleteStudyItemUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenTheDatabaseRejectsTheDelete_ReturnsBlocked()
+    {
+        // Simulates the race the Restrict FK guards against: a review or evidence link is
+        // inserted concurrently after CanBeHardDeleted/AnyTargetingStudyItemAsync both passed.
+        var ownerUserId = Guid.NewGuid();
+        var item = new StudyItem(Guid.NewGuid(), ownerUserId, "Title", StudyItemCategory.Theory, 2, 2, [], new TheoryDetails("s", [], [], []), Now);
+        var repository = new FakeStudyItemRepository { RejectNextDelete = true };
+        await repository.AddAsync(item, CancellationToken.None);
+        var useCase = new DeleteStudyItemUseCase(repository, new FakeEvidenceLinkQuery(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+
+        var result = await useCase.ExecuteAsync(item.Id, CancellationToken.None);
+
+        Assert.Equal(DeleteStudyItemResult.Blocked, result);
+        Assert.Single(repository.Items);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenItemDoesNotExist_ReturnsNotFound()
     {
         var repository = new FakeStudyItemRepository();

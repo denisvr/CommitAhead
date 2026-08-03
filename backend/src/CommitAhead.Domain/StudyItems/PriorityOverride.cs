@@ -12,12 +12,7 @@ public sealed class PriorityOverride
             throw new ArgumentOutOfRangeException(nameof(score), "Score must be in [0,100].");
         }
 
-        if (string.IsNullOrWhiteSpace(reason))
-        {
-            throw new ArgumentException("Reason is required.", nameof(reason));
-        }
-
         Score = score;
-        Reason = reason.Trim();
+        Reason = TextValidation.RequireNonBlank(reason, nameof(reason), ValidationLimits.PriorityOverrideReasonMaxLength);
     }
 }

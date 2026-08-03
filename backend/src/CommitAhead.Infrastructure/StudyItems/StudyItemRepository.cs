@@ -27,10 +27,23 @@ public sealed class StudyItemRepository : IStudyItemRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(StudyItem item, CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(StudyItem item, CancellationToken cancellationToken)
     {
         _dbContext.StudyItems.Remove(item);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // The only realistic cause: the study_reviews/evidence_links Restrict FK rejected the
+            // delete because a row was inserted concurrently after DeleteStudyItemUseCase's own
+            // guard passed. Translate to "not deleted" here rather than letting an EF-specific
+            // exception type leak into Application (which must not depend on EF Core).
+            return false;
+        }
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
