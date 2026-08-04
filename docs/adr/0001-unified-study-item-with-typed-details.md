@@ -18,7 +18,7 @@ A single `StudyItem` entity is used for all four categories. Category-specific s
 - The study queue is a single ranked list — cross-category prioritisation ("should I do LeetCode or Behavioral today?") is trivial.
 - Shared fields (importance, mastery, demand, tags, status) are defined once and behave identically across all categories.
 - The typed details union preserves category-specific validation, filtering, and UI structure without inheritance.
-- EF Core persistence of the discriminated union requires a deliberate mapping strategy (see `docs/tbd.md`).
+- **Implementation note (Phase 1):** the discriminated union is persisted as a single `jsonb` column (`study_items.details`) with a self-describing `kind` tag, mapped by an Infrastructure-only `StudyItemDetailsJsonConverter`/EF `ValueConverter` pair — the Domain layer has no serialization awareness. See `docs/architecture/persistence.md` ("Typed category details") for the full mapping strategy.
 
 ## Considered Alternatives
 

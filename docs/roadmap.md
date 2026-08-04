@@ -35,7 +35,7 @@ The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) a
 
 ---
 
-## Phase 1 — Ranked Study Queue
+## Phase 1 — Ranked Study Queue *(implementation complete; E2E exit criterion pending — deferred until there is a real deployed environment to run Playwright against)*
 
 **Outcome:** The daily preparation loop works end-to-end without AI: create a StudyItem, review it, and see deterministic ranking.
 
@@ -46,7 +46,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [x] Implement StudyItem, four typed details variants, StudyReview, PriorityOverride, ScoringWeights, and EffectiveScorePolicy
 - [x] Implement ScoringConfig optional override persistence and resolver
 - [x] Implement EvidenceLink target schema required by the full Demand query; no creation command exists yet
-- [x] Add EF mappings, migration, repositories/query ports, and ranked-list SQL
+- [x] Add EF mappings, migration, repositories/query ports, and the ranked-queue query (loads the owner's small, owner-scoped Active-item set and ranks it in memory with the same `EffectiveScorePolicy` the domain uses — not a SQL-level `ORDER BY` on a computed score; see `docs/architecture/persistence.md`)
 - [x] Implement Create/Update/Archive/Delete StudyItem, SubmitStudyReview, Set/ClearPriorityOverride, Update/ResetScoringConfig, and GetRankedStudyQueue
 - [x] Add Controllers and OpenAPI contracts
 - [x] Port the approved Reading Room tokens/assets into `frontend/src/design-system/` and implement
@@ -54,7 +54,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [x] Build ranked queue, detail view, typed forms, tag input, review form, and score breakdown UI
 - [x] Add domain, use-case, PostgreSQL, API, and frontend component tests for the slice
 
-**Exit criteria:** E2E Create → Review → Rank passes; deletion guards, mastery recency, Demand clamp, overrides, and deterministic ordering are verified.
+**Exit criteria:** E2E Create → Review → Rank passes; deletion guards, mastery recency, Demand clamp, overrides, and deterministic ordering are verified. The non-E2E half is verified today by Layers 1–4 (domain/use-case/repository/API tests, including real-runtime-role RLS integration tests) and Layer 6 (frontend component tests, MSW-backed) — see `docs/testing/strategy.md`. The Playwright journey itself has not been written; Phase 1 is not marked complete until it exists and passes.
 
 ---
 

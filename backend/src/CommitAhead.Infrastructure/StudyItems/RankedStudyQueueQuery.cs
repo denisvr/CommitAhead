@@ -9,9 +9,10 @@ namespace CommitAhead.Infrastructure.StudyItems;
 /// <summary>
 /// Loads the owner's Active StudyItems (with reviews) and ranks them in memory using the same
 /// StudyItem.ComputeMastery()/EffectiveScorePolicy the domain and detail view use — one formula,
-/// not a SQL re-implementation that could drift from it. Appropriate at this app's scale (a
-/// single invite-only user, a small item count); ADR-0003 already defers any denormalisation
-/// until a real performance measurement calls for it.
+/// not a SQL re-implementation that could drift from it. Appropriate at this app's scale
+/// (invite-only, so each owner's own item count stays small regardless of how many owners exist —
+/// the architecture is multi-user-ready per ADR-0015, this just isn't a cross-owner query); ADR-0003
+/// already defers any denormalisation until a real performance measurement calls for it.
 /// </summary>
 public sealed class RankedStudyQueueQuery : IRankedStudyQueueQuery
 {

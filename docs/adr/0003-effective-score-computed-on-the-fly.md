@@ -23,7 +23,7 @@ Denormalisation is deferred until a performance measurement shows it is necessar
 - `StudyItem` persists only source facts: `importance`, `initialMastery`, and `priorityOverride`. No sync triggers are needed.
 - The ranked-list query joins `StudyReview` and `EvidenceLink` rows and cannot use a simple indexed sort on a stored score column — this is the accepted MVP trade-off.
 - Minimum computed score is 8 (when `importance=1`, `demand=0`, `mastery=5`). A `PriorityOverride` can set any value in `[0, 100]`.
-- Tiebreaking order for items with equal EffectiveScore is **TBD** (see `docs/tbd.md`).
+- **Implementation note (Phase 1):** tiebreaking order for items with equal `EffectiveScore` is `CreatedAt ASC` (the item waiting longer surfaces first), then `Id ASC` as a final deterministic tiebreak. See `docs/architecture/persistence.md` ("Ranked-list ordering").
 
 ## Considered Alternatives
 

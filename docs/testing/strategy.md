@@ -10,7 +10,7 @@
 | API | xUnit, WebApplicationFactory, shared Testcontainers DB, `FakeAIProvider` |
 | Architecture | NetArchTest |
 | Frontend component | Vitest, React Testing Library, MSW |
-| E2E | Playwright |
+| E2E | Playwright (planned — not implemented; see Layer 7) |
 | AI adapter | xUnit, stubbed HTTP/SDK responses |
 
 **Absolute rule**: zero real AI calls in any automated test. `FakeAIProvider` in all automated contexts.
@@ -81,6 +81,7 @@
 - `ScoringConfig` resolve: override row used when present; code defaults when absent
 - Mastery derivation in query: initialMastery before first review; avg of up to 3 most recent
 - AIUsageRecord: unique idempotency key, atomic Reserved insertion, daily/monthly budget calculation, Completed reconciliation, Failed release, lazy expiration of stale reservations, and replay returning the existing draft
+- **RLS/runtime-role isolation** (Phase 1): a dedicated fixture bootstraps its own Testcontainers instance the same way `setup-local-db.ps1` bootstraps a real one (roles → migrations → RLS scripts) and connects as the real, least-privileged `commitahead_app` role — never the Testcontainers-owner connection every other test in this layer uses. Proves: an owner can CRUD their own StudyItems; cannot read or mutate another owner's rows even via a raw `UPDATE` with no `WHERE owner_user_id` clause; a connection with no owner context set sees zero business rows; the runtime role cannot perform DDL; the setup scripts remain safe when applied a second time.
 
 ---
 
@@ -90,7 +91,8 @@
 
 **Coverage:**
 - Routing and serialisation for representative happy and error paths per controller
-- Request validation: malformed payloads, missing required fields, out-of-range values → 422
+- Malformed JSON / missing required fields caught by automatic `[ApiController]` model binding → 400
+- Semantic/domain validation (out-of-range values, invalid enums, invariant violations — thrown as `ArgumentException` and mapped centrally by `DomainValidationExceptionFilter`) → 422
 - Missing resources → 404; invalid related IDs → 422; conflict (e.g. duplicate link) → 409
 - **Auth**: unauthenticated → 401; unknown/disabled-user JWT → 403 (fallback authorization policy, ADR-0015) — never blocks the `[AllowAnonymous]` auth endpoints themselves
 - Dedicated locally-signed JWT tests for token validation (issuer, audience, signature, expiry, sub)
@@ -182,7 +184,9 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 
 ## Layer 7: E2E Tests (Playwright — post-merge or manual)
 
-Four critical journeys. Environment: production Vite build + real Kestrel + Testcontainers PostgreSQL + `FakeAIProvider` + test-environment auth scheme. DB reset between journeys. No Supabase, no real AI.
+**Not implemented yet** — no Playwright project exists in this repo. Deferred until there is a real deployed environment to point it at (rather than building the test-environment auth scheme and CI bootstrap this layer needs against a purely local target); revisit then. The plan below is the target shape once that work starts, not a description of anything running today.
+
+Four critical journeys. Environment: production Vite build + real Kestrel + Testcontainers PostgreSQL + `FakeAIProvider` + test-environment auth scheme (also not implemented yet — nothing today lets a real running Kestrel process accept anything but a genuine Supabase session; this needs new, environment-gated auth surface in the API itself, not just test-project wiring). DB reset between journeys. No Supabase, no real AI.
 
 1. Authenticated access
 2. Create StudyItem → SubmitStudyReview → verify ranking

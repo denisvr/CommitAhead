@@ -4,7 +4,11 @@ CommitAhead is a private, invite-only web application for structured software-en
 
 ## Status
 
-Phase 0's security and architecture baseline is implemented and verified: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth with closed (invite-only) login, secure-by-default authorization, CSRF, security headers, and a minimal authenticated screen — including one real call to the live Supabase Auth API. Two pieces remain pending, not complete: the E2E (Playwright) project has not been added yet, and the `IAIProvider` half of NetArchTest rule 5 stays skipped until Phase 4 declares that interface. There is no business domain layer yet (Phase 1). Development uses Supabase Auth (remote) for authentication; the application's own PostgreSQL stays entirely local via Docker (development never connects to or migrates the real Supabase Postgres — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
+Phase 0's security and architecture baseline is implemented and verified: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth with closed (invite-only) login, secure-by-default authorization, CSRF, security headers, and a minimal authenticated screen — including one real call to the live Supabase Auth API.
+
+Phase 1 (the ranked study queue — StudyItem, StudyReview, PriorityOverride, ScoringConfig, and the owner-scoped RLS/permissions that isolate them) is implemented and covered by domain, use-case, real-runtime-role integration, API, and MSW-backed frontend component tests. It is **not** marked complete: its E2E exit criterion (Playwright, Create → Review → Rank) hasn't been written yet, deferred until there is a real deployed environment to run it against — see `docs/roadmap.md`.
+
+The `IAIProvider` half of NetArchTest rule 5 stays skipped until Phase 4 declares that interface. Development uses Supabase Auth (remote) for authentication; the application's own PostgreSQL stays entirely local via Docker (development never connects to or migrates the real Supabase Postgres — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
 
 ## Local Requirements
 
