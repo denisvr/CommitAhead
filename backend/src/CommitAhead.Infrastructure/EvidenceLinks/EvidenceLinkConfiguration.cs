@@ -42,7 +42,7 @@ public sealed class EvidenceLinkConfiguration : IEntityTypeConfiguration<Evidenc
 
         builder.Property(link => link.Rationale)
             .HasColumnName("rationale")
-            .HasMaxLength(1000)
+            .HasMaxLength(ValidationLimits.EvidenceLinkRationaleMaxLength)
             .IsRequired();
 
         builder.Property(link => link.CreatedAtUtc)

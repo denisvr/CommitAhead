@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -47,14 +48,14 @@ public class StudyItemTests
     [Fact]
     public void Constructor_WithEmptyId_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new StudyItem(
+        Assert.Throws<DomainValidationException>(() => new StudyItem(
             Guid.Empty, Guid.NewGuid(), "Title", StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
     [Fact]
     public void Constructor_WithEmptyOwnerUserId_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new StudyItem(
+        Assert.Throws<DomainValidationException>(() => new StudyItem(
             Guid.NewGuid(), Guid.Empty, "Title", StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
@@ -64,7 +65,7 @@ public class StudyItemTests
     [InlineData("   ")]
     public void Constructor_WithoutTitle_Throws(string? title)
     {
-        Assert.Throws<ArgumentException>(() => new StudyItem(
+        Assert.Throws<DomainValidationException>(() => new StudyItem(
             Guid.NewGuid(), Guid.NewGuid(), title!, StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
@@ -73,14 +74,14 @@ public class StudyItemTests
     {
         var title = new string('a', ValidationLimits.TitleMaxLength + 1);
 
-        Assert.Throws<ArgumentException>(() => new StudyItem(
+        Assert.Throws<DomainValidationException>(() => new StudyItem(
             Guid.NewGuid(), Guid.NewGuid(), title, StudyItemCategory.Theory, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
     [Fact]
     public void Constructor_WithUndefinedCategory_Throws()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new StudyItem(
+        Assert.Throws<DomainValidationException>(() => new StudyItem(
             Guid.NewGuid(), Guid.NewGuid(), "Title", (StudyItemCategory)999, 3, 2, [], ValidTheoryDetails(), Now));
     }
 
@@ -89,7 +90,7 @@ public class StudyItemTests
     {
         var tags = Enumerable.Range(0, ValidationLimits.MaxTagCount + 1).Select(i => $"tag-{i}").ToList();
 
-        Assert.Throws<ArgumentException>(() => CreateItem(tags: tags));
+        Assert.Throws<DomainValidationException>(() => CreateItem(tags: tags));
     }
 
     [Fact]
@@ -97,7 +98,7 @@ public class StudyItemTests
     {
         var tag = new string('a', ValidationLimits.TagMaxLength + 1);
 
-        Assert.Throws<ArgumentException>(() => CreateItem(tags: [tag]));
+        Assert.Throws<DomainValidationException>(() => CreateItem(tags: [tag]));
     }
 
     [Theory]
@@ -105,7 +106,7 @@ public class StudyItemTests
     [InlineData(6)]
     public void Constructor_WithImportanceOutOfRange_Throws(int importance)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateItem(importance: importance));
+        Assert.Throws<DomainValidationException>(() => CreateItem(importance: importance));
     }
 
     [Theory]
@@ -113,7 +114,7 @@ public class StudyItemTests
     [InlineData(6)]
     public void Constructor_WithInitialMasteryOutOfRange_Throws(int initialMastery)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateItem(initialMastery: initialMastery));
+        Assert.Throws<DomainValidationException>(() => CreateItem(initialMastery: initialMastery));
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public class StudyItemTests
     {
         var leetCodeDetails = new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null);
 
-        Assert.Throws<ArgumentException>(() => CreateItem(category: StudyItemCategory.Theory, details: leetCodeDetails));
+        Assert.Throws<DomainValidationException>(() => CreateItem(category: StudyItemCategory.Theory, details: leetCodeDetails));
     }
 
     [Fact]
@@ -147,7 +148,7 @@ public class StudyItemTests
         var item = CreateItem(category: StudyItemCategory.Theory);
         var leetCodeDetails = new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null);
 
-        Assert.Throws<ArgumentException>(() => item.Update("Title", 3, [], leetCodeDetails, Now));
+        Assert.Throws<DomainValidationException>(() => item.Update("Title", 3, [], leetCodeDetails, Now));
     }
 
     [Fact]

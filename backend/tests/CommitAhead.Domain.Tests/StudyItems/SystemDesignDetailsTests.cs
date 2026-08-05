@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -20,7 +21,7 @@ public class SystemDesignDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankPromptMarkdown_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(promptMarkdown: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(promptMarkdown: value));
     }
 
     [Theory]
@@ -28,13 +29,13 @@ public class SystemDesignDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankReferenceSolutionMarkdown_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(referenceSolutionMarkdown: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(referenceSolutionMarkdown: value));
     }
 
     [Fact]
     public void Constructor_WithBlankClarifyingQuestionEntry_Throws()
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(clarifyingQuestions: ["   "]));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(clarifyingQuestions: ["   "]));
     }
 
     [Fact]

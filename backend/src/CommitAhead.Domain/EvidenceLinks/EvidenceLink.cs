@@ -1,3 +1,6 @@
+using CommitAhead.Domain;
+using CommitAhead.Domain.StudyItems;
+
 namespace CommitAhead.Domain.EvidenceLinks;
 
 /// <summary>
@@ -23,32 +26,27 @@ public sealed class EvidenceLink
     {
         if (id == Guid.Empty)
         {
-            throw new ArgumentException("Id is required.", nameof(id));
+            throw new DomainValidationException("Id is required.");
         }
 
         if (ownerUserId == Guid.Empty)
         {
-            throw new ArgumentException("OwnerUserId is required.", nameof(ownerUserId));
+            throw new DomainValidationException("OwnerUserId is required.");
         }
 
         if (sourceId == Guid.Empty)
         {
-            throw new ArgumentException("SourceId is required.", nameof(sourceId));
+            throw new DomainValidationException("SourceId is required.");
         }
 
         if (targetStudyItemId == Guid.Empty)
         {
-            throw new ArgumentException("TargetStudyItemId is required.", nameof(targetStudyItemId));
+            throw new DomainValidationException("TargetStudyItemId is required.");
         }
 
         if (weight is < 0 or > 5)
         {
-            throw new ArgumentOutOfRangeException(nameof(weight), "Weight must be in [0,5].");
-        }
-
-        if (string.IsNullOrWhiteSpace(rationale))
-        {
-            throw new ArgumentException("Rationale is required.", nameof(rationale));
+            throw new DomainValidationException("Weight must be in [0,5].");
         }
 
         Id = id;
@@ -57,7 +55,7 @@ public sealed class EvidenceLink
         SourceId = sourceId;
         TargetStudyItemId = targetStudyItemId;
         Weight = weight;
-        Rationale = rationale.Trim();
+        Rationale = TextValidation.RequireNonBlank(rationale, nameof(rationale), ValidationLimits.EvidenceLinkRationaleMaxLength);
         CreatedAtUtc = createdAtUtc;
     }
 }

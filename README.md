@@ -42,9 +42,10 @@ see `docs/architecture/persistence.md` ("Migration Strategy") for why that split
 artifact is authoritative for each. It: starts the Postgres container (`docker compose up`, which
 runs `scripts/database/001_roles.sql` automatically on first start, creating the
 `commitahead_app`/`commitahead_migrator` roles from `.env`), applies pending EF Core migrations,
-then applies `scripts/database/002_rls_users.sql` (RLS on `users`) — safe to re-run. When the real
-Supabase project is created, the same two SQL scripts are the template for setting it up (see
-`backend/scripts/database/`) — only the connection host/credentials change.
+then applies `scripts/database/002_rls_users.sql` (RLS on `users`) followed by
+`scripts/database/003_rls_phase1.sql` (grants/RLS on the Phase 1 business tables) — both safe to
+re-run. When the real Supabase project is created, the same three SQL scripts are the template for
+setting it up (see `backend/scripts/database/`) — only the connection host/credentials change.
 
 ## Setting Up the Real Supabase Project
 
@@ -52,10 +53,10 @@ Supabase project is created, the same two SQL scripts are the template for setti
 project for Auth, while `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres —
 auth and persistence are independent, and there's no need to develop against the real Postgres
 before deployment (Phase 6). The steps below apply the same
-`backend/scripts/database/001_roles.sql`/`002_rls_users.sql` used locally to the *real* Postgres,
-for whenever you're ready (e.g. first deployment). Only you should run these — they need the
-project's real database password, which this assistant never sees or handles, even if you offer
-to share it:
+`backend/scripts/database/001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql` used locally to
+the *real* Postgres, for whenever you're ready (e.g. first deployment). Only you should run
+these — they need the project's real database password, which this assistant never sees or
+handles, even if you offer to share it:
 
 ```bash
 # 1. In the Supabase SQL editor, run 001_roles.sql with the ${...} placeholders replaced by real
@@ -63,7 +64,8 @@ to share it:
 # 2. Apply the migration bundle using the migrator role from step 1:
 COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_migrator;Password=<real password>" \
   dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
-# 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2).
+# 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2),
+#    then 003_rls_phase1.sql (needs the Phase 1 tables from the same migration).
 # 4. Seed each enabled user's row (use their real Supabase Auth UID and email):
 #    INSERT INTO users (id, supabase_user_id, email, is_enabled, created_at_utc)
 #    VALUES ('<uid>', '<uid>', '<email>', true, now());

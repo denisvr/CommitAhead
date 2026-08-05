@@ -1,5 +1,6 @@
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Application.Tests.Identity;
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Application.Tests.StudyItems;
@@ -26,7 +27,7 @@ public class ScoringConfigUseCaseTests
         var repository = new FakeScoringConfigRepository();
         var useCase = new UpdateScoringConfigUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
-        await Assert.ThrowsAsync<ArgumentException>(() => useCase.ExecuteAsync(50, 30, 30, CancellationToken.None));
+        await Assert.ThrowsAsync<DomainValidationException>(() => useCase.ExecuteAsync(50, 30, 30, CancellationToken.None));
     }
 
     [Fact]

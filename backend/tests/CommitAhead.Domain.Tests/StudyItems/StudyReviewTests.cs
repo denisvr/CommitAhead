@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -18,7 +19,7 @@ public class StudyReviewTests
     [Fact]
     public void Constructor_WithEmptyId_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new StudyReview(Guid.Empty, Now, 3, null));
+        Assert.Throws<DomainValidationException>(() => new StudyReview(Guid.Empty, Now, 3, null));
     }
 
     [Theory]
@@ -26,7 +27,7 @@ public class StudyReviewTests
     [InlineData(6)]
     public void Constructor_WithConfidenceRatingOutOfRange_Throws(int confidenceRating)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new StudyReview(Guid.NewGuid(), Now, confidenceRating, null));
+        Assert.Throws<DomainValidationException>(() => new StudyReview(Guid.NewGuid(), Now, confidenceRating, null));
     }
 
     [Fact]

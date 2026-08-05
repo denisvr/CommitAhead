@@ -1,3 +1,5 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 public sealed class ScoringWeights
@@ -12,12 +14,12 @@ public sealed class ScoringWeights
     {
         if (importanceWeight < 0 || demandWeight < 0 || masteryGapWeight < 0)
         {
-            throw new ArgumentException("Weights must be non-negative.");
+            throw new DomainValidationException("Weights must be non-negative.");
         }
 
         if (importanceWeight + demandWeight + masteryGapWeight != 100)
         {
-            throw new ArgumentException("Weights must sum to 100.");
+            throw new DomainValidationException("Weights must sum to 100.");
         }
 
         ImportanceWeight = importanceWeight;

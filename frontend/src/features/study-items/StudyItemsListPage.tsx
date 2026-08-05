@@ -42,16 +42,28 @@ export function StudyItemsListPage({ onSelectItem, onCreateNew }: StudyItemsList
   // synchronous, regardless of the await inside it). Does not reset loadState to 'loading' on a
   // tab switch for the same reason — the previous tab's items stay visible until the new fetch
   // resolves, then swap in; only the initial mount shows the "Loading…" state.
+  //
+  // The `stale` flag guards against a slower, earlier fetch (e.g. for a tab the user has since
+  // switched away from) resolving after a faster, later one and overwriting the currently
+  // selected tab's just-applied data with a response for a tab that isn't showing anymore.
   useEffect(() => {
+    let stale = false
+
     fetchStudyItems(activeTab)
       .then((data) => {
+        if (stale) return
         setItems(data)
         setLoadState('ready')
       })
       .catch((caught: unknown) => {
+        if (stale) return
         setError(caught instanceof Error ? caught.message : 'Something went wrong loading your study items.')
         setLoadState('error')
       })
+
+    return () => {
+      stale = true
+    }
   }, [activeTab])
 
   const retry = () => void load(activeTab)

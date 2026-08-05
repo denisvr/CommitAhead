@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -9,13 +10,13 @@ public class TheoryDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankSummaryMarkdown_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => new TheoryDetails(value, [], [], []));
+        Assert.Throws<DomainValidationException>(() => new TheoryDetails(value, [], [], []));
     }
 
     [Fact]
     public void Constructor_WithBlankKeyPointEntry_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new TheoryDetails("Summary", ["   "], [], []));
+        Assert.Throws<DomainValidationException>(() => new TheoryDetails("Summary", ["   "], [], []));
     }
 
     [Theory]
@@ -23,7 +24,7 @@ public class TheoryDetailsTests
     [InlineData("ftp://example.com/cap")]
     public void Constructor_WithNonHttpReference_Throws(string reference)
     {
-        Assert.Throws<ArgumentException>(() => new TheoryDetails("Summary", [], [], [reference]));
+        Assert.Throws<DomainValidationException>(() => new TheoryDetails("Summary", [], [], [reference]));
     }
 
     [Fact]

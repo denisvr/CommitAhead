@@ -1,4 +1,6 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.EvidenceLinks;
+using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.EvidenceLinks;
 
@@ -24,18 +26,36 @@ public class EvidenceLinkTests
     [InlineData(5.1)]
     public void Constructor_WithWeightOutOfRange_Throws(double weight)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateLink((decimal)weight));
+        Assert.Throws<DomainValidationException>(() => CreateLink((decimal)weight));
     }
 
     [Fact]
     public void Constructor_WithBlankRationale_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.InterviewNote, Guid.NewGuid(), Guid.NewGuid(), 1m, "   ", Now));
+        Assert.Throws<DomainValidationException>(() => new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.InterviewNote, Guid.NewGuid(), Guid.NewGuid(), 1m, "   ", Now));
     }
 
     [Fact]
     public void Constructor_WithEmptyTargetStudyItemId_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.CVPresentation, Guid.NewGuid(), Guid.Empty, 1m, "reason", Now));
+        Assert.Throws<DomainValidationException>(() => new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.CVPresentation, Guid.NewGuid(), Guid.Empty, 1m, "reason", Now));
+    }
+
+    [Fact]
+    public void Constructor_WithRationaleLongerThanMaxLength_Throws()
+    {
+        var rationale = new string('a', ValidationLimits.EvidenceLinkRationaleMaxLength + 1);
+
+        Assert.Throws<DomainValidationException>(() => new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.InterviewNote, Guid.NewGuid(), Guid.NewGuid(), 1m, rationale, Now));
+    }
+
+    [Fact]
+    public void Constructor_WithRationaleAtMaxLength_Succeeds()
+    {
+        var rationale = new string('a', ValidationLimits.EvidenceLinkRationaleMaxLength);
+
+        var link = new EvidenceLink(Guid.NewGuid(), Guid.NewGuid(), EvidenceSourceType.InterviewNote, Guid.NewGuid(), Guid.NewGuid(), 1m, rationale, Now);
+
+        Assert.Equal(rationale, link.Rationale);
     }
 }

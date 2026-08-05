@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -19,7 +20,7 @@ public class LeetCodeDetailsTests
     [InlineData(-1)]
     public void Constructor_WithNonPositiveProblemNumber_Throws(int problemNumber)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new LeetCodeDetails(
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(
             problemNumber, null, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null));
     }
 
@@ -37,7 +38,7 @@ public class LeetCodeDetailsTests
     [InlineData("javascript:alert(1)")]
     public void Constructor_WithNonHttpsUrl_Throws(string url)
     {
-        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, url, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null));
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, url, Difficulty.Easy, [], "O(n)", "O(1)", "approach", null));
     }
 
     [Fact]
@@ -51,7 +52,7 @@ public class LeetCodeDetailsTests
     [Fact]
     public void Constructor_WithUndefinedDifficulty_Throws()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new LeetCodeDetails(1, null, (Difficulty)999, [], "O(n)", "O(1)", "approach", null));
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, (Difficulty)999, [], "O(n)", "O(1)", "approach", null));
     }
 
     [Theory]
@@ -59,12 +60,12 @@ public class LeetCodeDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankExpectedTimeComplexity_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], value, "O(1)", "approach", null));
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], value, "O(1)", "approach", null));
     }
 
     [Fact]
     public void Constructor_WithBlankApproachMarkdown_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "   ", null));
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "   ", null));
     }
 }

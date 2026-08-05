@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -19,7 +20,7 @@ public class PriorityOverrideTests
     [InlineData(101)]
     public void Constructor_WithScoreOutOfRange_Throws(int score)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PriorityOverride(score, "reason"));
+        Assert.Throws<DomainValidationException>(() => new PriorityOverride(score, "reason"));
     }
 
     [Theory]
@@ -28,7 +29,7 @@ public class PriorityOverrideTests
     [InlineData("   ")]
     public void Constructor_WithoutReason_Throws(string? reason)
     {
-        Assert.Throws<ArgumentException>(() => new PriorityOverride(50, reason!));
+        Assert.Throws<DomainValidationException>(() => new PriorityOverride(50, reason!));
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public class PriorityOverrideTests
     {
         var reason = new string('a', ValidationLimits.PriorityOverrideReasonMaxLength + 1);
 
-        Assert.Throws<ArgumentException>(() => new PriorityOverride(50, reason));
+        Assert.Throws<DomainValidationException>(() => new PriorityOverride(50, reason));
     }
 
     [Fact]

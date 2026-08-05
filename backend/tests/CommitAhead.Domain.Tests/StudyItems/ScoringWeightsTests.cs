@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -17,7 +18,7 @@ public class ScoringWeightsTests
     [Fact]
     public void Constructor_WhenWeightsDoNotSumTo100_Throws()
     {
-        Assert.Throws<ArgumentException>(() => new ScoringWeights(40, 35, 20));
+        Assert.Throws<DomainValidationException>(() => new ScoringWeights(40, 35, 20));
     }
 
     [Theory]
@@ -26,7 +27,7 @@ public class ScoringWeightsTests
     [InlineData(50, 51, -1)]
     public void Constructor_WithNegativeWeight_Throws(int importance, int demand, int masteryGap)
     {
-        Assert.Throws<ArgumentException>(() => new ScoringWeights(importance, demand, masteryGap));
+        Assert.Throws<DomainValidationException>(() => new ScoringWeights(importance, demand, masteryGap));
     }
 
     [Fact]

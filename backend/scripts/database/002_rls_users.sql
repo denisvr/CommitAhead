@@ -9,19 +9,27 @@
 -- regardless of RLS — only commitahead_app (used exclusively by the backend) is granted access.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON users TO commitahead_app;
+-- SELECT only: the running application resolves `sub` -> User for every request (ADR-0015) but
+-- never creates, enables, or edits a user row itself — provisioning a new invited user is a
+-- privileged, out-of-band operation (see docs/tbd.md "Invited-user provisioning"), run with a
+-- different, more-trusted credential than the one the API connects with. If the app is ever
+-- compromised at the request level, it still cannot create or enable an account for itself.
+GRANT SELECT ON users TO commitahead_app;
 
 -- The `users` table itself is the identity table the backend resolves `sub` against (ADR-0015),
--- not a user-owned business resource — so commitahead_app gets unrestricted access to it here.
--- Future business-domain tables (StudyItem, ProfessionalProfile, ...) will instead scope their
--- policies by an owner_user_id column, e.g.:
+-- not a user-owned business resource — so commitahead_app can read every row here (there is no
+-- owner_user_id column to scope by), but only SELECT, per the grant above. FOR SELECT makes that
+-- explicit at the policy level too, not just via the grant. Future business-domain tables
+-- (StudyItem, ProfessionalProfile, ...) instead scope their policies by an owner_user_id column,
+-- e.g.:
 --   CREATE POLICY owner_isolation ON study_items
 --     USING (owner_user_id = current_setting('app.current_user_id')::uuid);
 -- DROP + CREATE (not CREATE POLICY IF NOT EXISTS, which Postgres doesn't support) makes this
 -- script safe to re-run — the reproducible setup flow (backend/scripts/setup-local-db.ps1) may
 -- run it more than once against the same database.
 DROP POLICY IF EXISTS commitahead_app_full_access ON users;
-CREATE POLICY commitahead_app_full_access ON users
+DROP POLICY IF EXISTS commitahead_app_read_access ON users;
+CREATE POLICY commitahead_app_read_access ON users
+    FOR SELECT
     TO commitahead_app
-    USING (true)
-    WITH CHECK (true);
+    USING (true);

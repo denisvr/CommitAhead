@@ -1,3 +1,5 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 public sealed class StudyReview
@@ -11,12 +13,12 @@ public sealed class StudyReview
     {
         if (id == Guid.Empty)
         {
-            throw new ArgumentException("Id is required.", nameof(id));
+            throw new DomainValidationException("Id is required.");
         }
 
         if (confidenceRating is < 1 or > 5)
         {
-            throw new ArgumentOutOfRangeException(nameof(confidenceRating), "ConfidenceRating must be in [1,5].");
+            throw new DomainValidationException("ConfidenceRating must be in [1,5].");
         }
 
         Id = id;

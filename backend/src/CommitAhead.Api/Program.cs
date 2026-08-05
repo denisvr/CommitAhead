@@ -7,7 +7,11 @@ using CommitAhead.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers(options => options.Filters.Add<DomainValidationExceptionFilter>())
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<DomainValidationExceptionFilter>();
+        options.Filters.Add<RlsTransactionActionFilter>();
+    })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Microsoft.AspNetCore.OpenApi's schema generator reads Http.Json.JsonOptions, not MVC's
@@ -51,10 +55,10 @@ app.UseAuthorization();
 
 app.UseMiddleware<CsrfMiddleware>();
 
-// After CSRF (a rejected request never opens a transaction) and after UseAuthorization (which
-// populates ICurrentUser) — see RlsContextMiddleware for why this must wrap request execution.
-app.UseMiddleware<RlsContextMiddleware>();
-
+// RlsTransactionActionFilter (registered above) opens the RLS owner scope — a global MVC action
+// filter, not middleware, so its transaction commits before the result stage writes any response
+// bytes. It runs after CSRF (a rejected request never even reaches the action) and relies on
+// UseAuthorization() above having already populated ICurrentUser.
 app.MapControllers();
 
 // ApiCatchAllController/AuthCatchAllController (Features/Routing) give unmatched /api or /auth

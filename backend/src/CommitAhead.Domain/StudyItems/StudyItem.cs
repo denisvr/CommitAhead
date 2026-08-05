@@ -1,3 +1,5 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 /// <summary>
@@ -44,17 +46,17 @@ public sealed class StudyItem
     {
         if (id == Guid.Empty)
         {
-            throw new ArgumentException("Id is required.", nameof(id));
+            throw new DomainValidationException("Id is required.");
         }
 
         if (ownerUserId == Guid.Empty)
         {
-            throw new ArgumentException("OwnerUserId is required.", nameof(ownerUserId));
+            throw new DomainValidationException("OwnerUserId is required.");
         }
 
         if (!Enum.IsDefined(category))
         {
-            throw new ArgumentOutOfRangeException(nameof(category));
+            throw new DomainValidationException("Category is not a recognized value.");
         }
 
         Id = id;
@@ -135,12 +137,12 @@ public sealed class StudyItem
             StudyItemCategory.SystemDesign => details is SystemDesignDetails,
             StudyItemCategory.Behavioral => details is BehavioralDetails,
             StudyItemCategory.Theory => details is TheoryDetails,
-            _ => throw new ArgumentOutOfRangeException(nameof(category)),
+            _ => throw new DomainValidationException("Category is not a recognized value."),
         };
 
         if (!matches)
         {
-            throw new ArgumentException($"Details type {details.GetType().Name} does not match category {category}.", nameof(details));
+            throw new DomainValidationException($"Details type {details.GetType().Name} does not match category {category}.");
         }
 
         return details;
@@ -153,12 +155,12 @@ public sealed class StudyItem
         var normalized = TagNormalizer.Normalize(tags);
         if (normalized.Count > ValidationLimits.MaxTagCount)
         {
-            throw new ArgumentException($"Tags must have at most {ValidationLimits.MaxTagCount} entries.", nameof(tags));
+            throw new DomainValidationException($"Tags must have at most {ValidationLimits.MaxTagCount} entries.");
         }
 
         if (normalized.Any(tag => tag.Length > ValidationLimits.TagMaxLength))
         {
-            throw new ArgumentException($"Each tag must be at most {ValidationLimits.TagMaxLength} characters.", nameof(tags));
+            throw new DomainValidationException($"Each tag must be at most {ValidationLimits.TagMaxLength} characters.");
         }
 
         return normalized;
@@ -168,7 +170,7 @@ public sealed class StudyItem
     {
         if (value is < 1 or > 5)
         {
-            throw new ArgumentOutOfRangeException(paramName, "Rating must be in [1,5].");
+            throw new DomainValidationException($"{paramName} must be in [1,5].");
         }
 
         return value;

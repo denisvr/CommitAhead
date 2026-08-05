@@ -47,21 +47,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON study_reviews TO commitahead_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON scoring_config_overrides TO commitahead_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON evidence_links TO commitahead_app;
 
--- FORCE, not just ENABLE: commitahead_app is never the table owner (commitahead_migrator is), so
--- ENABLE alone already restricts it fully — FORCE additionally applies these policies even to the
--- table owner/superuser, so an ad-hoc query run directly as commitahead_migrator (or postgres)
--- gets the same isolation instead of silently bypassing it by virtue of owning the table.
+-- ENABLE, not FORCE: commitahead_app is never the table owner (commitahead_migrator is), so
+-- ENABLE alone already fully restricts it — that is the actual runtime threat model (a compromised
+-- or buggy running API), not an ad-hoc query run directly as commitahead_migrator or a superuser.
+-- FORCE would also apply these policies to that owner/superuser connection, which is a different,
+-- broader guarantee this app doesn't need and that carries its own operational risk (a migration
+-- or admin script connecting as the owner would unexpectedly be row-filtered too).
 ALTER TABLE study_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE study_items FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE study_reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE study_reviews FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE scoring_config_overrides ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scoring_config_overrides FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE evidence_links ENABLE ROW LEVEL SECURITY;
-ALTER TABLE evidence_links FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS owner_isolation ON study_items;
 CREATE POLICY owner_isolation ON study_items

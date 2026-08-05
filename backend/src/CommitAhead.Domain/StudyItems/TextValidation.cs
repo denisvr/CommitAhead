@@ -1,9 +1,12 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 /// <summary>
 /// Shared string/list/URL invariant checks for StudyItem and its typed Details, so the same rule
 /// (required-and-trimmed, max length, no blank/null list entries, absolute-URL-with-scheme) isn't
-/// reimplemented slightly differently per field. Never truncates — every violation throws.
+/// reimplemented slightly differently per field. Never truncates — every violation throws
+/// DomainValidationException.
 /// </summary>
 internal static class TextValidation
 {
@@ -11,13 +14,13 @@ internal static class TextValidation
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new ArgumentException($"{paramName} is required.", paramName);
+            throw new DomainValidationException($"{paramName} is required.");
         }
 
         var trimmed = value.Trim();
         if (trimmed.Length > maxLength)
         {
-            throw new ArgumentException($"{paramName} must be at most {maxLength} characters.", paramName);
+            throw new DomainValidationException($"{paramName} must be at most {maxLength} characters.");
         }
 
         return trimmed;
@@ -33,7 +36,7 @@ internal static class TextValidation
         var trimmed = value.Trim();
         if (trimmed.Length > maxLength)
         {
-            throw new ArgumentException($"{paramName} must be at most {maxLength} characters.", paramName);
+            throw new DomainValidationException($"{paramName} must be at most {maxLength} characters.");
         }
 
         return trimmed;
@@ -44,7 +47,7 @@ internal static class TextValidation
         var list = values.ToList();
         if (list.Count > ValidationLimits.MaxListEntryCount)
         {
-            throw new ArgumentException($"{paramName} must have at most {ValidationLimits.MaxListEntryCount} entries.", paramName);
+            throw new DomainValidationException($"{paramName} must have at most {ValidationLimits.MaxListEntryCount} entries.");
         }
 
         var result = new List<string>(list.Count);
@@ -52,13 +55,13 @@ internal static class TextValidation
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException($"{paramName} entries must not be null or blank.", paramName);
+                throw new DomainValidationException($"{paramName} entries must not be null or blank.");
             }
 
             var trimmed = value.Trim();
             if (trimmed.Length > ValidationLimits.ListEntryMaxLength)
             {
-                throw new ArgumentException($"{paramName} entries must be at most {ValidationLimits.ListEntryMaxLength} characters.", paramName);
+                throw new DomainValidationException($"{paramName} entries must be at most {ValidationLimits.ListEntryMaxLength} characters.");
             }
 
             result.Add(trimmed);
@@ -83,7 +86,7 @@ internal static class TextValidation
             || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || !allowedSchemes.Contains(uri.Scheme, StringComparer.Ordinal))
         {
-            throw new ArgumentException($"{paramName} must be an absolute URL using {string.Join(" or ", allowedSchemes)}.", paramName);
+            throw new DomainValidationException($"{paramName} must be an absolute URL using {string.Join(" or ", allowedSchemes)}.");
         }
 
         return value;

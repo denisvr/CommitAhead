@@ -1,3 +1,5 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 public sealed class LeetCodeDetails : StudyItemDetails
@@ -23,12 +25,12 @@ public sealed class LeetCodeDetails : StudyItemDetails
     {
         if (problemNumber is <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(problemNumber), "ProblemNumber must be positive when provided.");
+            throw new DomainValidationException("ProblemNumber must be positive when provided.");
         }
 
         if (!Enum.IsDefined(difficulty))
         {
-            throw new ArgumentOutOfRangeException(nameof(difficulty));
+            throw new DomainValidationException("Difficulty is not a recognized value.");
         }
 
         ProblemNumber = problemNumber;

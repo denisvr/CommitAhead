@@ -98,9 +98,17 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         return new CommitAheadDbContext(options);
     }
 
-    private async Task<Guid> CreateUserAsync(CommitAheadDbContext dbContext)
+    /// <summary>
+    /// commitahead_app now has SELECT-only access to `users` — provisioning is a privileged
+    /// operation the application itself can never perform (item 2 of this corrective pass), so
+    /// test setup has to mirror that and insert via a privileged connection too, not via
+    /// whichever app-role DbContext the test body happens to be using for its own assertions.
+    /// </summary>
+    private async Task<Guid> CreateUserAsync()
     {
         var id = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(SuperuserConnectionString).Options;
+        await using var dbContext = new CommitAheadDbContext(options);
         await new UserRepository(dbContext).AddAsync(new User(id, $"sub-{id}", $"{id}@example.com", DateTime.UtcNow), CancellationToken.None);
         return id;
     }
@@ -122,7 +130,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         await using var dbContext = CreateAppDbContext();
         var rlsSessionContext = new RlsSessionContext(dbContext);
         var repository = new StudyItemRepository(dbContext);
-        var ownerUserId = await CreateUserAsync(dbContext);
+        var ownerUserId = await CreateUserAsync();
         var item = CreateStudyItem(ownerUserId, "Two Sum");
 
         await rlsSessionContext.RunInOwnerScopeAsync(ownerUserId, async () =>
@@ -154,8 +162,8 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         await using var dbContext = CreateAppDbContext();
         var rlsSessionContext = new RlsSessionContext(dbContext);
         var repository = new StudyItemRepository(dbContext);
-        var ownerAId = await CreateUserAsync(dbContext);
-        var ownerBId = await CreateUserAsync(dbContext);
+        var ownerAId = await CreateUserAsync();
+        var ownerBId = await CreateUserAsync();
         var itemA = CreateStudyItem(ownerAId, "Owner A's item");
 
         await rlsSessionContext.RunInOwnerScopeAsync(ownerAId, () => repository.AddAsync(itemA, CancellationToken.None), CancellationToken.None);
@@ -176,8 +184,8 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         await using var dbContext = CreateAppDbContext();
         var rlsSessionContext = new RlsSessionContext(dbContext);
         var repository = new StudyItemRepository(dbContext);
-        var ownerAId = await CreateUserAsync(dbContext);
-        var ownerBId = await CreateUserAsync(dbContext);
+        var ownerAId = await CreateUserAsync();
+        var ownerBId = await CreateUserAsync();
         var itemA = CreateStudyItem(ownerAId, "Owner A's item");
         await rlsSessionContext.RunInOwnerScopeAsync(ownerAId, () => repository.AddAsync(itemA, CancellationToken.None), CancellationToken.None);
 
@@ -201,7 +209,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
     {
         await using var setupDbContext = CreateAppDbContext();
         var rlsSessionContext = new RlsSessionContext(setupDbContext);
-        var ownerUserId = await CreateUserAsync(setupDbContext);
+        var ownerUserId = await CreateUserAsync();
         var repository = new StudyItemRepository(setupDbContext);
         await rlsSessionContext.RunInOwnerScopeAsync(
             ownerUserId, () => repository.AddAsync(CreateStudyItem(ownerUserId, "Should stay invisible"), CancellationToken.None), CancellationToken.None);
@@ -238,7 +246,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         // The database must still work normally afterward.
         await using var dbContext = CreateAppDbContext();
         var rlsSessionContext = new RlsSessionContext(dbContext);
-        var ownerUserId = await CreateUserAsync(dbContext);
+        var ownerUserId = await CreateUserAsync();
         var repository = new StudyItemRepository(dbContext);
 
         await rlsSessionContext.RunInOwnerScopeAsync(ownerUserId, async () =>

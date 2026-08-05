@@ -2,6 +2,7 @@ using CommitAhead.Application.StudyItems;
 using CommitAhead.Domain.StudyItems;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CommitAhead.Infrastructure.StudyItems;
 
@@ -43,12 +44,14 @@ public sealed class StudyItemRepository : IStudyItemRepository
             await _dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation })
         {
-            // The only realistic cause: the study_reviews/evidence_links Restrict FK rejected the
+            // The one expected cause: the study_reviews/evidence_links Restrict FK rejected the
             // delete because a row was inserted concurrently after DeleteStudyItemUseCase's own
             // guard passed. Translate to "not deleted" here rather than letting an EF-specific
-            // exception type leak into Application (which must not depend on EF Core).
+            // exception type leak into Application (which must not depend on EF Core). Any OTHER
+            // DbUpdateException — a genuinely unexpected DB failure — is not this scenario and
+            // must propagate normally rather than being silently swallowed into "not deleted".
             return false;
         }
     }

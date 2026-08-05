@@ -1,4 +1,5 @@
 using CommitAhead.Application.Identity;
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Application.StudyItems;
@@ -44,7 +45,7 @@ public sealed class GetStudyItemsUseCase
 
         if (!Enum.TryParse<StudyItemStatus>(status, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
         {
-            throw new ArgumentException($"status must be one of: {string.Join(", ", Enum.GetNames<StudyItemStatus>())}.", nameof(status));
+            throw new DomainValidationException($"status must be one of: {string.Join(", ", Enum.GetNames<StudyItemStatus>())}.");
         }
 
         return parsed;

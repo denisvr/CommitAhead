@@ -1,3 +1,5 @@
+using CommitAhead.Domain;
+
 namespace CommitAhead.Domain.StudyItems;
 
 public sealed class PriorityOverride
@@ -9,7 +11,7 @@ public sealed class PriorityOverride
     {
         if (score is < 0 or > 100)
         {
-            throw new ArgumentOutOfRangeException(nameof(score), "Score must be in [0,100].");
+            throw new DomainValidationException("Score must be in [0,100].");
         }
 
         Score = score;

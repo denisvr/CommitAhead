@@ -1,5 +1,6 @@
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Application.Tests.Identity;
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Application.Tests.StudyItems;
@@ -30,7 +31,7 @@ public class CreateStudyItemUseCaseTests
         var repository = new FakeStudyItemRepository();
         var useCase = new CreateStudyItemUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => useCase.ExecuteAsync(
+        await Assert.ThrowsAsync<DomainValidationException>(() => useCase.ExecuteAsync(
             "Title", StudyItemCategory.Theory, importance: 0, initialMastery: 2, [], ValidTheoryDetails(), CancellationToken.None));
         Assert.Empty(repository.Items);
     }

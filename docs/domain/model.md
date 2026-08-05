@@ -27,6 +27,17 @@ The primary unit of preparation and the only entity ranked in the study queue, s
 | `createdAt` | timestamp | UTC |
 | `updatedAt` | timestamp | UTC |
 
+**Canonical tags:** normalisation is a fixed trim/lowercase/kebab-case transform, not a synonym
+table — it has no way to know that "C#" and "C Sharp" name the same language, so distinct spellings
+of an ambiguous technical term normalise to distinct tags. Enter (or expect an AI proposal to
+enter) the spelled-out form so normalisation lands on the conventional tag:
+
+| Term | Type this | Normalises to |
+|---|---|---|
+| C# | `C Sharp` | `c-sharp` |
+| C++ | `C Plus Plus` | `c-plus-plus` |
+| .NET | `dotnet` | `dotnet` |
+
 **Children:** `StudyReview[]`
 
 #### StudyReview

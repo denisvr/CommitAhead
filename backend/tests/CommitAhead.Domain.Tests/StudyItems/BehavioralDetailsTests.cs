@@ -1,3 +1,4 @@
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Domain.Tests.StudyItems;
@@ -23,7 +24,7 @@ public class BehavioralDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankSituation_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(situation: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(situation: value));
     }
 
     [Theory]
@@ -31,7 +32,7 @@ public class BehavioralDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankTask_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(task: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(task: value));
     }
 
     [Theory]
@@ -39,7 +40,7 @@ public class BehavioralDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankAction_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(action: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(action: value));
     }
 
     [Theory]
@@ -47,13 +48,13 @@ public class BehavioralDetailsTests
     [InlineData("   ")]
     public void Constructor_WithBlankResult_Throws(string value)
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(result: value));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(result: value));
     }
 
     [Fact]
     public void Constructor_WithBlankCompetencyEntry_Throws()
     {
-        Assert.Throws<ArgumentException>(() => CreateDetails(competencies: ["   "]));
+        Assert.Throws<DomainValidationException>(() => CreateDetails(competencies: ["   "]));
     }
 
     [Fact]

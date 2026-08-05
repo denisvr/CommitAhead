@@ -1,5 +1,6 @@
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Application.Tests.Identity;
+using CommitAhead.Domain;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Application.Tests.StudyItems;
@@ -51,7 +52,7 @@ public class GetStudyItemsUseCaseTests
         var repository = new FakeStudyItemRepository();
         var useCase = new GetStudyItemsUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
-        await Assert.ThrowsAsync<ArgumentException>(() => useCase.ExecuteAsync("not-a-status", CancellationToken.None));
+        await Assert.ThrowsAsync<DomainValidationException>(() => useCase.ExecuteAsync("not-a-status", CancellationToken.None));
     }
 
     [Fact]
