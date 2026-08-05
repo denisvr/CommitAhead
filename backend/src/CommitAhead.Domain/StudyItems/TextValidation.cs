@@ -91,4 +91,32 @@ internal static class TextValidation
 
         return value;
     }
+
+    /// <summary>
+    /// Same list-of-entries shape as <see cref="RequireEntries"/> (count limit, no null entries),
+    /// but for entries that must each be an absolute URL rather than arbitrary trimmed text — a
+    /// deserialized request body can still hand this a null list element at runtime regardless of
+    /// the static, non-nullable <c>string</c> in <c>IEnumerable&lt;string&gt;</c>.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateAbsoluteUrlEntries(IEnumerable<string> values, string paramName, params string[] allowedSchemes)
+    {
+        var list = values.ToList();
+        if (list.Count > ValidationLimits.MaxListEntryCount)
+        {
+            throw new DomainValidationException($"{paramName} must have at most {ValidationLimits.MaxListEntryCount} entries.");
+        }
+
+        var result = new List<string>(list.Count);
+        foreach (var value in list)
+        {
+            if (value is null)
+            {
+                throw new DomainValidationException($"{paramName} entries must not be null.");
+            }
+
+            result.Add(ValidateAbsoluteUrl(value, paramName, allowedSchemes));
+        }
+
+        return result;
+    }
 }

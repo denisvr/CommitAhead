@@ -34,4 +34,18 @@ public class TheoryDetailsTests
 
         Assert.Equal(["http://example.com/a", "https://example.com/b"], details.References);
     }
+
+    [Fact]
+    public void Constructor_WithANullReferenceEntry_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new TheoryDetails("Summary", [], [], [null!]));
+    }
+
+    [Fact]
+    public void Constructor_WithMoreReferencesThanMaxCount_Throws()
+    {
+        var references = Enumerable.Range(0, ValidationLimits.MaxListEntryCount + 1).Select(i => $"https://example.com/{i}").ToList();
+
+        Assert.Throws<DomainValidationException>(() => new TheoryDetails("Summary", [], [], references));
+    }
 }

@@ -37,4 +37,28 @@ public class StudyReviewTests
 
         Assert.Null(review.NotesMarkdown);
     }
+
+    [Fact]
+    public void Constructor_TrimsNotes()
+    {
+        var review = new StudyReview(Guid.NewGuid(), Now, 3, "  Went well  ");
+
+        Assert.Equal("Went well", review.NotesMarkdown);
+    }
+
+    [Fact]
+    public void Constructor_WithBlankNotes_TreatsAsNull()
+    {
+        var review = new StudyReview(Guid.NewGuid(), Now, 3, "   ");
+
+        Assert.Null(review.NotesMarkdown);
+    }
+
+    [Fact]
+    public void Constructor_WithNotesLongerThanMaxLength_Throws()
+    {
+        var notes = new string('a', ValidationLimits.MarkdownMaxLength + 1);
+
+        Assert.Throws<DomainValidationException>(() => new StudyReview(Guid.NewGuid(), Now, 3, notes));
+    }
 }

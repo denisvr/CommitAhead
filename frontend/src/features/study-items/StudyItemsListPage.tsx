@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../design-system/components/Button'
 import { EmptyState } from '../../design-system/components/EmptyState'
 import { StudyItemRow } from '../../design-system/components/StudyItemRow'
@@ -26,26 +26,17 @@ export function StudyItemsListPage({ onSelectItem, onCreateNew }: StudyItemsList
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [items, setItems] = useState<StudyItemSummaryResponse[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [retryToken, setRetryToken] = useState(0)
 
-  const load = useCallback(async (status: StudyItemStatus) => {
-    try {
-      setItems(await fetchStudyItems(status))
-      setLoadState('ready')
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Something went wrong loading your study items.')
-      setLoadState('error')
-    }
-  }, [])
-
-  // Inlined rather than calling load() directly — see StudyQueuePage for why (linter's
-  // set-state-in-effect rule treats any call to a state-setting function reference as
-  // synchronous, regardless of the await inside it). Does not reset loadState to 'loading' on a
-  // tab switch for the same reason — the previous tab's items stay visible until the new fetch
-  // resolves, then swap in; only the initial mount shows the "Loading…" state.
+  // One request lifecycle for both a tab switch and a retry — retryToken is a plain counter with
+  // no meaning of its own, bumped only to re-run this effect for the *current* activeTab. Does not
+  // reset loadState to 'loading' on either one — the previous tab's items (or the error) stay
+  // visible until the new fetch resolves, then swap in; only the initial mount shows "Loading…".
   //
   // The `stale` flag guards against a slower, earlier fetch (e.g. for a tab the user has since
-  // switched away from) resolving after a faster, later one and overwriting the currently
-  // selected tab's just-applied data with a response for a tab that isn't showing anymore.
+  // switched away from, or a retry superseded by a subsequent tab switch) resolving after a
+  // faster, later one and overwriting the currently selected tab's just-applied data with a
+  // response that no longer corresponds to what's on screen.
   useEffect(() => {
     let stale = false
 
@@ -64,9 +55,9 @@ export function StudyItemsListPage({ onSelectItem, onCreateNew }: StudyItemsList
     return () => {
       stale = true
     }
-  }, [activeTab])
+  }, [activeTab, retryToken])
 
-  const retry = () => void load(activeTab)
+  const retry = () => setRetryToken((token) => token + 1)
 
   return (
     <div className={styles.page}>

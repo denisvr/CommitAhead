@@ -1,3 +1,4 @@
+using CommitAhead.Domain.EvidenceLinks;
 using CommitAhead.Domain.StudyItems;
 using CommitAhead.Infrastructure.Persistence;
 using CommitAhead.Infrastructure.StudyItems;
@@ -181,6 +182,50 @@ public class StudyItemRepositoryTests : IAsyncLifetime
         var stillThere = await repository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None);
         Assert.NotNull(stillThere);
         Assert.Single(stillThere.Reviews);
+    }
+
+    [Fact]
+    public async Task Delete_WithAConcurrentlyInsertedEvidenceLink_IsRejectedByTheDatabase()
+    {
+        // The other half of the two constraint names StudyItemRepository.DeleteAsync recognizes
+        // as "not deleted" — an EvidenceLink still targeting the item, inserted after this
+        // repository's own item was loaded, must block the delete exactly like a StudyReview does.
+        var repository = new StudyItemRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var item = CreateItem(ownerUserId);
+        await repository.AddAsync(item, CancellationToken.None);
+
+        var otherOptions = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var otherDbContext = new CommitAheadDbContext(otherOptions);
+        otherDbContext.EvidenceLinks.Add(new EvidenceLink(
+            Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), item.Id, 2m, "Mentioned in job posting", DateTime.UtcNow));
+        await otherDbContext.SaveChangesAsync(CancellationToken.None);
+
+        var deleted = await repository.DeleteAsync(item, CancellationToken.None);
+
+        Assert.False(deleted);
+        Assert.NotNull(await repository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Delete_WhenTheItemWasAlreadyDeletedConcurrently_PropagatesTheUnexpectedException()
+    {
+        // Not a foreign-key violation at all: the row is already gone, so this context's own
+        // DELETE affects zero rows, which EF surfaces as DbUpdateConcurrencyException. Matching by
+        // ConstraintName (not just the FK-violation SQL state) means this must propagate rather
+        // than being swallowed into "not deleted".
+        var repository = new StudyItemRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var item = CreateItem(ownerUserId);
+        await repository.AddAsync(item, CancellationToken.None);
+
+        var otherOptions = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var otherDbContext = new CommitAheadDbContext(otherOptions);
+        var otherRepository = new StudyItemRepository(otherDbContext);
+        var trackedElsewhere = await otherRepository.GetByIdAsync(ownerUserId, item.Id, CancellationToken.None);
+        await otherRepository.DeleteAsync(trackedElsewhere!, CancellationToken.None);
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => repository.DeleteAsync(item, CancellationToken.None));
     }
 
     [Fact]

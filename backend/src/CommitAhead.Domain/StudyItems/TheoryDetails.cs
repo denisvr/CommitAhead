@@ -16,6 +16,6 @@ public sealed class TheoryDetails : StudyItemDetails
         SummaryMarkdown = TextValidation.RequireNonBlank(summaryMarkdown, nameof(summaryMarkdown), ValidationLimits.MarkdownMaxLength);
         KeyPoints = TextValidation.RequireEntries(keyPoints, nameof(keyPoints));
         InterviewQuestions = TextValidation.RequireEntries(interviewQuestions, nameof(interviewQuestions));
-        References = references.Select(reference => TextValidation.ValidateAbsoluteUrl(reference, nameof(references), "http", "https")).ToList();
+        References = TextValidation.ValidateAbsoluteUrlEntries(references, nameof(references), "http", "https");
     }
 }

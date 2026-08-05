@@ -68,4 +68,20 @@ public class LeetCodeDetailsTests
     {
         Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [], "O(n)", "O(1)", "   ", null));
     }
+
+    [Fact]
+    public void Constructor_WithMorePatternsThanMaxCount_Throws()
+    {
+        var patterns = Enumerable.Range(0, ValidationLimits.MaxTagCount + 1).Select(i => $"pattern-{i}").ToList();
+
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, patterns, "O(n)", "O(1)", "approach", null));
+    }
+
+    [Fact]
+    public void Constructor_WithAPatternLongerThanMaxLength_Throws()
+    {
+        var pattern = new string('a', ValidationLimits.TagMaxLength + 1);
+
+        Assert.Throws<DomainValidationException>(() => new LeetCodeDetails(1, null, Difficulty.Easy, [pattern], "O(n)", "O(1)", "approach", null));
+    }
 }

@@ -24,6 +24,6 @@ public sealed class StudyReview
         Id = id;
         ReviewedAtUtc = reviewedAtUtc;
         ConfidenceRating = confidenceRating;
-        NotesMarkdown = notesMarkdown;
+        NotesMarkdown = TextValidation.TrimToNullOrValidate(notesMarkdown, nameof(notesMarkdown), ValidationLimits.MarkdownMaxLength);
     }
 }

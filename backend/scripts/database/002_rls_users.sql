@@ -1,7 +1,8 @@
 -- CommitAhead — Row-Level Security on `users`.
 --
--- NOT executed by the application or by CI. Run this AFTER 001_roles.sql and AFTER EF Core
--- migrations have created the `users` table — ALTER TABLE/GRANT/CREATE POLICY below fail if
+-- Never executed by the running application itself. It IS executed by CI (see 001_roles.sql's
+-- header) and by backend/scripts/setup-local-db.ps1. Run this AFTER 001_roles.sql and AFTER EF
+-- Core migrations have created the `users` table — ALTER TABLE/GRANT/CREATE POLICY below fail if
 -- the table doesn't exist yet.
 --
 -- Row-Level Security is enabled on every application table. Supabase's `anon` and
@@ -14,6 +15,12 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 -- privileged, out-of-band operation (see docs/tbd.md "Invited-user provisioning"), run with a
 -- different, more-trusted credential than the one the API connects with. If the app is ever
 -- compromised at the request level, it still cannot create or enable an account for itself.
+--
+-- REVOKE first: a database that already ran an earlier revision of this script (before this
+-- restriction existed) has commitahead_app holding INSERT/UPDATE/DELETE on users — GRANT SELECT
+-- alone only adds a privilege, it never takes back ones already held, so the REVOKE is what
+-- actually corrects that state on re-run, not just the GRANT.
+REVOKE INSERT, UPDATE, DELETE ON users FROM commitahead_app;
 GRANT SELECT ON users TO commitahead_app;
 
 -- The `users` table itself is the identity table the backend resolves `sub` against (ADR-0015),

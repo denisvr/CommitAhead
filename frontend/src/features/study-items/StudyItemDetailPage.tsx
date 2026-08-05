@@ -25,6 +25,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error'
 
 type StudyItemDetailPageProps = {
   itemId: string
+  backLabel: string
   onBack: () => void
   onDeleted: () => void
 }
@@ -33,7 +34,7 @@ function describeError(caught: unknown, fallback: string): string {
   return caught instanceof Error ? caught.message : fallback
 }
 
-export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDetailPageProps) {
+export function StudyItemDetailPage({ itemId, backLabel, onBack, onDeleted }: StudyItemDetailPageProps) {
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [item, setItem] = useState<StudyItemResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -98,7 +99,7 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
     return (
       <div className={styles.page}>
         <p>This study item could not be found.</p>
-        <Button onClick={onBack}>Back to queue</Button>
+        <Button onClick={onBack}>{backLabel}</Button>
       </div>
     )
   }
@@ -194,7 +195,7 @@ export function StudyItemDetailPage({ itemId, onBack, onDeleted }: StudyItemDeta
   return (
     <div className={styles.page}>
       <Button variant="ghost" className={styles.back} onClick={onBack}>
-        Back to queue
+        {backLabel}
       </Button>
 
       <header className={styles.header}>

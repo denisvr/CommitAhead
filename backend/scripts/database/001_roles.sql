@@ -1,7 +1,10 @@
 -- CommitAhead — dedicated PostgreSQL login roles.
 --
--- NOT executed by the application or by CI. Documentation-as-SQL matching
--- docs/architecture/persistence.md ("Supabase RLS") and ADR-0007/ADR-0015.
+-- Never executed by the running application itself. It IS executed by CI: the Infrastructure.Tests
+-- integration suite (RlsIsolationTests, RlsHttpIsolationTests) applies this script against a
+-- disposable Testcontainers database for every run, and backend/scripts/setup-local-db.ps1 applies
+-- it for local dev. Documentation-as-SQL matching docs/architecture/persistence.md ("Supabase RLS")
+-- and ADR-0007/ADR-0015 for the real Supabase project, which still needs it run manually.
 --
 -- Safe to run before any tables exist (schema-level only) — run this FIRST, as the
 -- project's postgres/superuser role, then apply EF Core migrations, then run

@@ -187,6 +187,7 @@ function App() {
         <StudyItemDetailPage
           key={view.id}
           itemId={view.id}
+          backLabel={view.from === 'items' ? 'Back to study items' : 'Back to queue'}
           onBack={() => setView(originView(view.from))}
           onDeleted={() => setView(originView(view.from))}
         />

@@ -235,6 +235,49 @@ public sealed class RlsIsolationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheSetupScripts_CorrectAPreviouslyForcedAndOverGrantedState()
+    {
+        // Simulate a database that already had an EARLIER revision of 002/003 applied — one that
+        // forced RLS on every Phase 1 table and granted commitahead_app write access to `users`.
+        // Re-running the CURRENT 002/003 must actively correct both, not just layer ENABLE/SELECT
+        // on top: ENABLE alone does not clear a previously-set FORCE flag, and GRANT SELECT alone
+        // does not take back previously-granted INSERT/UPDATE/DELETE — only the NO FORCE and
+        // REVOKE statements those scripts now contain actually undo the old state.
+        await ExecuteAsSuperuserAsync(
+            """
+            ALTER TABLE study_items FORCE ROW LEVEL SECURITY;
+            ALTER TABLE study_reviews FORCE ROW LEVEL SECURITY;
+            ALTER TABLE scoring_config_overrides FORCE ROW LEVEL SECURITY;
+            ALTER TABLE evidence_links FORCE ROW LEVEL SECURITY;
+            GRANT INSERT, UPDATE, DELETE ON users TO commitahead_app;
+            """);
+
+        await ApplyRlsScriptsAsync();
+
+        // FORCE corrected: commitahead_migrator (the table owner) sees every row without ever
+        // setting app.current_user_id — if FORCE were still in effect, the owner would be
+        // row-filtered too, exactly like commitahead_app.
+        var ownerUserId = await CreateUserAsync();
+        await using var appDbContext = CreateAppDbContext();
+        var rlsSessionContext = new RlsSessionContext(appDbContext);
+        var repository = new StudyItemRepository(appDbContext);
+        await rlsSessionContext.RunInOwnerScopeAsync(
+            ownerUserId, () => repository.AddAsync(CreateStudyItem(ownerUserId, "Visible to the owner"), CancellationToken.None), CancellationToken.None);
+
+        var migratorOptions = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(MigratorConnectionString).Options;
+        await using var migratorDbContext = new CommitAheadDbContext(migratorOptions);
+        Assert.Equal(1, await migratorDbContext.StudyItems.CountAsync());
+
+        // Grant corrected: commitahead_app can no longer write to `users`, only read it.
+        var appOptions = new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(AppConnectionString).Options;
+        await using var appOnlyDbContext = new CommitAheadDbContext(appOptions);
+        var probe = new User(Guid.NewGuid(), "revoke-probe", "revoke-probe@example.com", DateTime.UtcNow);
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => new UserRepository(appOnlyDbContext).AddAsync(probe, CancellationToken.None));
+        var postgresException = Assert.IsType<PostgresException>(exception.InnerException);
+        Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, postgresException.SqlState);
+    }
+
+    [Fact]
     public async Task TheSetupScripts_RemainSafe_WhenAppliedASecondTime()
     {
         // setup-local-db.ps1 re-applies 001/002/003 on every invocation, not just against a fresh

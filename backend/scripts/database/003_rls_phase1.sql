@@ -1,8 +1,9 @@
 -- CommitAhead — grants and Row-Level Security for the Phase 1 business tables.
 --
--- NOT executed by the application or by CI. Run this AFTER 001_roles.sql, AFTER EF Core migrations
--- have created these tables, and AFTER 002_rls_users.sql — ALTER TABLE/GRANT/CREATE POLICY below
--- fail if a table doesn't exist yet.
+-- Never executed by the running application itself. It IS executed by CI (see 001_roles.sql's
+-- header) and by backend/scripts/setup-local-db.ps1. Run this AFTER 001_roles.sql, AFTER EF Core
+-- migrations have created these tables, and AFTER 002_rls_users.sql — ALTER TABLE/GRANT/CREATE
+-- POLICY below fail if a table doesn't exist yet.
 --
 -- 002_rls_users.sql covers `users` (the identity table, unconditionally open to commitahead_app —
 -- see its own header comment for why). This script covers the four owner-scoped Phase 1 tables:
@@ -53,12 +54,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON evidence_links TO commitahead_app;
 -- FORCE would also apply these policies to that owner/superuser connection, which is a different,
 -- broader guarantee this app doesn't need and that carries its own operational risk (a migration
 -- or admin script connecting as the owner would unexpectedly be row-filtered too).
+--
+-- NO FORCE first: a database that already ran an earlier revision of this script (before FORCE
+-- was removed) has these tables' relforcerowsecurity flag still set — Postgres tracks "enabled"
+-- and "forced" as two independent flags, so ENABLE on its own leaves a previously-set FORCE
+-- untouched. NO FORCE is what actually corrects that state on re-run.
+ALTER TABLE study_items NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE study_items ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE study_reviews NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE study_reviews ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE scoring_config_overrides NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE scoring_config_overrides ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE evidence_links NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE evidence_links ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS owner_isolation ON study_items;

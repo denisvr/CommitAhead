@@ -39,7 +39,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 2. Application has no dependency on Infrastructure, API, EF Core, Npgsql, ASP.NET Core, or Supabase.
 3. Infrastructure has no dependency on API.
 4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services. The API composition root is the explicit exception for Infrastructure registration.
-5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). **Pending**: skipped until Application declares `IAIProvider` and at least one repository interface (Phase 1/Phase 4) — there is nothing to check the rule against yet, and a name-suffix match against a codebase with no such types would pass vacuously.
+5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). **Repository half is active**: Phase 1 declared `IStudyItemRepository`/`IScoringConfigRepository`/etc., so this half of the rule runs for real, not vacuously. **`IAIProvider` half still pending**: skipped until Application declares an `IAIProvider` interface (Phase 4) — there is nothing to check that half against yet.
 
 ## Project structure (target)
 ```
@@ -122,7 +122,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 **Tests:**
 - Domain unit tests
 - Application use-case tests (handwritten fakes)
-- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial)
+- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial) — includes applying `001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql` against a disposable database and proving RLS isolation end to end (`RlsIsolationTests`, `RlsHttpIsolationTests`); those scripts are never run by the production application itself, but CI does run them
 - API tests (WebApplicationFactory + shared Testcontainers DB + `FakeAIProvider`)
 - NetArchTest architecture rules
 - Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, malicious uploads, AI schema validation, idempotency, rate/budget limits, log redaction)
@@ -130,7 +130,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - Parsed PDF/CV assertions
 
 **Post-merge / manual only:**
-- Playwright E2E (4 journeys)
+- Playwright E2E (4 journeys) — still deferred; adding the project and writing the journeys is tracked as its own item in `docs/roadmap.md`, not assumed done
 - Visual regression fixtures (per CV template)
 - SBOM generation + Trivy container scan (high/critical blocks deployment)
 - OWASP ZAP baseline (FakeAIProvider, fail on confirmed high-severity)
