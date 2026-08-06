@@ -1,4 +1,5 @@
 using System.Reflection;
+using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
@@ -112,6 +113,7 @@ public class ArchitectureTests
         typeof(IEvidenceLinkQuery),
         typeof(IRlsSessionContext),
         typeof(IProfessionalProfileRepository),
+        typeof(ICVPresentationRepository),
     ];
 
     [Fact]

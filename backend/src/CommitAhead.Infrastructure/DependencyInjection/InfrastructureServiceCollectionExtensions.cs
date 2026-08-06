@@ -1,9 +1,11 @@
 using CommitAhead.Application.Auth;
+using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Infrastructure.Auth;
+using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.EvidenceLinks;
 using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.Persistence;
@@ -30,6 +32,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEvidenceLinkQuery, EvidenceLinkQuery>();
         services.AddScoped<IRlsSessionContext, RlsSessionContext>();
         services.AddScoped<IProfessionalProfileRepository, ProfessionalProfileRepository>();
+        services.AddScoped<ICVPresentationRepository, CVPresentationRepository>();
 
         // No .ValidateOnStart(): the build-time OpenAPI document generator actually runs the host
         // (not just builds it) without user-secrets loaded, so eager validation here would break

@@ -1,7 +1,9 @@
+using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.EvidenceLinks;
 using CommitAhead.Domain.Identity;
 using CommitAhead.Domain.ProfessionalProfiles;
 using CommitAhead.Domain.StudyItems;
+using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.EvidenceLinks;
 using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.ProfessionalProfiles;
@@ -25,6 +27,8 @@ public sealed class CommitAheadDbContext : DbContext
 
     public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
 
+    public DbSet<CVPresentation> CVPresentations => Set<CVPresentation>();
+
     internal DbSet<ScoringConfigOverrideRow> ScoringConfigOverrides => Set<ScoringConfigOverrideRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -42,5 +46,6 @@ public sealed class CommitAheadDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CertificationEntryConfiguration());
         modelBuilder.ApplyConfiguration(new ProjectEntryConfiguration());
         modelBuilder.ApplyConfiguration(new ProfileLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new CVPresentationConfiguration());
     }
 }

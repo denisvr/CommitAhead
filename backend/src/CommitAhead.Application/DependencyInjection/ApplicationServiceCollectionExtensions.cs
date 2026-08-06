@@ -1,4 +1,5 @@
 using CommitAhead.Application.Auth;
+using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
@@ -34,16 +35,26 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetProfessionalProfileUseCase>();
         services.AddScoped<CreateProfessionalProfileUseCase>();
         services.AddScoped<UpdateProfessionalProfileUseCase>();
+        services.AddScoped<ReplaceExperienceUseCase>();
+        services.AddScoped<ReplaceEducationUseCase>();
+        services.AddScoped<ReplaceSkillsUseCase>();
+        services.AddScoped<ReplaceLanguagesUseCase>();
+        services.AddScoped<ReplaceCertificationsUseCase>();
+        services.AddScoped<ReplaceProjectsUseCase>();
+        services.AddScoped<ReplaceProfileLinksUseCase>();
 
-        // The seven ReplaceXUseCase classes (ReplaceExperienceUseCase, ReplaceEducationUseCase,
-        // ReplaceSkillsUseCase, ReplaceLanguagesUseCase, ReplaceCertificationsUseCase,
-        // ReplaceProjectsUseCase, ReplaceProfileLinksUseCase) are deliberately NOT registered here
-        // right now: this slice gave them all an ICVPresentationRepository dependency (invariant-25
-        // dangling-selection cleanup), and that interface has no Infrastructure implementation
-        // until the CVPresentation Infrastructure slice. Registering them now would make the API
-        // host fail to build (ValidateOnBuild), breaking every Api.Tests test. Re-add all seven
-        // AddScoped<...>() lines, together with ICVPresentationRepository's own registration and
-        // the CVPresentation use cases, once that slice lands.
+        services.AddScoped<GetCVPresentationUseCase>();
+        services.AddScoped<GetCVPresentationsUseCase>();
+        services.AddScoped<CreateCVPresentationUseCase>();
+        services.AddScoped<UpdateCVPresentationUseCase>();
+        services.AddScoped<DeleteCVPresentationUseCase>();
+        services.AddScoped<ReplaceExperienceSelectionsUseCase>();
+        services.AddScoped<ReplaceEducationSelectionsUseCase>();
+        services.AddScoped<ReplaceSkillSelectionsUseCase>();
+        services.AddScoped<ReplaceLanguageSelectionsUseCase>();
+        services.AddScoped<ReplaceCertificationSelectionsUseCase>();
+        services.AddScoped<ReplaceProjectSelectionsUseCase>();
+        services.AddScoped<ReplaceProfileLinkSelectionsUseCase>();
 
         return services;
     }
