@@ -438,6 +438,362 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/professional-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProfessionalProfileResponse"];
+                        "application/json": components["schemas"]["ProfessionalProfileResponse"];
+                        "text/json": components["schemas"]["ProfessionalProfileResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfessionalProfileRequest"];
+                    "text/json": components["schemas"]["UpdateProfessionalProfileRequest"];
+                    "application/*+json": components["schemas"]["UpdateProfessionalProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateProfessionalProfileRequest"];
+                    "text/json": components["schemas"]["CreateProfessionalProfileRequest"];
+                    "application/*+json": components["schemas"]["CreateProfessionalProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/experience": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExperienceEntryDto"][];
+                    "text/json": components["schemas"]["ExperienceEntryDto"][];
+                    "application/*+json": components["schemas"]["ExperienceEntryDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/education": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EducationEntryDto"][];
+                    "text/json": components["schemas"]["EducationEntryDto"][];
+                    "application/*+json": components["schemas"]["EducationEntryDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SkillDto"][];
+                    "text/json": components["schemas"]["SkillDto"][];
+                    "application/*+json": components["schemas"]["SkillDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/languages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LanguageEntryDto"][];
+                    "text/json": components["schemas"]["LanguageEntryDto"][];
+                    "application/*+json": components["schemas"]["LanguageEntryDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/certifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CertificationEntryDto"][];
+                    "text/json": components["schemas"]["CertificationEntryDto"][];
+                    "application/*+json": components["schemas"]["CertificationEntryDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectEntryDto"][];
+                    "text/json": components["schemas"]["ProjectEntryDto"][];
+                    "application/*+json": components["schemas"]["ProjectEntryDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/professional-profile/profile-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProfileLinkDto"][];
+                    "text/json": components["schemas"]["ProfileLinkDto"][];
+                    "application/*+json": components["schemas"]["ProfileLinkDto"][];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -501,6 +857,436 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CVPresentationResponse"][];
+                        "application/json": components["schemas"]["CVPresentationResponse"][];
+                        "text/json": components["schemas"]["CVPresentationResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCVPresentationRequest"];
+                    "text/json": components["schemas"]["CreateCVPresentationRequest"];
+                    "application/*+json": components["schemas"]["CreateCVPresentationRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CVPresentationResponse"];
+                        "application/json": components["schemas"]["CVPresentationResponse"];
+                        "text/json": components["schemas"]["CVPresentationResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateCVPresentationRequest"];
+                    "text/json": components["schemas"]["UpdateCVPresentationRequest"];
+                    "application/*+json": components["schemas"]["UpdateCVPresentationRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/experience-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/education-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/skill-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/language-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/certification-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/project-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cv-presentations/{id}/profile-link-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": string[];
+                    "text/json": string[];
+                    "application/*+json": string[];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -693,6 +1479,44 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CertificationEntryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            issuingOrganisation: string;
+            issuedAt: null | components["schemas"]["YearMonthDto"];
+            expiresAt: null | components["schemas"]["YearMonthDto"];
+            credentialId: null | string;
+            url: null | string;
+        };
+        ContactInfoDto: {
+            name: string;
+            email: string;
+            phone: null | string;
+            address: null | string;
+            photoStorageKey: null | string;
+        };
+        CreateCVPresentationRequest: {
+            /** Format: uuid */
+            professionalProfileId: string;
+            label: string;
+            targetMarket: string;
+            targetRole: null | string;
+            locale: string;
+            templateKey: string;
+            summaryOverrideMarkdown: null | string;
+            includePhoto: boolean;
+            includeEmail: boolean;
+            includePhone: boolean;
+            includeAddress: boolean;
+            dateFormat: string;
+            /** Format: int32 */
+            pageLimit: number | string;
+        };
+        CreateProfessionalProfileRequest: {
+            contactInfo: components["schemas"]["ContactInfoDto"];
+            summaryMarkdown: string;
+        };
         CreateStudyItemRequest: {
             title: string;
             category: components["schemas"]["StudyItemCategory"];
@@ -706,8 +1530,75 @@ export interface components {
         CsrfResponse: {
             token: string;
         };
+        CVPresentationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            professionalProfileId: string;
+            label: string;
+            targetMarket: string;
+            targetRole: null | string;
+            locale: string;
+            templateKey: string;
+            summaryOverrideMarkdown: null | string;
+            includePhoto: boolean;
+            includeEmail: boolean;
+            includePhone: boolean;
+            includeAddress: boolean;
+            dateFormat: string;
+            /** Format: int32 */
+            pageLimit: number | string;
+            experienceSelections: string[];
+            educationSelections: string[];
+            skillSelections: string[];
+            languageSelections: string[];
+            certificationSelections: string[];
+            projectSelections: string[];
+            profileLinkSelections: string[];
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
         /** @enum {unknown} */
         Difficulty: "Easy" | "Medium" | "Hard";
+        EducationEntryDto: {
+            /** Format: uuid */
+            id: string;
+            institution: string;
+            degree: string;
+            field: null | string;
+            startDate: null | components["schemas"]["YearMonthDto"];
+            endDate: null | components["schemas"]["YearMonthDto"];
+            location: null | string;
+            detailsMarkdown: null | string;
+        };
+        /** @enum {unknown} */
+        EmploymentType: "Permanent" | "Contract" | "Freelance" | "Internship" | "Other";
+        ExperienceEntryDto: {
+            /** Format: uuid */
+            id: string;
+            company: string;
+            client: null | string;
+            role: string;
+            employmentType: components["schemas"]["EmploymentType"];
+            startDate: components["schemas"]["YearMonthDto"];
+            endDate: null | components["schemas"]["YearMonthDto"];
+            location: null | string;
+            workMode: components["schemas"]["WorkMode"];
+            summaryMarkdown: string;
+            achievements: string[];
+            skillIds: string[];
+        };
+        LanguageEntryDto: {
+            /** Format: uuid */
+            id: string;
+            language: string;
+            proficiency: components["schemas"]["LanguageProficiency"];
+            certification: null | string;
+        };
+        /** @enum {unknown} */
+        LanguageProficiency: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "Native";
         LoginRequest: {
             email: string;
         };
@@ -716,6 +1607,43 @@ export interface components {
         };
         MeResponse: {
             email: string;
+        };
+        ProfessionalProfileResponse: {
+            /** Format: uuid */
+            id: string;
+            contactInfo: components["schemas"]["ContactInfoDto"];
+            summaryMarkdown: string;
+            experience: components["schemas"]["ExperienceEntryDto"][];
+            education: components["schemas"]["EducationEntryDto"][];
+            skills: components["schemas"]["SkillDto"][];
+            languages: components["schemas"]["LanguageEntryDto"][];
+            certifications: components["schemas"]["CertificationEntryDto"][];
+            projects: components["schemas"]["ProjectEntryDto"][];
+            profileLinks: components["schemas"]["ProfileLinkDto"][];
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        ProfileLinkDto: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["ProfileLinkKind"];
+            label: null | string;
+            url: string;
+        };
+        /** @enum {unknown} */
+        ProfileLinkKind: "GitHub" | "LinkedIn" | "Portfolio" | "Blog" | "Other";
+        ProjectEntryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            role: null | string;
+            startDate: null | components["schemas"]["YearMonthDto"];
+            endDate: null | components["schemas"]["YearMonthDto"];
+            descriptionMarkdown: string;
+            url: null | string;
+            skillIds: string[];
         };
         RankedStudyItemResponse: {
             /** Format: uuid */
@@ -762,6 +1690,18 @@ export interface components {
             score: number | string;
             reason: string;
         };
+        /** @enum {unknown} */
+        SkillCategory: "Language" | "Framework" | "Platform" | "Cloud" | "Database" | "Messaging" | "DevOps" | "Testing" | "Architecture" | "Tool" | "Methodology" | "Domain" | "Other";
+        SkillDto: {
+            /** Format: uuid */
+            id: string;
+            displayName: string;
+            normalizedKey: string;
+            category: components["schemas"]["SkillCategory"];
+            proficiency: null | components["schemas"]["SkillProficiency"];
+        };
+        /** @enum {unknown} */
+        SkillProficiency: "Beginner" | "Intermediate" | "Advanced" | "Expert" | null;
         /** @enum {unknown} */
         StudyItemCategory: "Theory" | "LeetCode" | "SystemDesign" | "Behavioral";
         StudyItemCreatedResponse: {
@@ -869,6 +1809,25 @@ export interface components {
             confidenceRating: number | string;
             notesMarkdown: null | string;
         };
+        UpdateCVPresentationRequest: {
+            label: string;
+            targetMarket: string;
+            targetRole: null | string;
+            locale: string;
+            templateKey: string;
+            summaryOverrideMarkdown: null | string;
+            includePhoto: boolean;
+            includeEmail: boolean;
+            includePhone: boolean;
+            includeAddress: boolean;
+            dateFormat: string;
+            /** Format: int32 */
+            pageLimit: number | string;
+        };
+        UpdateProfessionalProfileRequest: {
+            contactInfo: components["schemas"]["ContactInfoDto"];
+            summaryMarkdown: string;
+        };
         UpdateScoringConfigRequest: {
             /** Format: int32 */
             importanceWeight: number | string;
@@ -883,6 +1842,14 @@ export interface components {
             importance: number | string;
             tags: string[];
             details: components["schemas"]["StudyItemDetailsDto"];
+        };
+        /** @enum {unknown} */
+        WorkMode: "OnSite" | "Hybrid" | "Remote" | "Other";
+        YearMonthDto: {
+            /** Format: int32 */
+            year: number | string;
+            /** Format: int32 */
+            month: number | string;
         };
     };
     responses: never;
