@@ -50,13 +50,15 @@ public sealed class InterviewNote
             throw new DomainValidationException("OwnerUserId is required.");
         }
 
+        var validatedRound = TextValidation.ValidateDefined(interviewRound, nameof(interviewRound));
+
         Id = id;
         OwnerUserId = ownerUserId;
         Company = TextValidation.RequireNonBlank(company, nameof(company), ValidationLimits.ShortTextMaxLength);
         Role = TextValidation.RequireNonBlank(role, nameof(role), ValidationLimits.ShortTextMaxLength);
-        InterviewRound = interviewRound;
+        InterviewRound = validatedRound;
         SequenceNumber = ValidateSequenceNumber(sequenceNumber);
-        OtherLabel = ValidateOtherLabel(interviewRound, otherLabel);
+        OtherLabel = ValidateOtherLabel(validatedRound, otherLabel);
         Date = ValidateDate(date);
         Questions = TextValidation.RequireEntries(questions, nameof(questions));
         Gaps = TextValidation.RequireEntries(gaps, nameof(gaps));
@@ -82,8 +84,9 @@ public sealed class InterviewNote
     {
         var validatedCompany = TextValidation.RequireNonBlank(company, nameof(company), ValidationLimits.ShortTextMaxLength);
         var validatedRole = TextValidation.RequireNonBlank(role, nameof(role), ValidationLimits.ShortTextMaxLength);
+        var validatedRound = TextValidation.ValidateDefined(interviewRound, nameof(interviewRound));
         var validatedSequenceNumber = ValidateSequenceNumber(sequenceNumber);
-        var validatedOtherLabel = ValidateOtherLabel(interviewRound, otherLabel);
+        var validatedOtherLabel = ValidateOtherLabel(validatedRound, otherLabel);
         var validatedDate = ValidateDate(date);
         var validatedQuestions = TextValidation.RequireEntries(questions, nameof(questions));
         var validatedGaps = TextValidation.RequireEntries(gaps, nameof(gaps));
@@ -92,7 +95,7 @@ public sealed class InterviewNote
 
         Company = validatedCompany;
         Role = validatedRole;
-        InterviewRound = interviewRound;
+        InterviewRound = validatedRound;
         SequenceNumber = validatedSequenceNumber;
         OtherLabel = validatedOtherLabel;
         Date = validatedDate;

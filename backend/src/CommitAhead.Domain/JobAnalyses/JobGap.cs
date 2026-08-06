@@ -25,8 +25,8 @@ public sealed class JobGap
 
         Id = id;
         RequirementId = requirementId;
-        MatchLevel = matchLevel;
-        Severity = severity;
+        MatchLevel = TextValidation.ValidateDefined(matchLevel, nameof(matchLevel));
+        Severity = TextValidation.ValidateDefined(severity, nameof(severity));
         Rationale = TextValidation.RequireNonBlank(rationale, nameof(rationale), ValidationLimits.GapRationaleMaxLength);
     }
 }

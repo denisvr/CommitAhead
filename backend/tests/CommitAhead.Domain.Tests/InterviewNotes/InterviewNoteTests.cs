@@ -56,6 +56,13 @@ public class InterviewNoteTests
     }
 
     [Fact]
+    public void Constructor_WithAnUndefinedInterviewRound_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new InterviewNote(
+            Guid.NewGuid(), Guid.NewGuid(), "Acme", "Engineer", (InterviewRound)999, 1, null, ValidDate, [], [], [], null, CreatedAt));
+    }
+
+    [Fact]
     public void Constructor_WithOtherRoundAndNoLabel_Throws()
     {
         Assert.Throws<DomainValidationException>(() => CreateNote(InterviewRound.Other, otherLabel: null));
@@ -138,6 +145,20 @@ public class InterviewNoteTests
         Assert.Equal(2, note.SequenceNumber);
         Assert.Equal(jobAnalysisId, note.JobAnalysisId);
         Assert.Equal(UpdatedAt, note.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Update_WithAnUndefinedInterviewRound_ThrowsAndLeavesEveryFieldUnchanged()
+    {
+        var note = CreateNote();
+
+        Assert.Throws<DomainValidationException>(() => note.Update(
+            "Globex", "Senior Engineer", (InterviewRound)999, 2, null, ValidDate.AddDays(7), ["Q1"], ["G1"], ["L1"], null, UpdatedAt));
+
+        Assert.Equal("Acme", note.Company);
+        Assert.Equal(InterviewRound.Technical, note.InterviewRound);
+        Assert.Equal(1, note.SequenceNumber);
+        Assert.Equal(CreatedAt, note.UpdatedAtUtc);
     }
 
     [Fact]

@@ -37,6 +37,20 @@ public class JobGapTests
     }
 
     [Fact]
+    public void Constructor_WithAnUndefinedMatchLevel_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new JobGap(
+            Guid.NewGuid(), Guid.NewGuid(), (JobGapMatchLevel)999, JobGapSeverity.High, "Rationale"));
+    }
+
+    [Fact]
+    public void Constructor_WithAnUndefinedSeverity_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new JobGap(
+            Guid.NewGuid(), Guid.NewGuid(), JobGapMatchLevel.Partial, (JobGapSeverity)999, "Rationale"));
+    }
+
+    [Fact]
     public void Constructor_WithBlankRationale_Throws()
     {
         Assert.Throws<DomainValidationException>(() => new JobGap(

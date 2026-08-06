@@ -41,4 +41,19 @@ internal static class TextValidation
 
         return trimmed;
     }
+
+    /// <summary>
+    /// A deserialized request body can hand a domain constructor/method an integer that has no
+    /// matching enum member (a plain C# cast never fails at that boundary) — reject it explicitly
+    /// rather than silently storing an undefined value.
+    /// </summary>
+    public static TEnum ValidateDefined<TEnum>(TEnum value, string paramName) where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+        {
+            throw new DomainValidationException($"{paramName} is not a recognized {typeof(TEnum).Name}.");
+        }
+
+        return value;
+    }
 }

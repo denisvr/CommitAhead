@@ -20,8 +20,8 @@ public sealed class JobRequirement
 
         Id = id;
         Text = TextValidation.RequireNonBlank(text, nameof(text), ValidationLimits.RequirementTextMaxLength);
-        Kind = kind;
-        Priority = priority;
+        Kind = TextValidation.ValidateDefined(kind, nameof(kind));
+        Priority = TextValidation.ValidateDefined(priority, nameof(priority));
         SourceExcerpt = TextValidation.RequireNonBlank(sourceExcerpt, nameof(sourceExcerpt), ValidationLimits.SourceExcerptMaxLength);
     }
 }

@@ -29,6 +29,20 @@ public class JobRequirementTests
     }
 
     [Fact]
+    public void Constructor_WithAnUndefinedKind_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new JobRequirement(
+            Guid.NewGuid(), "Text", (JobRequirementKind)999, JobRequirementPriority.Required, "Excerpt"));
+    }
+
+    [Fact]
+    public void Constructor_WithAnUndefinedPriority_Throws()
+    {
+        Assert.Throws<DomainValidationException>(() => new JobRequirement(
+            Guid.NewGuid(), "Text", JobRequirementKind.Technical, (JobRequirementPriority)999, "Excerpt"));
+    }
+
+    [Fact]
     public void Constructor_WithBlankText_Throws()
     {
         Assert.Throws<DomainValidationException>(() => new JobRequirement(

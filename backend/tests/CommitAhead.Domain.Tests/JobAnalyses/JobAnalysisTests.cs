@@ -118,11 +118,39 @@ public class JobAnalysisTests
         var requirement = CreateRequirement();
         analysis.AddRequirement(requirement, UpdatedAt);
         analysis.AddGap(CreateGap(requirement.Id), UpdatedAt);
+        var removalTimestamp = UpdatedAt.AddDays(1);
 
-        analysis.RemoveRequirement(requirement.Id, UpdatedAt);
+        analysis.RemoveRequirement(requirement.Id, removalTimestamp);
 
         Assert.Empty(analysis.Requirements);
         Assert.Empty(analysis.Gaps);
+        Assert.Equal(removalTimestamp, analysis.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void RemoveRequirement_WithAnEmptyId_ThrowsAndLeavesStateUnchanged()
+    {
+        var analysis = CreateAnalysis();
+        var requirement = CreateRequirement();
+        analysis.AddRequirement(requirement, UpdatedAt);
+
+        Assert.Throws<DomainValidationException>(() => analysis.RemoveRequirement(Guid.Empty, UpdatedAt.AddDays(1)));
+
+        Assert.Equal([requirement], analysis.Requirements);
+        Assert.Equal(UpdatedAt, analysis.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void RemoveRequirement_WithANonexistentId_ThrowsAndLeavesStateUnchanged()
+    {
+        var analysis = CreateAnalysis();
+        var requirement = CreateRequirement();
+        analysis.AddRequirement(requirement, UpdatedAt);
+
+        Assert.Throws<DomainValidationException>(() => analysis.RemoveRequirement(Guid.NewGuid(), UpdatedAt.AddDays(1)));
+
+        Assert.Equal([requirement], analysis.Requirements);
+        Assert.Equal(UpdatedAt, analysis.UpdatedAtUtc);
     }
 
     [Fact]
@@ -186,6 +214,36 @@ public class JobAnalysisTests
         analysis.AddGap(gap, UpdatedAt);
 
         Assert.Same(gap, Assert.Single(analysis.Gaps));
+    }
+
+    [Fact]
+    public void RemoveGap_WithAnEmptyId_ThrowsAndLeavesStateUnchanged()
+    {
+        var analysis = CreateAnalysis();
+        var requirement = CreateRequirement();
+        analysis.AddRequirement(requirement, UpdatedAt);
+        var gap = CreateGap(requirement.Id);
+        analysis.AddGap(gap, UpdatedAt);
+
+        Assert.Throws<DomainValidationException>(() => analysis.RemoveGap(Guid.Empty, UpdatedAt.AddDays(1)));
+
+        Assert.Equal([gap], analysis.Gaps);
+        Assert.Equal(UpdatedAt, analysis.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void RemoveGap_WithANonexistentId_ThrowsAndLeavesStateUnchanged()
+    {
+        var analysis = CreateAnalysis();
+        var requirement = CreateRequirement();
+        analysis.AddRequirement(requirement, UpdatedAt);
+        var gap = CreateGap(requirement.Id);
+        analysis.AddGap(gap, UpdatedAt);
+
+        Assert.Throws<DomainValidationException>(() => analysis.RemoveGap(Guid.NewGuid(), UpdatedAt.AddDays(1)));
+
+        Assert.Equal([gap], analysis.Gaps);
+        Assert.Equal(UpdatedAt, analysis.UpdatedAtUtc);
     }
 
     [Fact]

@@ -74,9 +74,16 @@ public sealed class JobAnalysis
         UpdatedAtUtc = updatedAtUtc;
     }
 
-    /// <summary>Also removes any JobGap referencing this requirement (invariant 16, kept true by construction) — both collections are computed before either is assigned, so a failure here is impossible to leave half-applied.</summary>
+    /// <summary>
+    /// Also removes any JobGap referencing this requirement (invariant 16, kept true by
+    /// construction) — both replacement lists are computed before either collection or
+    /// UpdatedAtUtc is touched, so a rejected call (empty or nonexistent id) leaves everything
+    /// exactly as it was.
+    /// </summary>
     public void RemoveRequirement(Guid id, DateTime updatedAtUtc)
     {
+        EnsureCanRemove(_requirements, id, r => r.Id, nameof(id));
+
         var remainingRequirements = _requirements.Where(r => r.Id != id).ToList();
         var remainingGaps = _gaps.Where(g => g.RequirementId != id).ToList();
 
@@ -103,6 +110,8 @@ public sealed class JobAnalysis
 
     public void RemoveGap(Guid id, DateTime updatedAtUtc)
     {
+        EnsureCanRemove(_gaps, id, g => g.Id, nameof(id));
+
         _gaps.RemoveAll(g => g.Id == id);
         UpdatedAtUtc = updatedAtUtc;
     }
@@ -123,6 +132,20 @@ public sealed class JobAnalysis
         if (existing.Any(e => idSelector(e) == id))
         {
             throw new DomainValidationException($"{paramName} Id must not duplicate an existing entry.");
+        }
+    }
+
+    /// <summary>Removal is explicit, not a silent no-op: an empty or nonexistent id is rejected rather than quietly removing nothing.</summary>
+    private static void EnsureCanRemove<T>(List<T> existing, Guid id, Func<T, Guid> idSelector, string paramName)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new DomainValidationException($"{paramName} must not be an empty Guid.");
+        }
+
+        if (existing.All(e => idSelector(e) != id))
+        {
+            throw new DomainValidationException($"{paramName} does not match any existing entry.");
         }
     }
 }
