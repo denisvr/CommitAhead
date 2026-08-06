@@ -66,7 +66,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] CreateCVPresentationRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<CVPresentationCreatedResponse>> Post([FromBody] CreateCVPresentationRequest request, CancellationToken cancellationToken)
     {
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
         return id is null ? UnprocessableEntity() : CreatedAtAction(nameof(GetById), new { id }, new CVPresentationCreatedResponse(id.Value));

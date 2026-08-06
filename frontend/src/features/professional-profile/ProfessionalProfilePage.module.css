@@ -1,0 +1,26 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: var(--weight-semibold);
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  max-width: 60ch;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.status {
+  color: var(--text-muted);
+}

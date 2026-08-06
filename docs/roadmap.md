@@ -58,19 +58,19 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 ---
 
-## Phase 2 — Professional Profile and CV Editing
+## Phase 2 — Professional Profile and CV Editing *(implementation complete; E2E exit criterion pending, same accepted gap as Phase 0/1)*
 
 **Outcome:** Canonical career data can be maintained once and curated into independently editable regional CVPresentations.
 
-- [ ] Implement ProfessionalProfile, ContactInfo, all seven canonical child collections, YearMonth, and skill-reference guards
-- [ ] Implement independent CVPresentation aggregate according to ADR-0012
-- [ ] Add canonical child tables, Experience/Project skill joins, and seven ordered CV selection tables
-- [ ] Implement ProfessionalProfile CRUD; canonical-entry deletion removes affected CV selections and guards referenced Skills
-- [ ] Implement Create/Update/Delete/Get CVPresentation, including same-profile selection validation and polymorphic-source cleanup
-- [ ] Build ProfessionalProfile editors, CVPresentation selection/reordering, formatting rules, and preview shell
-- [ ] Add persistence, use-case, API, and component tests, including selection ordering and FK behavior
+- [x] Implement ProfessionalProfile, ContactInfo, all seven canonical child collections, YearMonth, and skill-reference guards
+- [x] Implement independent CVPresentation aggregate according to ADR-0012
+- [x] Add canonical child tables and seven ordered CV selection tables. **Deviation from the original join-table design, flagged not silent:** `ExperienceEntry.SkillIds`/`ProjectEntry.SkillIds` and every CVPresentation selection collection map as plain `uuid[]` array columns, not FK-backed join tables — EF Core's many-to-many mapping needs a real collection-navigation on at least one side, and Domain deliberately keeps these as opaque IDs rather than Skill-entity navigations. The domain aggregate already fully enforces the same invariants (skill references must exist; a referenced Skill can't be deleted) that the join tables would have backed up at the DB level too.
+- [x] Implement ProfessionalProfile CRUD; canonical-entry deletion removes affected CV selections (`DanglingSelectionCleanup`, run from every `Replace*UseCase`) and guards referenced Skills
+- [x] Implement Create/Update/Delete/Get CVPresentation, including same-profile selection validation (invariant 23). Polymorphic-source cleanup (ADR-0011) is explicitly Phase 4 work, not this phase's — CVPresentation cannot yet be an EvidenceLink/AnalysisDraft source
+- [x] Build ProfessionalProfile editors, CVPresentation selection/reordering, and preview shell. **Formatting rules, scoped down deliberately:** the preview renders locale-aware month/year via `Intl.DateTimeFormat` (the substantive part of "formatting rules"); a presentation's free-text `dateFormat` pattern (e.g. `"dd MMM yyyy"`) is not parsed/applied literally — `YearMonth` has no day component, so a general date-pattern engine is disproportionate to this slice
+- [x] Add persistence, use-case, API, and component tests, including selection ordering and FK behavior. Component tests cover every new page's load/error states and the two new generic design-system components (`EntryListEditor`, `SelectionOrderEditor`); a live authenticated click-through was not possible in the dev sandbox used to build this phase (no way to complete the real Supabase magic-link flow there) — recommended as a manual pass before considering the phase fully verified end-to-end
 
-**Exit criteria:** a CVPresentation can curate canonical entries without duplicating them; editing one presentation does not mutate another.
+**Exit criteria:** a CVPresentation can curate canonical entries without duplicating them; editing one presentation does not mutate another. The non-E2E half is verified by Layers 1–4 (domain/use-case/repository/API tests) and Layer 6 (frontend component tests, MSW-backed) — see `docs/testing/strategy.md`. The Playwright journey itself has not been written; Phase 2 is not marked complete until it exists and passes, matching Phase 0/1's own accepted gap.
 
 ---
 

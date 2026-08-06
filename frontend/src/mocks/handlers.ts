@@ -19,4 +19,6 @@ export const handlers = [
   http.get('/api/scoring-config', () => HttpResponse.json(DEFAULT_SCORING_CONFIG)),
   http.put('/api/scoring-config', () => new HttpResponse(null, { status: 204 })),
   http.delete('/api/scoring-config', () => new HttpResponse(null, { status: 204 })),
+  http.get('/api/professional-profile', () => new HttpResponse(null, { status: 404 })),
+  http.get('/api/cv-presentations', () => HttpResponse.json([])),
 ]

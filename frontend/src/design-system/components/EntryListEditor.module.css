@@ -1,0 +1,20 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--surface);
+  border: var(--border-hairline) solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+}

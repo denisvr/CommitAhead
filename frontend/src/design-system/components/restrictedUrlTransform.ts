@@ -8,10 +8,10 @@ const ALLOWED_PROTOCOLS = /^(https?|mailto)$/i
  * Mirrors react-markdown's own defaultUrlTransform's relative-URL detection (a colon that
  * appears after the first ?, #, or / is not a scheme separator, e.g. a query string containing
  * one) but narrows the scheme allowlist to exactly http(s)/mailto. Disallowed schemes —
- * javascript:, data:, anything else — return '', which RestrictedMarkdown's `a` override turns
- * into plain text instead of a clickable link.
+ * javascript:, data:, anything else — return '', which callers turn into plain text instead of a
+ * clickable link (RestrictedMarkdown's `a` override, or CVPreview's SafeLink for a raw URL field).
  */
-export const restrictedUrlTransform: UrlTransform = (url) => {
+export function restrictedUrl(url: string): string {
   const colon = url.indexOf(':')
   const questionMark = url.indexOf('?')
   const numberSign = url.indexOf('#')
@@ -25,3 +25,5 @@ export const restrictedUrlTransform: UrlTransform = (url) => {
 
   return ALLOWED_PROTOCOLS.test(url.slice(0, colon)) ? url : ''
 }
+
+export const restrictedUrlTransform: UrlTransform = (url) => restrictedUrl(url)

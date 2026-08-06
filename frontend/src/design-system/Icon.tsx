@@ -1,7 +1,7 @@
 // Individual local icons rendered as inline JSX, per docs/design/design-system/readme.md — never
 // a runtime-injected sprite. Paths copied from the approved Lucide-derived source SVGs in
 // docs/design/design-system/assets/icons/. Add a name only when a component in this slice needs it.
-export type IconName = 'plus' | 'x' | 'trash-2' | 'chevron-right' | 'pencil'
+export type IconName = 'plus' | 'x' | 'trash-2' | 'chevron-right' | 'chevron-up' | 'chevron-down' | 'pencil'
 
 const paths: Record<IconName, string[]> = {
   plus: ['M5 12h14', 'M12 5v14'],
@@ -14,6 +14,8 @@ const paths: Record<IconName, string[]> = {
     'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
   ],
   'chevron-right': ['m9 18 6-6-6-6'],
+  'chevron-up': ['m18 15-6-6-6 6'],
+  'chevron-down': ['m6 9 6 6 6-6'],
   pencil: ['M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z', 'm15 5 4 4'],
 }
 

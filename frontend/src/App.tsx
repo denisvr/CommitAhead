@@ -4,6 +4,7 @@ import { AppShell } from './design-system/components/AppShell'
 import { BookmarkMark } from './design-system/components/Brand'
 import { Button } from './design-system/components/Button'
 import { LoginForm } from './features/auth/LoginForm'
+import { ProfileHubPage } from './features/professional-profile/ProfileHubPage'
 import { ScoringSettingsPage } from './features/settings/ScoringSettingsPage'
 import { NewStudyItemPage } from './features/study-items/NewStudyItemPage'
 import { StudyItemDetailPage } from './features/study-items/StudyItemDetailPage'
@@ -23,6 +24,7 @@ type Origin = 'queue' | 'items'
 type View =
   | { name: 'queue' }
   | { name: 'items' }
+  | { name: 'profile' }
   | { name: 'settings' }
   | { name: 'detail'; id: string; from: Origin }
   | { name: 'new'; from: Origin }
@@ -31,8 +33,8 @@ function originView(origin: Origin): View {
   return origin === 'items' ? { name: 'items' } : { name: 'queue' }
 }
 
-function describeActiveDestination(view: View): 'queue' | 'items' | 'settings' {
-  if (view.name === 'items' || view.name === 'settings') {
+function describeActiveDestination(view: View): 'queue' | 'items' | 'profile' | 'settings' {
+  if (view.name === 'items' || view.name === 'profile' || view.name === 'settings') {
     return view.name
   }
 
@@ -167,10 +169,13 @@ function App() {
       destinations={[
         { key: 'queue', label: 'Study queue' },
         { key: 'items', label: 'Study items' },
+        { key: 'profile', label: 'Professional profile & CVs' },
         { key: 'settings', label: 'Settings' },
       ]}
       activeDestination={activeDestination}
-      onNavigate={(key) => setView(key === 'settings' ? { name: 'settings' } : key === 'items' ? { name: 'items' } : { name: 'queue' })}
+      onNavigate={(key) =>
+        setView(key === 'settings' ? { name: 'settings' } : key === 'items' ? { name: 'items' } : key === 'profile' ? { name: 'profile' } : { name: 'queue' })
+      }
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
@@ -182,6 +187,7 @@ function App() {
       {view.name === 'items' && (
         <StudyItemsListPage onSelectItem={(id) => setView({ name: 'detail', id, from: 'items' })} onCreateNew={() => setView({ name: 'new', from: 'items' })} />
       )}
+      {view.name === 'profile' && <ProfileHubPage />}
       {view.name === 'settings' && <ScoringSettingsPage />}
       {view.name === 'detail' && (
         <StudyItemDetailPage

@@ -511,7 +511,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["ProfessionalProfileCreatedResponse"];
+                        "application/json": components["schemas"]["ProfessionalProfileCreatedResponse"];
+                        "text/json": components["schemas"]["ProfessionalProfileCreatedResponse"];
+                    };
                 };
             };
         };
@@ -914,7 +918,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["CVPresentationCreatedResponse"];
+                        "application/json": components["schemas"]["CVPresentationCreatedResponse"];
+                        "text/json": components["schemas"]["CVPresentationCreatedResponse"];
+                    };
                 };
             };
         };
@@ -1530,6 +1538,10 @@ export interface components {
         CsrfResponse: {
             token: string;
         };
+        CVPresentationCreatedResponse: {
+            /** Format: uuid */
+            id: string;
+        };
         CVPresentationResponse: {
             /** Format: uuid */
             id: string;
@@ -1607,6 +1619,10 @@ export interface components {
         };
         MeResponse: {
             email: string;
+        };
+        ProfessionalProfileCreatedResponse: {
+            /** Format: uuid */
+            id: string;
         };
         ProfessionalProfileResponse: {
             /** Format: uuid */

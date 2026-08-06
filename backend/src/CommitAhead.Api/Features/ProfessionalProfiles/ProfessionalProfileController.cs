@@ -53,7 +53,7 @@ public sealed class ProfessionalProfileController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] CreateProfessionalProfileRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProfessionalProfileCreatedResponse>> Post([FromBody] CreateProfessionalProfileRequest request, CancellationToken cancellationToken)
     {
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
         return id is null ? Conflict() : CreatedAtAction(nameof(Get), null, new ProfessionalProfileCreatedResponse(id.Value));
