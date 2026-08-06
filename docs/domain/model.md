@@ -189,7 +189,7 @@ A curated, locale-specific projection over one ProfessionalProfile.
 | `createdAt` | timestamp | UTC |
 | `updatedAt` | timestamp | UTC |
 
-It owns seven ordered selection collections: Experience, Education, Skill, Language, Certification, Project, and ProfileLink. Each selection contains `entryId` and `position`. ProfileLinks default to all existing links when a presentation is created but can be explicitly excluded afterward.
+It owns seven ordered selection collections: Experience, Education, Skill, Language, Certification, Project, and ProfileLink. Each selection is an ordered list of canonical entry IDs — list order *is* position (invariant 24); there is no separate stored `position` value alongside each ID (see ADR-0017 for the persistence shape). ProfileLinks default to all existing links when a presentation is created but can be explicitly excluded afterward.
 
 ---
 

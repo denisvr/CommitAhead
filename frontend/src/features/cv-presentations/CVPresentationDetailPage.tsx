@@ -49,7 +49,17 @@ function SelectionSection<T>({ title, candidates, selectedIds, onSaved, getId, g
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  // The isSaving guard here and SelectionOrderEditor's own `disabled` prop are belt-and-suspenders
+  // for the same thing: a second reorder/add/remove firing while this section's previous save is
+  // still in flight would race it — whichever response lands last would silently win, possibly
+  // undoing the user's more recent change. Disabling the editor is the visible half; this early
+  // return is what actually stops a second overlapping save from starting at all (e.g. a change
+  // already queued in the event loop right as isSaving flips true).
   const handleChange = async (nextIds: string[]) => {
+    if (isSaving) {
+      return
+    }
+
     setIsSaving(true)
     setError(null)
     try {
@@ -73,6 +83,7 @@ function SelectionSection<T>({ title, candidates, selectedIds, onSaved, getId, g
         getLabel={getLabel}
         addLabel={addLabel}
         emptyLabel={emptyLabel}
+        disabled={isSaving}
       />
       {isSaving && (
         <p className={styles.status} role="status">
@@ -219,7 +230,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Experience"
               candidates={profileData.experience}
               selectedIds={data.experienceSelections}
-              onSaved={(experienceSelections) => setPresentation({ ...data, experienceSelections })}
+              onSaved={(experienceSelections) => setPresentation((current) => (current ? { ...current, experienceSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => `${entry.role} — ${entry.company}`}
               addLabel="Add experience entry"
@@ -232,7 +243,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Education"
               candidates={profileData.education}
               selectedIds={data.educationSelections}
-              onSaved={(educationSelections) => setPresentation({ ...data, educationSelections })}
+              onSaved={(educationSelections) => setPresentation((current) => (current ? { ...current, educationSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => `${entry.degree} — ${entry.institution}`}
               addLabel="Add education entry"
@@ -245,7 +256,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Skills"
               candidates={profileData.skills}
               selectedIds={data.skillSelections}
-              onSaved={(skillSelections) => setPresentation({ ...data, skillSelections })}
+              onSaved={(skillSelections) => setPresentation((current) => (current ? { ...current, skillSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => entry.displayName}
               addLabel="Add skill"
@@ -258,7 +269,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Languages"
               candidates={profileData.languages}
               selectedIds={data.languageSelections}
-              onSaved={(languageSelections) => setPresentation({ ...data, languageSelections })}
+              onSaved={(languageSelections) => setPresentation((current) => (current ? { ...current, languageSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => entry.language}
               addLabel="Add language"
@@ -271,7 +282,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Certifications"
               candidates={profileData.certifications}
               selectedIds={data.certificationSelections}
-              onSaved={(certificationSelections) => setPresentation({ ...data, certificationSelections })}
+              onSaved={(certificationSelections) => setPresentation((current) => (current ? { ...current, certificationSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => entry.name}
               addLabel="Add certification"
@@ -284,7 +295,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Projects"
               candidates={profileData.projects}
               selectedIds={data.projectSelections}
-              onSaved={(projectSelections) => setPresentation({ ...data, projectSelections })}
+              onSaved={(projectSelections) => setPresentation((current) => (current ? { ...current, projectSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => entry.name}
               addLabel="Add project"
@@ -297,7 +308,7 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
               title="Links"
               candidates={profileData.profileLinks}
               selectedIds={data.profileLinkSelections}
-              onSaved={(profileLinkSelections) => setPresentation({ ...data, profileLinkSelections })}
+              onSaved={(profileLinkSelections) => setPresentation((current) => (current ? { ...current, profileLinkSelections } : current))}
               getId={(entry) => entry.id}
               getLabel={(entry) => entry.label ?? entry.kind}
               addLabel="Add link"

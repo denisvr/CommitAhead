@@ -34,9 +34,15 @@ public sealed class CVPresentationConfiguration : IEntityTypeConfiguration<CVPre
             .HasColumnName("professional_profile_id")
             .IsRequired();
 
+        // Composite FK on (ProfessionalProfileId, OwnerUserId) against ProfessionalProfile's
+        // alternate key of the same shape — not a plain single-column FK on ProfessionalProfileId
+        // alone. This is what makes a cross-owner reference (invariant 29) impossible to persist
+        // at the database level, not just rejected by CreateCVPresentationUseCase's application
+        // check (kept as-is, for a fast/clear 422 instead of a raw constraint-violation error).
         builder.HasOne<ProfessionalProfile>()
             .WithMany()
-            .HasForeignKey(p => p.ProfessionalProfileId)
+            .HasForeignKey(p => new { p.ProfessionalProfileId, p.OwnerUserId })
+            .HasPrincipalKey(pp => new { pp.Id, pp.OwnerUserId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(p => p.Label).HasColumnName("label").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();

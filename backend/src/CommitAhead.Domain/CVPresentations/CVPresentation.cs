@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommitAhead.Domain;
 using CommitAhead.Domain.ProfessionalProfiles;
 
@@ -96,7 +97,7 @@ public sealed class CVPresentation
         Label = TextValidation.RequireNonBlank(label, nameof(label), ValidationLimits.ShortTextMaxLength);
         TargetMarket = TextValidation.RequireNonBlank(targetMarket, nameof(targetMarket), ValidationLimits.ShortTextMaxLength);
         TargetRole = TextValidation.TrimToNullOrValidate(targetRole, nameof(targetRole), ValidationLimits.ShortTextMaxLength);
-        Locale = TextValidation.RequireNonBlank(locale, nameof(locale), ValidationLimits.ShortTextMaxLength);
+        Locale = ValidateLocale(locale);
         TemplateKey = TextValidation.RequireNonBlank(templateKey, nameof(templateKey), ValidationLimits.ShortTextMaxLength);
         SummaryOverrideMarkdown = TextValidation.TrimToNullOrValidate(summaryOverrideMarkdown, nameof(summaryOverrideMarkdown), ValidationLimits.MarkdownMaxLength);
         IncludePhoto = includePhoto;
@@ -133,7 +134,7 @@ public sealed class CVPresentation
         var validatedLabel = TextValidation.RequireNonBlank(label, nameof(label), ValidationLimits.ShortTextMaxLength);
         var validatedTargetMarket = TextValidation.RequireNonBlank(targetMarket, nameof(targetMarket), ValidationLimits.ShortTextMaxLength);
         var validatedTargetRole = TextValidation.TrimToNullOrValidate(targetRole, nameof(targetRole), ValidationLimits.ShortTextMaxLength);
-        var validatedLocale = TextValidation.RequireNonBlank(locale, nameof(locale), ValidationLimits.ShortTextMaxLength);
+        var validatedLocale = ValidateLocale(locale);
         var validatedTemplateKey = TextValidation.RequireNonBlank(templateKey, nameof(templateKey), ValidationLimits.ShortTextMaxLength);
         var validatedSummaryOverrideMarkdown = TextValidation.TrimToNullOrValidate(summaryOverrideMarkdown, nameof(summaryOverrideMarkdown), ValidationLimits.MarkdownMaxLength);
         var validatedDateFormat = TextValidation.RequireNonBlank(dateFormat, nameof(dateFormat), ValidationLimits.ShortTextMaxLength);
@@ -195,6 +196,31 @@ public sealed class CVPresentation
     {
         _profileLinkSelections = ValidateSelection(entryIds, nameof(entryIds));
         UpdatedAtUtc = updatedAtUtc;
+    }
+
+    // CultureInfo.GetCultureInfo(name) alone is too lenient to reject with — ICU's BCP-47 parser
+    // accepts many syntactically hyphenated-but-meaningless tags (e.g. "not-a-real-locale")
+    // without throwing, since it only checks tag structure, not whether the tag is a real,
+    // registered culture. Checking membership in the runtime's own enumerated culture list (this
+    // project does not run with InvariantGlobalization) is what actually distinguishes a real
+    // BCP-47 locale like "en-GB"/"de-DE"/"pt-BR" from garbage, without hand-maintaining an
+    // allowlist.
+    private static readonly HashSet<string> KnownLocales = CultureInfo
+        .GetCultures(CultureTypes.NeutralCultures | CultureTypes.SpecificCultures)
+        .Select(culture => culture.Name)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Rejects an unrecognized locale outright, rather than letting a bad value reach the preview (formatYearMonth hands it to Intl.DateTimeFormat, which throws on an unrecognized tag).</summary>
+    private static string ValidateLocale(string locale)
+    {
+        var trimmed = TextValidation.RequireNonBlank(locale, nameof(locale), ValidationLimits.ShortTextMaxLength);
+
+        if (!KnownLocales.Contains(trimmed))
+        {
+            throw new DomainValidationException($"'{trimmed}' is not a supported locale.");
+        }
+
+        return trimmed;
     }
 
     private static int ValidatePageLimit(int pageLimit)

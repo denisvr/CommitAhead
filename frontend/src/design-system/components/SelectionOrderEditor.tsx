@@ -11,6 +11,7 @@ type SelectionOrderEditorProps<T> = {
   getLabel: (candidate: T) => string
   addLabel: string
   emptyLabel: string
+  disabled?: boolean
 }
 
 // CVPresentation's seven selection collections are ordered by array position, not a documented
@@ -19,7 +20,11 @@ type SelectionOrderEditorProps<T> = {
 // dependency-free choice. A dangling selected id (one that no longer resolves against
 // `candidates` — invariant 25's cleanup runs server-side, but a stale in-flight edit could still
 // race it locally) is skipped rather than crashing.
-export function SelectionOrderEditor<T>({ candidates, selectedIds, onChange, getId, getLabel, addLabel, emptyLabel }: SelectionOrderEditorProps<T>) {
+//
+// `disabled` (e.g. while a caller's own save for this same selection is still in flight) disables
+// every control here — the caller is responsible for not calling onChange again until it clears,
+// this component just reflects that state visually so there's nothing to click mid-save.
+export function SelectionOrderEditor<T>({ candidates, selectedIds, onChange, getId, getLabel, addLabel, emptyLabel, disabled = false }: SelectionOrderEditorProps<T>) {
   const selectId = useId()
   const candidatesById = new Map(candidates.map((candidate) => [getId(candidate), candidate]))
   const selectedCandidates = selectedIds.map((id) => candidatesById.get(id)).filter((candidate): candidate is T => candidate !== undefined)
@@ -52,19 +57,19 @@ export function SelectionOrderEditor<T>({ candidates, selectedIds, onChange, get
               <li key={id} className={styles.selectedRow}>
                 <span className={styles.selectedLabel}>{label}</span>
                 <div className={styles.rowActions}>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(index, -1)} disabled={index === 0} aria-label={`Move ${label} up`}>
+                  <Button type="button" variant="ghost" onClick={() => moveTo(index, -1)} disabled={disabled || index === 0} aria-label={`Move ${label} up`}>
                     <Icon name="chevron-up" />
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => moveTo(index, 1)}
-                    disabled={index === selectedCandidates.length - 1}
+                    disabled={disabled || index === selectedCandidates.length - 1}
                     aria-label={`Move ${label} down`}
                   >
                     <Icon name="chevron-down" />
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => remove(id)}>
+                  <Button type="button" variant="ghost" onClick={() => remove(id)} disabled={disabled}>
                     Remove
                   </Button>
                 </div>
@@ -83,6 +88,7 @@ export function SelectionOrderEditor<T>({ candidates, selectedIds, onChange, get
             id={selectId}
             className={styles.select}
             value=""
+            disabled={disabled}
             onChange={(event) => {
               add(event.target.value)
               event.target.value = ''

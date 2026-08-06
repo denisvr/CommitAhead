@@ -32,6 +32,12 @@ public sealed class ProfessionalProfileConfiguration : IEntityTypeConfiguration<
         // backup against a concurrent double-create race.
         builder.HasIndex(p => p.OwnerUserId).IsUnique();
 
+        // Alternate key so CVPresentation can carry a composite FK on (ProfessionalProfileId,
+        // OwnerUserId) — see CVPresentationConfiguration. That is what makes a cross-owner
+        // reference (a CVPresentation whose OwnerUserId doesn't match its own ProfessionalProfile's
+        // OwnerUserId) impossible to persist at all, not just rejected by application code.
+        builder.HasAlternateKey(p => new { p.Id, p.OwnerUserId });
+
         // A single jsonb column via ContactInfoValueConverter, not OwnsOne/ComplexProperty:
         // ContactInfo is constructor-only, and EF cannot constructor-bind a containing entity's
         // parameter to a nested owned/complex sub-object (see ContactInfoValueConverter's comment).

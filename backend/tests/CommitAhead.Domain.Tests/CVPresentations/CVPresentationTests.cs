@@ -67,6 +67,16 @@ public class CVPresentationTests
             Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Label", "Market", null, "en-GB", "template", null, false, false, false, false, "dd MMM yyyy", pageLimit, CreatedAt));
     }
 
+    [Theory]
+    [InlineData("not-a-real-locale")]
+    [InlineData("purple")]
+    [InlineData("!!!")]
+    public void Constructor_WithAnUnrecognizedLocale_Throws(string locale)
+    {
+        Assert.Throws<DomainValidationException>(() => new CVPresentation(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Label", "Market", null, locale, "template", null, false, false, false, false, "dd MMM yyyy", 1, CreatedAt));
+    }
+
     [Fact]
     public void Constructor_WithBlankLabel_Throws()
     {
@@ -109,6 +119,19 @@ public class CVPresentationTests
         Assert.Equal("UK — Senior Backend Engineer", presentation.Label);
         Assert.Equal("United Kingdom", presentation.TargetMarket);
         Assert.Equal(2, presentation.PageLimit);
+        Assert.Equal(CreatedAt, presentation.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Update_WithAnUnrecognizedLocale_ThrowsAndLeavesEveryFieldUnchanged()
+    {
+        var presentation = CreatePresentation();
+
+        Assert.Throws<DomainValidationException>(() => presentation.Update(
+            "New label", "Germany", null, "not-a-real-locale", "classic-two-page", null, true, false, false, true, "yyyy-MM-dd", 3, UpdatedAt));
+
+        Assert.Equal("UK — Senior Backend Engineer", presentation.Label);
+        Assert.Equal("en-GB", presentation.Locale);
         Assert.Equal(CreatedAt, presentation.UpdatedAtUtc);
     }
 

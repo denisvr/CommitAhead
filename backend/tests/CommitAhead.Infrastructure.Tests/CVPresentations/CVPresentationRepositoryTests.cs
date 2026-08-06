@@ -126,4 +126,24 @@ public class CVPresentationRepositoryTests : IAsyncLifetime
 
         await Assert.ThrowsAnyAsync<DbUpdateException>(() => repository.AddAsync(presentation, CancellationToken.None));
     }
+
+    /// <summary>
+    /// The composite FK on (ProfessionalProfileId, OwnerUserId) against ProfessionalProfile's
+    /// (Id, OwnerUserId) alternate key (CVPresentationConfiguration) rejects this even though
+    /// professionalProfileId itself refers to a row that genuinely exists — it just belongs to a
+    /// different owner. This is the database-level backstop for invariant 29, independent of
+    /// CreateCVPresentationUseCase's own application-level check.
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_ReferencingAnotherOwnersProfile_IsRejectedByTheDatabase()
+    {
+        var repository = new CVPresentationRepository(_dbContext);
+        var ownerAId = await TestUsers.CreateAsync(_dbContext);
+        var ownerBId = await TestUsers.CreateAsync(_dbContext);
+        var profileAId = await CreateProfileAsync(ownerAId);
+        var presentation = CreatePresentation(ownerBId, profileAId);
+
+        var exception = await Assert.ThrowsAnyAsync<DbUpdateException>(() => repository.AddAsync(presentation, CancellationToken.None));
+        Assert.IsType<Npgsql.PostgresException>(exception.InnerException);
+    }
 }

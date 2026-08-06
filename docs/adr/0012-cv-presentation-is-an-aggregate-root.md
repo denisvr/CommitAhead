@@ -22,8 +22,8 @@ CVPresentation stores ordered selections referencing those canonical entries by 
 - AnalysisDraft and EvidenceLink can reference CVPresentation as a normal aggregate root.
 - CV editing/export does not require treating the full ProfessionalProfile as the transaction boundary.
 - Deleting a ProfessionalProfile is not an MVP use case. If added later, it must explicitly handle dependent CVPresentations.
-- Ordered selection join tables provide FKs to both CVPresentation and the selected canonical entry; the same-profile invariant remains application-enforced.
-- Deleting a canonical entry cascades only its selection rows. It does not delete or duplicate a CVPresentation.
+- Ordered selections map as plain `uuid[]` array columns, not FK-backed join tables (ADR-0017) — the same-profile invariant (23) remains application-enforced either way, since it spans two aggregates and no FK shape could express it.
+- Deleting a canonical entry removes its ID from any presentation's selection array (`DanglingSelectionCleanup`). It does not delete or duplicate a CVPresentation.
 
 ## Considered Alternatives
 

@@ -23,11 +23,11 @@ Both `EvidenceLink` and `AnalysisDraft` carry `sourceType` (enum column) + `sour
 
 Deleting an evidence source application-cascades both EvidenceLinks and AnalysisDrafts (including proposal children) in the source deletion transaction. AIUsageRecords remain as content-free cost metadata.
 
-`CVPresentation` is an aggregate root with its own table and FK to `professional_profiles.id`; it is not persisted as an owned collection of ProfessionalProfile.
+`CVPresentation` is an aggregate root with its own table and a composite FK to `professional_profiles (id, owner_user_id)` — not a plain single-column FK on `professional_profile_id` alone, and not persisted as an owned collection of ProfessionalProfile. The composite shape (against a `(Id, OwnerUserId)` alternate key on `professional_profiles`) is what makes a cross-owner reference (invariant 29) impossible to persist at all, independent of `CreateCVPresentationUseCase`'s own application-level check.
 
 ### ProfessionalProfile canonical collections
 
-Experience, Education, Skill, Language, Certification, Project, and ProfileLink use dedicated tables with a required `professional_profile_id` FK. `experience_skills` and `project_skills` are join tables with FKs to the owning entry and canonical Skill; deleting a Skill is blocked while an Experience or Project references it. The application must remove/reassign those references before deleting the Skill.
+Experience, Education, Skill, Language, Certification, Project, and ProfileLink use dedicated tables with a required `professional_profile_id` FK. `ExperienceEntry.SkillIds` and `ProjectEntry.SkillIds` map as a plain `uuid[]` array column — **not** FK-backed `experience_skills`/`project_skills` join tables as originally planned; see ADR-0017 for why and what invariant 21/22 still guarantee at the domain level without a database-level FK on each array element. The application must remove/reassign those references before deleting a Skill; `ProfessionalProfile.ReplaceSkills` enforces this in-memory.
 
 ### JobSource (discriminated union)
 Stored as a `sourceKind` discriminator column + `pastedContent` (nullable text) + `storageObjectKey` (nullable text) + `originalFileName` (nullable text) + `mimeType` (nullable text) + `extractedText` (nullable text) on the `JobAnalyses` table.
@@ -49,7 +49,7 @@ A non-cascade FK from `evidence_links.target_study_item_id` to `study_items.id` 
 Stored as a `TEXT[]` PostgreSQL array column on `StudyItems`. Normalisation (trim, lowercase, kebab-case, deduplication) is applied in the domain before persisting. EF Core maps `string[]` to `TEXT[]` via Npgsql.
 
 ### YearMonth
-Stored as two integer columns (`_year`, `_month`) in the parent table. No native `YearMonth` DB type.
+Stored as a single converted `integer` column (`year * 100 + month`) in the parent table — **not** two separate `_year`/`_month` columns as originally planned; see ADR-0017. No native `YearMonth` DB type, and EF Core cannot constructor-bind a containing entity's parameter to a nested owned/complex sub-object, which a two-column `OwnsOne`/`ComplexProperty` mapping would have required.
 
 ### Proposal collections (AnalysisDraft)
 Three separate tables: `suggestion_proposals`, `link_proposals`, `study_item_proposals`, each with an FK to `analysis_drafts.id`. Every row keeps the immutable AI-proposed payload and a separate nullable accepted payload. The `SuggestionProposal` discriminated union (StructuredSuggestion vs AdvisorySuggestion) uses a `kind` column; structured command payloads use JSONB until the command allowlist is finalised.
@@ -58,17 +58,18 @@ Proposal status remains Pending while the user reviews a draft in the UI. `Apply
 
 ### CVPresentation ordered selections
 
-Seven typed join tables preserve order and database referential integrity:
-
-- `cv_presentation_experiences`
-- `cv_presentation_educations`
-- `cv_presentation_skills`
-- `cv_presentation_languages`
-- `cv_presentation_certifications`
-- `cv_presentation_projects`
-- `cv_presentation_profile_links`
-
-Each row contains `cv_presentation_id`, the typed `entry_id`, and `position`. The primary key is `(cv_presentation_id, entry_id)`; a unique constraint on `(cv_presentation_id, position)` prevents duplicate positions. Both IDs have normal FKs. Deleting a CVPresentation cascades to its selections. Deleting a canonical profile entry also cascades only its selection rows; it never deletes a CVPresentation. The application validates that every selected entry belongs to the same ProfessionalProfile referenced by the CVPresentation; this same-profile rule spans tables and cannot be expressed by a simple FK.
+Each of the seven selections (Experience, Education, Skill, Language, Certification, Project,
+ProfileLink) maps as a plain `uuid[]` array column on `cv_presentations` — **not** seven typed,
+FK-backed join tables as originally planned; see ADR-0017 for why (the same EF Core
+constructor-binding wall as `SkillIds` above) and what invariant 24 still guarantees without a
+database-level FK on each array element. Array order **is** position — there is no separate
+`position` value to keep in sync, and therefore no separate uniqueness constraint on it either.
+Deleting a canonical profile entry removes its ID from any presentation's selection array
+(`DanglingSelectionCleanup`, run from every `ProfessionalProfile.Replace*UseCase`); it never
+deletes a CVPresentation. The application validates that every selected entry belongs to the same
+ProfessionalProfile referenced by the CVPresentation (invariant 23); this same-profile rule spans
+two aggregates and cannot be expressed by a simple FK, unlike the CVPresentation→ProfessionalProfile
+same-owner rule above, which the composite FK does enforce at the database level.
 
 ### AI usage, budget reservation, and idempotency
 
@@ -85,8 +86,8 @@ Provider success updates the row to Completed with actual usage, actual cost, an
 ## Migration Strategy
 
 - **Tables are owned by EF Core migrations** — they are the single authoritative source for schema (columns, indexes, constraints). Migrations are applied once per deployment, before the API starts, using a reviewed EF Core migration bundle or an equivalent pre-deploy job. The production API never applies migrations automatically on startup.
-- **Roles and RLS are owned by the versioned SQL scripts** under `backend/scripts/database/` (`001_roles.sql`, `002_rls_users.sql`, `003_rls_phase1.sql`) — they are the authoritative source for login roles and Row-Level Security policies, not EF Core. This split is deliberate: mixing role/RLS provisioning into EF migrations would make Infrastructure own PostgreSQL-superuser-level concerns it has no business touching (EF Core connects as the least-privileged `commitahead_app` role and cannot grant itself access).
-- Locally, `backend/scripts/setup-local-db.ps1` runs all four steps in the correct order as one reproducible command, on every invocation, regardless of whether the Docker volume already existed: it explicitly re-applies `001_roles.sql` itself (idempotent — `IF NOT EXISTS` guards), rather than relying solely on `docker-entrypoint-initdb.d`, which only runs against a brand-new volume and would otherwise silently skip roles on a pre-existing one; then EF migrations; then `002_rls_users.sql`; then `003_rls_phase1.sql`. RLS is never a manually-remembered post-migration step.
+- **Roles and RLS are owned by the versioned SQL scripts** under `backend/scripts/database/` (`001_roles.sql`, `002_rls_users.sql`, `003_rls_phase1.sql`, `004_rls_phase2.sql`) — they are the authoritative source for login roles and Row-Level Security policies, not EF Core. This split is deliberate: mixing role/RLS provisioning into EF migrations would make Infrastructure own PostgreSQL-superuser-level concerns it has no business touching (EF Core connects as the least-privileged `commitahead_app` role and cannot grant itself access). `004_rls_phase2.sql` covers `professional_profiles`/`cv_presentations` directly by `owner_user_id` and the seven canonical child tables transitively through `professional_profile_id`, mirroring `003_rls_phase1.sql`'s `study_reviews` pattern for a child table with no `owner_user_id` column of its own.
+- Locally, `backend/scripts/setup-local-db.ps1` runs all steps in the correct order as one reproducible command, on every invocation, regardless of whether the Docker volume already existed: it explicitly re-applies `001_roles.sql` itself (idempotent — `IF NOT EXISTS` guards), rather than relying solely on `docker-entrypoint-initdb.d`, which only runs against a brand-new volume and would otherwise silently skip roles on a pre-existing one; then EF migrations; then `002_rls_users.sql`; then `003_rls_phase1.sql`; then `004_rls_phase2.sql`. RLS is never a manually-remembered post-migration step.
 - Each migration is reviewed before merging — no auto-generated migrations are applied unreviewed.
 - Breaking schema changes (column renames, type changes) are split into additive migrations with a deprecation period.
 - Integration tests run against a Testcontainers PostgreSQL instance with migrations applied once per test session; Respawn resets data between tests (not schema).
