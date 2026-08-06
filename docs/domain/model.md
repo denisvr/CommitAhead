@@ -454,7 +454,7 @@ The budget reservation transaction checks Completed actual cost plus active Rese
 22. A Skill referenced by Experience or Project entries cannot be deleted until those references are removed or reassigned.
 23. CVPresentation selection IDs must exist in its referenced ProfessionalProfile.
 24. Every CVPresentation selection collection has unique entry IDs and unique, contiguous positions starting at zero.
-25. Deleting a canonical profile entry removes its CVPresentation selection rows but never deletes a CVPresentation.
+25. Deleting a canonical profile entry removes its ID from any CVPresentation's ordered `uuid[]` selection array but never deletes a CVPresentation.
 26. ScoringWeights are non-negative integers summing to 100.
 27. Computed EffectiveScore is `[8,100]` with default input ranges; an override may be `[0,100]`.
 28. AIUsageRecord.idempotencyKey is unique.

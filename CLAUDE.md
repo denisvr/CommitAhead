@@ -122,7 +122,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 **Tests:**
 - Domain unit tests
 - Application use-case tests (handwritten fakes)
-- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial) — includes applying `001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql` against a disposable database and proving RLS isolation end to end (`RlsIsolationTests`, `RlsHttpIsolationTests`); those scripts are never run by the production application itself, but CI does run them
+- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial) — includes applying `001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql`/`004_rls_phase2.sql` against a disposable database and proving RLS isolation end to end (`RlsIsolationTests`, `RlsIsolationPhase2Tests`, `RlsHttpIsolationTests`); those scripts are never run by the production application itself, but CI does run them
 - API tests (WebApplicationFactory + shared Testcontainers DB + `FakeAIProvider`)
 - NetArchTest architecture rules
 - Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, malicious uploads, AI schema validation, idempotency, rate/budget limits, log redaction)
