@@ -1,4 +1,5 @@
 using CommitAhead.Application.ProfessionalProfiles;
+using CommitAhead.Application.Tests.CVPresentations;
 using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Domain;
 using CommitAhead.Domain.ProfessionalProfiles;
@@ -16,7 +17,7 @@ public class ReplaceProjectsUseCaseTests
         var ownerUserId = Guid.NewGuid();
         var profile = new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow);
         await repository.AddAsync(profile, CancellationToken.None);
-        var useCase = new ReplaceProjectsUseCase(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+        var useCase = new ReplaceProjectsUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
         var entry = new ProjectEntry(Guid.NewGuid(), "CommitAhead", null, null, null, "An interview-prep app.", null, []);
 
         var result = await useCase.ExecuteAsync([entry], CancellationToken.None);
@@ -29,7 +30,7 @@ public class ReplaceProjectsUseCaseTests
     public async Task ExecuteAsync_WithNoExistingProfile_ReturnsNotFound()
     {
         var repository = new FakeProfessionalProfileRepository();
-        var useCase = new ReplaceProjectsUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
+        var useCase = new ReplaceProjectsUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
         var result = await useCase.ExecuteAsync([], CancellationToken.None);
 
@@ -42,7 +43,7 @@ public class ReplaceProjectsUseCaseTests
         var repository = new FakeProfessionalProfileRepository();
         var ownerUserId = Guid.NewGuid();
         await repository.AddAsync(new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow), CancellationToken.None);
-        var useCase = new ReplaceProjectsUseCase(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+        var useCase = new ReplaceProjectsUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
         var entry = new ProjectEntry(Guid.NewGuid(), "CommitAhead", null, null, null, "An interview-prep app.", null, [Guid.NewGuid()]);
 
         await Assert.ThrowsAsync<DomainValidationException>(() => useCase.ExecuteAsync([entry], CancellationToken.None));

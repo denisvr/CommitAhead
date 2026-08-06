@@ -1,6 +1,8 @@
 using CommitAhead.Application.ProfessionalProfiles;
+using CommitAhead.Application.Tests.CVPresentations;
 using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Domain;
+using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.ProfessionalProfiles;
 
 namespace CommitAhead.Application.Tests.ProfessionalProfiles;
@@ -19,7 +21,7 @@ public class ReplaceExperienceUseCaseTests
         var ownerUserId = Guid.NewGuid();
         var profile = new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow);
         await repository.AddAsync(profile, CancellationToken.None);
-        var useCase = new ReplaceExperienceUseCase(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+        var useCase = new ReplaceExperienceUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
 
         var result = await useCase.ExecuteAsync([CreateEntry()], CancellationToken.None);
 
@@ -31,7 +33,7 @@ public class ReplaceExperienceUseCaseTests
     public async Task ExecuteAsync_WithNoExistingProfile_ReturnsNotFound()
     {
         var repository = new FakeProfessionalProfileRepository();
-        var useCase = new ReplaceExperienceUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
+        var useCase = new ReplaceExperienceUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
         var result = await useCase.ExecuteAsync([CreateEntry()], CancellationToken.None);
 
@@ -44,8 +46,32 @@ public class ReplaceExperienceUseCaseTests
         var repository = new FakeProfessionalProfileRepository();
         var ownerUserId = Guid.NewGuid();
         await repository.AddAsync(new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow), CancellationToken.None);
-        var useCase = new ReplaceExperienceUseCase(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+        var useCase = new ReplaceExperienceUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
 
         await Assert.ThrowsAsync<DomainValidationException>(() => useCase.ExecuteAsync([CreateEntry([Guid.NewGuid()])], CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RemovingAnEntry_StripsItFromAnyCVPresentationSelection()
+    {
+        // Invariant 25 — no DB FK backs this (ExperienceSelections is a plain uuid[]), so the use
+        // case itself has to find and clean up any CVPresentation left pointing at a removed entry.
+        var repository = new FakeProfessionalProfileRepository();
+        var cvPresentationRepository = new FakeCVPresentationRepository();
+        var ownerUserId = Guid.NewGuid();
+        var profile = new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow);
+        var keptEntry = CreateEntry();
+        var removedEntry = CreateEntry();
+        profile.ReplaceExperience([keptEntry, removedEntry], DateTime.UtcNow);
+        await repository.AddAsync(profile, CancellationToken.None);
+        var presentation = new CVPresentation(
+            Guid.NewGuid(), ownerUserId, profile.Id, "Label", "Market", null, "en-GB", "template", null, false, false, false, false, "dd MMM yyyy", 1, DateTime.UtcNow);
+        presentation.ReplaceExperienceSelections([keptEntry.Id, removedEntry.Id], DateTime.UtcNow);
+        await cvPresentationRepository.AddAsync(presentation, CancellationToken.None);
+        var useCase = new ReplaceExperienceUseCase(repository, cvPresentationRepository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+
+        await useCase.ExecuteAsync([keptEntry], CancellationToken.None);
+
+        Assert.Equal([keptEntry.Id], presentation.ExperienceSelections);
     }
 }

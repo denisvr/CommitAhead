@@ -1,4 +1,5 @@
 using CommitAhead.Application.ProfessionalProfiles;
+using CommitAhead.Application.Tests.CVPresentations;
 using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Domain.ProfessionalProfiles;
 
@@ -15,7 +16,7 @@ public class ReplaceLanguagesUseCaseTests
         var ownerUserId = Guid.NewGuid();
         var profile = new ProfessionalProfile(Guid.NewGuid(), ownerUserId, ValidContactInfo(), "Summary.", DateTime.UtcNow);
         await repository.AddAsync(profile, CancellationToken.None);
-        var useCase = new ReplaceLanguagesUseCase(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+        var useCase = new ReplaceLanguagesUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
         var entry = new LanguageEntry(Guid.NewGuid(), "English", LanguageProficiency.Native, null);
 
         var result = await useCase.ExecuteAsync([entry], CancellationToken.None);
@@ -28,7 +29,7 @@ public class ReplaceLanguagesUseCaseTests
     public async Task ExecuteAsync_WithNoExistingProfile_ReturnsNotFound()
     {
         var repository = new FakeProfessionalProfileRepository();
-        var useCase = new ReplaceLanguagesUseCase(repository, new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
+        var useCase = new ReplaceLanguagesUseCase(repository, new FakeCVPresentationRepository(), new StubCurrentUser { UserId = Guid.NewGuid(), Email = "owner@example.com" });
 
         var result = await useCase.ExecuteAsync([], CancellationToken.None);
 

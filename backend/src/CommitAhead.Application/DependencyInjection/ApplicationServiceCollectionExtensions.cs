@@ -34,13 +34,16 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetProfessionalProfileUseCase>();
         services.AddScoped<CreateProfessionalProfileUseCase>();
         services.AddScoped<UpdateProfessionalProfileUseCase>();
-        services.AddScoped<ReplaceExperienceUseCase>();
-        services.AddScoped<ReplaceEducationUseCase>();
-        services.AddScoped<ReplaceSkillsUseCase>();
-        services.AddScoped<ReplaceLanguagesUseCase>();
-        services.AddScoped<ReplaceCertificationsUseCase>();
-        services.AddScoped<ReplaceProjectsUseCase>();
-        services.AddScoped<ReplaceProfileLinksUseCase>();
+
+        // The seven ReplaceXUseCase classes (ReplaceExperienceUseCase, ReplaceEducationUseCase,
+        // ReplaceSkillsUseCase, ReplaceLanguagesUseCase, ReplaceCertificationsUseCase,
+        // ReplaceProjectsUseCase, ReplaceProfileLinksUseCase) are deliberately NOT registered here
+        // right now: this slice gave them all an ICVPresentationRepository dependency (invariant-25
+        // dangling-selection cleanup), and that interface has no Infrastructure implementation
+        // until the CVPresentation Infrastructure slice. Registering them now would make the API
+        // host fail to build (ValidateOnBuild), breaking every Api.Tests test. Re-add all seven
+        // AddScoped<...>() lines, together with ICVPresentationRepository's own registration and
+        // the CVPresentation use cases, once that slice lands.
 
         return services;
     }
