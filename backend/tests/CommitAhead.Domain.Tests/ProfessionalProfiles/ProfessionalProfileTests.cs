@@ -15,10 +15,10 @@ public class ProfessionalProfileTests
 
     private static Skill CreateSkill(string displayName) => new(Guid.NewGuid(), displayName, SkillCategory.Language, null);
 
-    private static ExperienceEntry CreateExperience(IEnumerable<Guid>? skillIds = null) => new(
+    private static ExperienceEntry CreateExperience(IReadOnlyList<Guid>? skillIds = null) => new(
         Guid.NewGuid(), "Acme", null, "Engineer", EmploymentType.Permanent, new YearMonth(2020, 1), null, null, WorkMode.Remote, "Summary", [], skillIds ?? []);
 
-    private static ProjectEntry CreateProject(IEnumerable<Guid>? skillIds = null) => new(
+    private static ProjectEntry CreateProject(IReadOnlyList<Guid>? skillIds = null) => new(
         Guid.NewGuid(), "Side project", null, null, null, "Description", null, skillIds ?? []);
 
     [Fact]

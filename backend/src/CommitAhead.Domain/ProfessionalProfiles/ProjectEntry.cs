@@ -22,7 +22,7 @@ public sealed class ProjectEntry
         YearMonth? endDate,
         string descriptionMarkdown,
         string? url,
-        IEnumerable<Guid> skillIds)
+        IReadOnlyList<Guid> skillIds)
     {
         if (id == Guid.Empty)
         {

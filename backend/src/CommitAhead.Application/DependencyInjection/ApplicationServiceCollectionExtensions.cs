@@ -1,5 +1,6 @@
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.Identity;
+using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +30,17 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ResetScoringConfigUseCase>();
         services.AddScoped<GetScoringConfigUseCase>();
         services.AddScoped<GetRankedStudyQueueUseCase>();
+
+        services.AddScoped<GetProfessionalProfileUseCase>();
+        services.AddScoped<CreateProfessionalProfileUseCase>();
+        services.AddScoped<UpdateProfessionalProfileUseCase>();
+        services.AddScoped<ReplaceExperienceUseCase>();
+        services.AddScoped<ReplaceEducationUseCase>();
+        services.AddScoped<ReplaceSkillsUseCase>();
+        services.AddScoped<ReplaceLanguagesUseCase>();
+        services.AddScoped<ReplaceCertificationsUseCase>();
+        services.AddScoped<ReplaceProjectsUseCase>();
+        services.AddScoped<ReplaceProfileLinksUseCase>();
 
         return services;
     }

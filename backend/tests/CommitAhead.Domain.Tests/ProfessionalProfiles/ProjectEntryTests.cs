@@ -5,7 +5,7 @@ namespace CommitAhead.Domain.Tests.ProfessionalProfiles;
 
 public class ProjectEntryTests
 {
-    private static ProjectEntry CreateEntry(IEnumerable<Guid>? skillIds = null) => new(
+    private static ProjectEntry CreateEntry(IReadOnlyList<Guid>? skillIds = null) => new(
         Guid.NewGuid(), "CommitAhead", "Author", new YearMonth(2026, 1), null, "An interview-prep app.", "https://github.com/example/commitahead", skillIds ?? []);
 
     [Fact]

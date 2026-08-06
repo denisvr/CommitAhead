@@ -29,8 +29,8 @@ public sealed class ExperienceEntry
         string? location,
         WorkMode workMode,
         string summaryMarkdown,
-        IEnumerable<string> achievements,
-        IEnumerable<Guid> skillIds)
+        IReadOnlyList<string> achievements,
+        IReadOnlyList<Guid> skillIds)
     {
         if (id == Guid.Empty)
         {

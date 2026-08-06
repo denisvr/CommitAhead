@@ -1,6 +1,7 @@
 using System.Reflection;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.Persistence;
+using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
 using NetArchTest.Rules;
 
@@ -110,6 +111,7 @@ public class ArchitectureTests
         typeof(IRankedStudyQueueQuery),
         typeof(IEvidenceLinkQuery),
         typeof(IRlsSessionContext),
+        typeof(IProfessionalProfileRepository),
     ];
 
     [Fact]

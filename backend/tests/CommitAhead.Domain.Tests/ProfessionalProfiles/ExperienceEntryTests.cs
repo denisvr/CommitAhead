@@ -5,7 +5,7 @@ namespace CommitAhead.Domain.Tests.ProfessionalProfiles;
 
 public class ExperienceEntryTests
 {
-    private static ExperienceEntry CreateEntry(IEnumerable<Guid>? skillIds = null) => new(
+    private static ExperienceEntry CreateEntry(IReadOnlyList<Guid>? skillIds = null) => new(
         Guid.NewGuid(),
         "Acme Corp",
         client: null,
