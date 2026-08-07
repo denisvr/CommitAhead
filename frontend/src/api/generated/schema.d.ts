@@ -835,6 +835,345 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/job-analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["JobAnalysisResponse"][];
+                        "application/json": components["schemas"]["JobAnalysisResponse"][];
+                        "text/json": components["schemas"]["JobAnalysisResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateJobAnalysisRequest"];
+                    "text/json": components["schemas"]["CreateJobAnalysisRequest"];
+                    "application/*+json": components["schemas"]["CreateJobAnalysisRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["JobAnalysisCreatedResponse"];
+                        "application/json": components["schemas"]["JobAnalysisCreatedResponse"];
+                        "text/json": components["schemas"]["JobAnalysisCreatedResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/job-analyses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["JobAnalysisResponse"];
+                        "application/json": components["schemas"]["JobAnalysisResponse"];
+                        "text/json": components["schemas"]["JobAnalysisResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateJobAnalysisRequest"];
+                    "text/json": components["schemas"]["UpdateJobAnalysisRequest"];
+                    "application/*+json": components["schemas"]["UpdateJobAnalysisRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/job-analyses/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/x-www-form-urlencoded": {
+                        Title?: string;
+                        NotesMarkdown?: string;
+                        File?: components["schemas"]["IFormFile"];
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["JobAnalysisCreatedResponse"];
+                        "application/json": components["schemas"]["JobAnalysisCreatedResponse"];
+                        "text/json": components["schemas"]["JobAnalysisCreatedResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interview-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InterviewNoteResponse"][];
+                        "application/json": components["schemas"]["InterviewNoteResponse"][];
+                        "text/json": components["schemas"]["InterviewNoteResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateInterviewNoteRequest"];
+                    "text/json": components["schemas"]["CreateInterviewNoteRequest"];
+                    "application/*+json": components["schemas"]["CreateInterviewNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InterviewNoteCreatedResponse"];
+                        "application/json": components["schemas"]["InterviewNoteCreatedResponse"];
+                        "text/json": components["schemas"]["InterviewNoteCreatedResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interview-notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InterviewNoteResponse"];
+                        "application/json": components["schemas"]["InterviewNoteResponse"];
+                        "text/json": components["schemas"]["InterviewNoteResponse"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateInterviewNoteRequest"];
+                    "text/json": components["schemas"]["UpdateInterviewNoteRequest"];
+                    "application/*+json": components["schemas"]["UpdateInterviewNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1521,6 +1860,26 @@ export interface components {
             /** Format: int32 */
             pageLimit: number | string;
         };
+        CreateInterviewNoteRequest: {
+            company: string;
+            role: string;
+            interviewRound: components["schemas"]["InterviewRound"];
+            /** Format: int32 */
+            sequenceNumber: number | string;
+            otherLabel: null | string;
+            /** Format: date */
+            date: string;
+            questions: string[];
+            gaps: string[];
+            lessons: string[];
+            /** Format: uuid */
+            jobAnalysisId: null | string;
+        };
+        CreateJobAnalysisRequest: {
+            title: string;
+            jobPostingText: string;
+            notesMarkdown: null | string;
+        };
         CreateProfessionalProfileRequest: {
             contactInfo: components["schemas"]["ContactInfoDto"];
             summaryMarkdown: string;
@@ -1601,6 +1960,90 @@ export interface components {
             summaryMarkdown: string;
             achievements: string[];
             skillIds: string[];
+        };
+        /** Format: binary */
+        IFormFile: string;
+        InterviewNoteCreatedResponse: {
+            /** Format: uuid */
+            id: string;
+        };
+        InterviewNoteResponse: {
+            /** Format: uuid */
+            id: string;
+            company: string;
+            role: string;
+            interviewRound: components["schemas"]["InterviewRound"];
+            /** Format: int32 */
+            sequenceNumber: number | string;
+            otherLabel: null | string;
+            /** Format: date */
+            date: string;
+            questions: string[];
+            gaps: string[];
+            lessons: string[];
+            /** Format: uuid */
+            jobAnalysisId: null | string;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        /** @enum {unknown} */
+        InterviewRound: "RecruiterScreening" | "HiringManager" | "Technical" | "LiveCoding" | "TakeHome" | "SystemDesign" | "Behavioral" | "Panel" | "Final" | "Other";
+        JobAnalysisCreatedResponse: {
+            /** Format: uuid */
+            id: string;
+        };
+        JobAnalysisResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            jobSource: components["schemas"]["JobSourceResponse"];
+            requirements: components["schemas"]["JobRequirementResponse"][];
+            gaps: components["schemas"]["JobGapResponse"][];
+            notesMarkdown: null | string;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        /** @enum {unknown} */
+        JobGapMatchLevel: "Partial" | "Missing" | "Unknown";
+        JobGapResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            requirementId: string;
+            matchLevel: components["schemas"]["JobGapMatchLevel"];
+            severity: components["schemas"]["JobGapSeverity"];
+            rationale: string;
+        };
+        /** @enum {unknown} */
+        JobGapSeverity: "High" | "Medium" | "Low";
+        /** @enum {unknown} */
+        JobRequirementKind: "Technical" | "Behavioural" | "Experience" | "Domain" | "Language" | "Other";
+        /** @enum {unknown} */
+        JobRequirementPriority: "Required" | "Preferred";
+        JobRequirementResponse: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            kind: components["schemas"]["JobRequirementKind"];
+            priority: components["schemas"]["JobRequirementPriority"];
+            sourceExcerpt: string;
+        };
+        JobSourceResponse: components["schemas"]["JobSourceResponsePastedTextResponse"] | components["schemas"]["JobSourceResponseUploadedFileResponse"];
+        JobSourceResponsePastedTextResponse: {
+            /** @enum {string} */
+            kind?: "PastedText";
+            content: string;
+        };
+        JobSourceResponseUploadedFileResponse: {
+            /** @enum {string} */
+            kind?: "UploadedFile";
+            originalFileName: string;
+            mimeType: string;
+            extractedText: string;
         };
         LanguageEntryDto: {
             /** Format: uuid */
@@ -1839,6 +2282,25 @@ export interface components {
             dateFormat: string;
             /** Format: int32 */
             pageLimit: number | string;
+        };
+        UpdateInterviewNoteRequest: {
+            company: string;
+            role: string;
+            interviewRound: components["schemas"]["InterviewRound"];
+            /** Format: int32 */
+            sequenceNumber: number | string;
+            otherLabel: null | string;
+            /** Format: date */
+            date: string;
+            questions: string[];
+            gaps: string[];
+            lessons: string[];
+            /** Format: uuid */
+            jobAnalysisId: null | string;
+        };
+        UpdateJobAnalysisRequest: {
+            title: string;
+            notesMarkdown: null | string;
         };
         UpdateProfessionalProfileRequest: {
             contactInfo: components["schemas"]["ContactInfoDto"];

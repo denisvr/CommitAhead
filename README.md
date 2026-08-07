@@ -6,7 +6,11 @@ CommitAhead is a private, invite-only web application for structured software-en
 
 Phase 0's security and architecture baseline is implemented and verified: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth with closed (invite-only) login, secure-by-default authorization, CSRF, security headers, and a minimal authenticated screen — including one real call to the live Supabase Auth API.
 
-Phase 1 (the ranked study queue — StudyItem, StudyReview, PriorityOverride, ScoringConfig, and the owner-scoped RLS/permissions that isolate them) is implemented and covered by domain, use-case, real-runtime-role integration, API, and MSW-backed frontend component tests. It is **not** marked complete: its E2E exit criterion (Playwright, Create → Review → Rank) hasn't been written yet, deferred until there is a real deployed environment to run it against — see `docs/roadmap.md`.
+Phase 1 (the ranked study queue — StudyItem, StudyReview, PriorityOverride, ScoringConfig) and Phase 2 (ProfessionalProfile, CVPresentation, and their curated selections) are implemented end to end — domain, use cases, EF mappings/migrations, owner-scoped RLS, API controllers, and frontend pages — and covered by domain, use-case, real-runtime-role integration, API, and MSW-backed frontend component tests.
+
+Phase 3 (Evidence Sources — JobAnalysis, JobRequirement, JobGap, InterviewNote, and the secure pasted-text/PDF-upload flow) is implemented on the backend: domain, use cases, EF mappings/migrations, owner-scoped RLS, and API controllers, including `POST /api/job-analyses/upload` (PdfPig text extraction under strict limits, Supabase Storage via the current user's own forwarded JWT — ADR-0018 — never a service-role key). Its frontend (JobAnalysis/InterviewNote pages, extracted-text verification) has not started yet.
+
+None of Phase 0/1/2/3 is marked fully complete: each phase's E2E exit criterion (Playwright) hasn't been written yet, deferred until there is a real deployed environment to run it against — see `docs/roadmap.md` for the exact per-phase checklist.
 
 The `IAIProvider` half of NetArchTest rule 5 stays skipped until Phase 4 declares that interface. Development uses Supabase Auth (remote) for authentication; the application's own PostgreSQL stays entirely local via Docker (development never connects to or migrates the real Supabase Postgres — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). See `docs/roadmap.md` for the full picture.
 
@@ -43,10 +47,17 @@ artifact is authoritative for each. It: starts the Postgres container (`docker c
 runs `scripts/database/001_roles.sql` automatically on first start, creating the
 `commitahead_app`/`commitahead_migrator` roles from `.env`), applies pending EF Core migrations,
 then applies `scripts/database/002_rls_users.sql` (RLS on `users`), `scripts/database/003_rls_phase1.sql`
-(grants/RLS on the Phase 1 business tables), and `scripts/database/004_rls_phase2.sql` (grants/RLS
-on the Phase 2 ProfessionalProfile/CVPresentation tables) — all safe to re-run. When the real
-Supabase project is created, the same four SQL scripts are the template for setting it up (see
+(grants/RLS on the Phase 1 business tables), `scripts/database/004_rls_phase2.sql` (grants/RLS on
+the Phase 2 ProfessionalProfile/CVPresentation tables), and `scripts/database/005_rls_phase3.sql`
+(grants/RLS on the Phase 3 JobAnalysis/InterviewNote tables) — all safe to re-run. When the real
+Supabase project is created, the same five SQL scripts are the template for setting it up (see
 `backend/scripts/database/`) — only the connection host/credentials change.
+
+`scripts/database/006_storage_job_postings.sql` is different in kind, not just number: it targets
+the real Supabase project's own managed `storage` schema (bucket + RLS for uploaded job-posting
+PDFs — ADR-0018), which doesn't exist in the local Docker Postgres at all. It is **not** run by
+`setup-local-db.ps1` and has no local-dev equivalent — applying it is a one-time operator action
+against the real project, covered in "Setting Up the Real Supabase Project" below.
 
 ## Setting Up the Real Supabase Project
 
@@ -54,10 +65,10 @@ Supabase project is created, the same four SQL scripts are the template for sett
 project for Auth, while `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres —
 auth and persistence are independent, and there's no need to develop against the real Postgres
 before deployment (Phase 6). The steps below apply the same
-`backend/scripts/database/001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql`/`004_rls_phase2.sql`
-used locally to the *real* Postgres, for whenever you're ready (e.g. first deployment). Only you
-should run these — they need the project's real database password, which this assistant never
-sees or handles, even if you offer to share it:
+`backend/scripts/database/001_roles.sql`-`005_rls_phase3.sql` used locally to the *real* Postgres,
+plus the Storage-only `006_storage_job_postings.sql`, for whenever you're ready (e.g. first
+deployment). Only you should run these — they need the project's real database password, which
+this assistant never sees or handles, even if you offer to share it:
 
 ```bash
 # 1. In the Supabase SQL editor, run 001_roles.sql with the ${...} placeholders replaced by real
@@ -66,7 +77,8 @@ sees or handles, even if you offer to share it:
 COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_migrator;Password=<real password>" \
   dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
 # 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2),
-#    then 003_rls_phase1.sql and 004_rls_phase2.sql (each needs its own tables from the same migration).
+#    then 003_rls_phase1.sql, 004_rls_phase2.sql, and 005_rls_phase3.sql (each needs its own
+#    tables from the same migration).
 # 4. Seed each enabled user's row (use their real Supabase Auth UID and email):
 #    INSERT INTO users (id, supabase_user_id, email, is_enabled, created_at_utc)
 #    VALUES ('<uid>', '<uid>', '<email>', true, now());
@@ -74,6 +86,10 @@ COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Da
 dotnet user-secrets set "ConnectionStrings:CommitAheadDb" \
   "Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_app;Password=<real password>" \
   --project src/CommitAhead.Api
+# 6. In the Supabase dashboard or SQL editor, run 006_storage_job_postings.sql — creates the
+#    private `job-postings` bucket and its RLS policies (ADR-0018). Unlike steps 1-4, this targets
+#    Supabase's own managed `storage` schema, not the migrated application tables, and needs no
+#    migration to have run first.
 ```
 
 Also in the Supabase dashboard: Authentication → URL Configuration → add your callback URL

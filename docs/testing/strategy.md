@@ -56,6 +56,8 @@
 - AnalyzeCVPresentation resolves only selected canonical content and the compact StudyItem catalogue; AnalyzeInterviewNote also receives the compact catalogue
 - `UpdateScoringConfig`: weights validated before persisting
 - `SetPriorityOverride` / `ClearPriorityOverride`
+- `CreateJobAnalysisFromUpload`: happy path; empty/oversized/wrong-MIME/wrong-filename/wrong-magic-bytes content rejected before any Storage call; an extraction or Storage failure triggers cleanup with the exact known key and either a safe validation error or the original infrastructure exception, depending on which failed; a genuine caller cancellation still runs cleanup but propagates unchanged; both the fake Storage client and the fake extractor receive the exact same complete bytes
+- `DeleteJobAnalysis`: an `UploadedFile` source's Storage object is deleted after the DB delete commits; a `PastedText` source never calls Storage; a Storage-delete failure still reports success (the DB row is already gone)
 
 **Not tested here**: DB constraints, cascade behaviour, transaction atomicity (→ integration tests).
 
@@ -83,6 +85,8 @@
 - AIUsageRecord: unique idempotency key, atomic Reserved insertion, daily/monthly budget calculation, Completed reconciliation, Failed release, lazy expiration of stale reservations, and replay returning the existing draft
 - **RLS/runtime-role isolation** (Phase 1, `RlsIsolationTests`): a dedicated fixture bootstraps its own Testcontainers instance the same way `setup-local-db.ps1` bootstraps a real one (roles → migrations → RLS scripts) and connects as the real, least-privileged `commitahead_app` role — never the Testcontainers-owner connection every other test in this layer uses. Proves: an owner can CRUD their own StudyItems; cannot read or mutate another owner's rows even via a raw `UPDATE` with no `WHERE owner_user_id` clause; a connection with no owner context set sees zero business rows; the runtime role cannot perform DDL; the setup scripts remain safe when applied a second time.
 - **RLS/runtime-role isolation** (Phase 2, `RlsIsolationPhase2Tests`): the same bootstrap and proof shape, extended through `004_rls_phase2.sql`, against `professional_profiles`/`cv_presentations` (owner-scoped directly) and a representative transitively-scoped child table (`skills`, via `professional_profile_id`).
+- **RLS/runtime-role isolation** (Phase 3, `RlsIsolationPhase3Tests`): the same bootstrap and proof shape, extended through `005_rls_phase3.sql`, against `job_analyses`/`interview_notes` (owner-scoped directly) and a representative transitively-scoped child table (`job_requirements`, via `job_analysis_id`).
+- **JobAnalysis-upload adapters** (`PdfPigTextExtractorTests`, `SupabaseStorageClientTests`): the real PdfPig library against hand-crafted minimal PDF fixtures (never authored with PdfPig itself), and the real Storage HTTP client against a stubbed handler (never a live Supabase call) — see "PDF and CV Verification" below for exactly what each proves.
 
 ---
 
@@ -164,12 +168,11 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 ## PDF and CV Verification
 
 **PDF ingestion (runs on every PR):**
-- Normalised text extraction from a known fixture PDF
-- Invalid PDF → 422
-- Encrypted PDF → 422
-- Image-only PDF (no extractable text) → 422
-- Wrong MIME type (`image/png` submitted as `application/pdf`) → 422
-- Oversized file (> 5 MB) → 422
+- Normalised text extraction from a hand-crafted minimal valid PDF fixture (`PdfPigTextExtractorTests`, `JobAnalysesEndpointTests`)
+- Malformed/non-PDF bytes, image-only PDF (no extractable text), too many pages (>20), and extracted text exceeding the 50,000-character cap → each rejected explicitly against the *real* PdfPig extractor, not truncated (`PdfPigTextExtractorTests`)
+- Wrong declared MIME type, non-`.pdf` filename, missing `%PDF-` magic bytes, empty file, and content over 5 MB (enforced by actually counting bytes while copying, never by a trusted `Content-Length`) → 422, before any Storage call (`CreateJobAnalysisFromUploadUseCaseTests`, `JobAnalysesEndpointTests`)
+- A Storage upload/extraction failure after a successful upload triggers a best-effort delete of the exact known quarantine key before the rejection is reported (`CreateJobAnalysisFromUploadUseCaseTests`)
+- **Not covered by a fixture-driven test**: an encrypted PDF (impractical to hand-craft valid PDF-spec encryption as a byte literal — the `PdfDocumentEncryptedException → Encrypted` mapping exists in `PdfPigTextExtractor`'s source but isn't exercised by an automated fixture) and a genuine parser timeout (no deterministic way to force PdfPig — synchronous, uncancellable — past the 10-second budget without a pathological file; the use case's own handling of a `TimedOut` failure is covered via a fake extractor instead, which proves nothing about PdfPig's real timing)
 
 **CV export (runs on every PR — parsed content assertions):**
 - Required text present (name, role, key entries)

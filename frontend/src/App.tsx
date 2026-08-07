@@ -4,6 +4,12 @@ import { AppShell } from './design-system/components/AppShell'
 import { BookmarkMark } from './design-system/components/Brand'
 import { Button } from './design-system/components/Button'
 import { LoginForm } from './features/auth/LoginForm'
+import { InterviewNoteDetailPage } from './features/interview-notes/InterviewNoteDetailPage'
+import { InterviewNoteForm } from './features/interview-notes/InterviewNoteForm'
+import { InterviewNotesListPage } from './features/interview-notes/InterviewNotesListPage'
+import { JobAnalysisDetailPage } from './features/job-analyses/JobAnalysisDetailPage'
+import { JobAnalysesListPage } from './features/job-analyses/JobAnalysesListPage'
+import { NewJobAnalysisPage } from './features/job-analyses/NewJobAnalysisPage'
 import { ProfileHubPage } from './features/professional-profile/ProfileHubPage'
 import { ScoringSettingsPage } from './features/settings/ScoringSettingsPage'
 import { NewStudyItemPage } from './features/study-items/NewStudyItemPage'
@@ -28,18 +34,54 @@ type View =
   | { name: 'settings' }
   | { name: 'detail'; id: string; from: Origin }
   | { name: 'new'; from: Origin }
+  | { name: 'jobAnalyses' }
+  | { name: 'jobAnalysisDetail'; id: string }
+  | { name: 'newJobAnalysis' }
+  | { name: 'interviewNotes' }
+  | { name: 'interviewNoteDetail'; id: string }
+  | { name: 'newInterviewNote' }
 
 function originView(origin: Origin): View {
   return origin === 'items' ? { name: 'items' } : { name: 'queue' }
 }
 
-function describeActiveDestination(view: View): 'queue' | 'items' | 'profile' | 'settings' {
-  if (view.name === 'items' || view.name === 'profile' || view.name === 'settings') {
+type Destination = 'queue' | 'items' | 'profile' | 'settings' | 'jobAnalyses' | 'interviewNotes'
+
+// A switch (not `{ name: key as Destination }`) because `{ name: Destination }` — a single object
+// whose `name` is the whole union — isn't assignable to `View`'s union of narrow `{ name: '...' }`
+// variants, even though every individual case is.
+function viewForDestination(key: Destination): View {
+  switch (key) {
+    case 'queue':
+      return { name: 'queue' }
+    case 'items':
+      return { name: 'items' }
+    case 'profile':
+      return { name: 'profile' }
+    case 'settings':
+      return { name: 'settings' }
+    case 'jobAnalyses':
+      return { name: 'jobAnalyses' }
+    case 'interviewNotes':
+      return { name: 'interviewNotes' }
+  }
+}
+
+function describeActiveDestination(view: View): Destination {
+  if (view.name === 'items' || view.name === 'profile' || view.name === 'settings' || view.name === 'jobAnalyses' || view.name === 'interviewNotes') {
     return view.name
   }
 
   if (view.name === 'detail' || view.name === 'new') {
     return view.from === 'items' ? 'items' : 'queue'
+  }
+
+  if (view.name === 'jobAnalysisDetail' || view.name === 'newJobAnalysis') {
+    return 'jobAnalyses'
+  }
+
+  if (view.name === 'interviewNoteDetail' || view.name === 'newInterviewNote') {
+    return 'interviewNotes'
   }
 
   return 'queue'
@@ -170,12 +212,12 @@ function App() {
         { key: 'queue', label: 'Study queue' },
         { key: 'items', label: 'Study items' },
         { key: 'profile', label: 'Professional profile & CVs' },
+        { key: 'jobAnalyses', label: 'Job analyses' },
+        { key: 'interviewNotes', label: 'Interview notes' },
         { key: 'settings', label: 'Settings' },
       ]}
       activeDestination={activeDestination}
-      onNavigate={(key) =>
-        setView(key === 'settings' ? { name: 'settings' } : key === 'items' ? { name: 'items' } : key === 'profile' ? { name: 'profile' } : { name: 'queue' })
-      }
+      onNavigate={(key) => setView(viewForDestination(key as Destination))}
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
@@ -200,6 +242,44 @@ function App() {
       )}
       {view.name === 'new' && (
         <NewStudyItemPage onCreated={(id) => setView({ name: 'detail', id, from: view.from })} onCancel={() => setView(originView(view.from))} />
+      )}
+      {view.name === 'jobAnalyses' && (
+        <JobAnalysesListPage
+          onSelectAnalysis={(id) => setView({ name: 'jobAnalysisDetail', id })}
+          onCreateNew={() => setView({ name: 'newJobAnalysis' })}
+        />
+      )}
+      {view.name === 'jobAnalysisDetail' && (
+        <JobAnalysisDetailPage
+          key={view.id}
+          analysisId={view.id}
+          onBack={() => setView({ name: 'jobAnalyses' })}
+          onDeleted={() => setView({ name: 'jobAnalyses' })}
+        />
+      )}
+      {view.name === 'newJobAnalysis' && (
+        <NewJobAnalysisPage onCreated={(id) => setView({ name: 'jobAnalysisDetail', id })} onCancel={() => setView({ name: 'jobAnalyses' })} />
+      )}
+      {view.name === 'interviewNotes' && (
+        <InterviewNotesListPage
+          onSelectNote={(id) => setView({ name: 'interviewNoteDetail', id })}
+          onCreateNew={() => setView({ name: 'newInterviewNote' })}
+        />
+      )}
+      {view.name === 'interviewNoteDetail' && (
+        <InterviewNoteDetailPage
+          key={view.id}
+          noteId={view.id}
+          onBack={() => setView({ name: 'interviewNotes' })}
+          onDeleted={() => setView({ name: 'interviewNotes' })}
+        />
+      )}
+      {view.name === 'newInterviewNote' && (
+        <InterviewNoteForm
+          mode="create"
+          onCreated={(id) => setView({ name: 'interviewNoteDetail', id })}
+          onCancel={() => setView({ name: 'interviewNotes' })}
+        />
       )}
     </AppShell>
   )
