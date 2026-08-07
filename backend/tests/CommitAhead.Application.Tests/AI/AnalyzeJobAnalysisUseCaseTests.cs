@@ -70,7 +70,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.Created, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.Created, result.Outcome);
         var draft = Assert.Single(draftRepository.Drafts);
         Assert.Equal(2, draft.SuggestionProposals.Count);
         var requirementProposal = Assert.Single(draft.SuggestionProposals, p => ((StructuredSuggestion)p.ProposedPayload).CommandType == StructuredSuggestionCommandType.AddJobRequirement);
@@ -109,7 +109,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.Created, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.Created, result.Outcome);
         var draft = Assert.Single(draftRepository.Drafts);
         var gapPayload = (StructuredSuggestion)Assert.Single(draft.SuggestionProposals).ProposedPayload;
         Assert.Contains(existingRequirement.Id.ToString(), gapPayload.PayloadJson, StringComparison.OrdinalIgnoreCase);
@@ -129,7 +129,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.Created, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.Created, result.Outcome);
         var draft = Assert.Single(draftRepository.Drafts);
         Assert.Empty(draft.SuggestionProposals);
         Assert.Empty(draft.LinkProposals);
@@ -137,10 +137,10 @@ public class AnalyzeJobAnalysisUseCaseTests
     }
 
     [Theory]
-    [InlineData(AIUsageRecordStatus.Completed, AnalyzeJobAnalysisOutcome.AlreadyCompleted)]
-    [InlineData(AIUsageRecordStatus.Reserved, AnalyzeJobAnalysisOutcome.InProgress)]
-    [InlineData(AIUsageRecordStatus.Failed, AnalyzeJobAnalysisOutcome.FailedPreviously)]
-    public async Task ExecuteAsync_WithAnExistingRecordForTheSameKey_ReplaysWithoutCallingTheProvider(AIUsageRecordStatus existingStatus, AnalyzeJobAnalysisOutcome expectedOutcome)
+    [InlineData(AIUsageRecordStatus.Completed, AnalyzeCommandOutcome.AlreadyCompleted)]
+    [InlineData(AIUsageRecordStatus.Reserved, AnalyzeCommandOutcome.InProgress)]
+    [InlineData(AIUsageRecordStatus.Failed, AnalyzeCommandOutcome.FailedPreviously)]
+    public async Task ExecuteAsync_WithAnExistingRecordForTheSameKey_ReplaysWithoutCallingTheProvider(AIUsageRecordStatus existingStatus, AnalyzeCommandOutcome expectedOutcome)
     {
         var ownerUserId = Guid.NewGuid();
         var jobAnalysisRepository = new FakeJobAnalysisRepository();
@@ -176,7 +176,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "new-key", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.AnotherAnalysisInProgress, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.AnotherAnalysisInProgress, result.Outcome);
         Assert.Equal(0, provider.CallCount);
         Assert.Empty(draftRepository.Drafts);
     }
@@ -197,7 +197,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "new-key", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.Created, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.Created, result.Outcome);
         Assert.Equal(AIUsageRecordStatus.Failed, staleReservation.Status);
         Assert.Single(draftRepository.Drafts);
     }
@@ -210,7 +210,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(Guid.NewGuid(), "key-1", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.SourceNotFound, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.SourceNotFound, result.Outcome);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         var result = await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        Assert.Equal(AnalyzeJobAnalysisOutcome.DraftAlreadyPending, result.Outcome);
+        Assert.Equal(AnalyzeCommandOutcome.DraftAlreadyPending, result.Outcome);
         Assert.Equal(0, provider.CallCount);
     }
 
@@ -431,7 +431,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        Assert.Empty(provider.LastInput!.ProfileSkills);
+        Assert.Empty(provider.LastJobAnalysisInput!.ProfileSkills);
     }
 
     [Fact]
@@ -459,7 +459,7 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         await useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None);
 
-        var input = provider.LastInput!;
+        var input = provider.LastJobAnalysisInput!;
         Assert.Equal(["C#"], input.ProfileSkills);
         var catalogueEntry = Assert.Single(input.StudyItemCatalogue);
         Assert.Equal(activeItem.Id, catalogueEntry.Id);

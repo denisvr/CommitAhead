@@ -6,8 +6,9 @@ namespace CommitAhead.Application.Tests.AI;
 /// <summary>
 /// A second, more controllable IAIProvider fake (alongside FakeAIProvider's six fixed scenarios) —
 /// lets a test script an exact AiAnalysisResult/AiProviderDescriptor/exception and count calls, for
-/// AnalyzeJobAnalysisUseCase tests that need a specific, validator-compatible payload shape rather
-/// than one of the six standard scenarios.
+/// AnalyzeX use case tests that need a specific, validator-compatible payload shape rather than one
+/// of the six standard scenarios. One shared Result/ExceptionToThrow/CallCount serves whichever of
+/// the three Analyze methods the test under it actually calls; each records its own last input.
 /// </summary>
 public sealed class ScriptedAIProvider : IAIProvider
 {
@@ -21,14 +22,35 @@ public sealed class ScriptedAIProvider : IAIProvider
 
     public int CallCount { get; private set; }
 
-    public JobAnalysisAiInput? LastInput { get; private set; }
+    public JobAnalysisAiInput? LastJobAnalysisInput { get; private set; }
+
+    public CVPresentationAiInput? LastCVPresentationInput { get; private set; }
+
+    public InterviewNoteAiInput? LastInterviewNoteInput { get; private set; }
 
     public AiProviderDescriptor Describe(AiCommandType commandType) => Descriptor;
 
     public Task<AiAnalysisResult> AnalyzeJobAnalysisAsync(JobAnalysisAiInput input, AiCallLimits limits, CancellationToken cancellationToken)
     {
+        LastJobAnalysisInput = input;
+        return Resolve();
+    }
+
+    public Task<AiAnalysisResult> AnalyzeCVPresentationAsync(CVPresentationAiInput input, AiCallLimits limits, CancellationToken cancellationToken)
+    {
+        LastCVPresentationInput = input;
+        return Resolve();
+    }
+
+    public Task<AiAnalysisResult> AnalyzeInterviewNoteAsync(InterviewNoteAiInput input, AiCallLimits limits, CancellationToken cancellationToken)
+    {
+        LastInterviewNoteInput = input;
+        return Resolve();
+    }
+
+    private Task<AiAnalysisResult> Resolve()
+    {
         CallCount++;
-        LastInput = input;
 
         if (ExceptionToThrow is not null)
         {
@@ -37,10 +59,4 @@ public sealed class ScriptedAIProvider : IAIProvider
 
         return Task.FromResult(Result ?? throw new InvalidOperationException("ScriptedAIProvider.Result was not set."));
     }
-
-    public Task<AiAnalysisResult> AnalyzeCVPresentationAsync(CVPresentationAiInput input, AiCallLimits limits, CancellationToken cancellationToken) =>
-        throw new NotSupportedException("Not used by AnalyzeJobAnalysisUseCase tests.");
-
-    public Task<AiAnalysisResult> AnalyzeInterviewNoteAsync(InterviewNoteAiInput input, AiCallLimits limits, CancellationToken cancellationToken) =>
-        throw new NotSupportedException("Not used by AnalyzeJobAnalysisUseCase tests.");
 }
