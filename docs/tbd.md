@@ -43,11 +43,14 @@ Decisions that must be made before the affected phase begins. No decision here s
 **Constraints:** Per-call token limits remain separate; budget checks include Completed actual cost plus active Reserved cost; provider/model pricing and currency must be versioned with the usage record
 **Depends on:** AI provider and model selection
 
-### StructuredSuggestion command allowlist
-**Needed for:** Phase 4
-**Question:** Which source mutations are safe and valuable enough to be represented as typed commands in MVP?
-**Minimum candidates:** AddJobRequirement, AddJobGap, UpdateCVPresentationSummary, AddInterviewGap, AddInterviewLesson
-**Constraint:** Anything outside the explicit allowlist remains an AdvisorySuggestion and can never mutate a source automatically
+### ~~StructuredSuggestion command allowlist~~ — decided
+Resolved at Phase 4 kickoff to exactly the "minimum candidates" list, with no additions:
+`AddJobRequirement`, `AddJobGap`, `UpdateCVPresentationSummary`, `AddInterviewGap`, `AddInterviewLesson`
+(`StructuredSuggestionCommandType`, `backend/src/CommitAhead.Domain/AnalysisDrafts/`). A source
+mutation not on this list can only ever be proposed as an AdvisorySuggestion, never applied
+automatically. Extending the allowlist later is a normal backward-compatible enum addition, not a
+breaking change — deferring the other four candidates' own command handlers to when their
+Application-layer slice is built does not require reopening this decision.
 
 ---
 
