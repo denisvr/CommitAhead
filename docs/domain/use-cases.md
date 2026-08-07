@@ -34,7 +34,7 @@ Key user journeys. Each maps to one or more application use case classes in the 
 
 **Goal:** Extract requirements, identify gaps, and link relevant StudyItems.
 
-1. Create a JobAnalysis with a title and a JobSource (paste text or upload PDF) (`CreateJobAnalysis`).
+1. Create a JobAnalysis with a title and a JobSource — pasted text (`CreateJobAnalysisFromPastedTextUseCase`) or an uploaded PDF (`CreateJobAnalysisFromUploadUseCase`, the only use case trusted to construct an UploadedFile).
 2. For PDF uploads: text is extracted immediately; the user sees the extracted text for verification.
 3. Trigger `AnalyzeJobAnalysis` (explicit user action). AI receives: job posting text + minimal profile skills summary + compact StudyItem catalogue.
 4. Review the AnalysisDraft; choices remain editable in the UI until Apply:

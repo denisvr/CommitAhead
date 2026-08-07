@@ -174,14 +174,21 @@ public class JobAnalysisRepositoryTests : IAsyncLifetime
         await Assert.ThrowsAsync<DbUpdateException>(() => _dbContext.SaveChangesAsync(CancellationToken.None));
     }
 
+    /// <summary>
+    /// Both children — a JobRequirement and a JobGap that references it — must be present so this
+    /// actually exercises the composite FK added in JobGapConfiguration: if that FK's delete
+    /// behavior blocked the cascade, this would throw instead of succeeding.
+    /// </summary>
     [Fact]
-    public async Task DeleteAsync_RemovesTheAnalysisAndItsChildren()
+    public async Task DeleteAsync_RemovesTheAnalysisAndBothItsRequirementAndItsGap()
     {
         var repository = new JobAnalysisRepository(_dbContext);
         var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var analysis = CreateAnalysis(ownerUserId);
         var requirement = new JobRequirement(Guid.NewGuid(), "5+ years of C#.", JobRequirementKind.Technical, JobRequirementPriority.Required, "Must have 5+ years of C# experience.");
         analysis.AddRequirement(requirement, DateTime.UtcNow);
+        var gap = new JobGap(Guid.NewGuid(), requirement.Id, JobGapMatchLevel.Partial, JobGapSeverity.Medium, "Only 3 years of C# so far.");
+        analysis.AddGap(gap, DateTime.UtcNow);
         await repository.AddAsync(analysis, CancellationToken.None);
 
         await repository.DeleteAsync(analysis, CancellationToken.None);

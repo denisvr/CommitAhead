@@ -8,11 +8,11 @@ namespace CommitAhead.Infrastructure.Tests.JobAnalyses;
 /// (MinimalPdfFixtures) — never fakes, since the point is proving the real library's behavior for
 /// each rejection reason.
 ///
-/// Encrypted is covered by MinimalPdfFixtures.Encrypted() — a real PDF standard security handler
-/// (Revision 2, 40-bit RC4) encryption dictionary, hand-computed with a genuine non-empty user
-/// password. Opened without that password, PdfPig only tries the empty password by default, its
-/// computed U value doesn't match, and it throws PdfDocumentEncryptedException for real — this is
-/// a real fixture-driven test against the real library, not just the source's catch clause.
+/// Encrypted is covered by MinimalPdfFixtures.Encrypted() — a small, real, password-protected PDF
+/// committed as a binary fixture (JobAnalyses/Fixtures/encrypted.pdf; see its own README.md for
+/// exactly how it was generated), not hand-rolled crypto. Opened without its password, PdfPig
+/// fails authentication and throws PdfDocumentEncryptedException for real — a real fixture-driven
+/// test against the real library, not just the source's catch clause.
 ///
 /// Not covered here, deliberately:
 /// - TimedOut: there is no deterministic way to force PdfPig's synchronous parser to run past the

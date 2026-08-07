@@ -11,8 +11,9 @@ namespace CommitAhead.Application.JobAnalyses;
 /// backend-generated quarantine key, extracts text once, and persists — all in one request
 /// (ADR-0010's "text extraction happens once during the upload request"). Every rejection after a
 /// successful Storage upload triggers a best-effort delete of that same known key before the
-/// rejection is reported, so no orphan is created for a request this use case itself rejects
-/// (ADR-0011's "failed uploads have their Storage objects deleted immediately").
+/// rejection is reported (ADR-0011). That delete can itself fail — Storage cleanup is best-effort,
+/// never guaranteed — in which case the orphaned key is logged (never the exception) for manual
+/// remediation rather than blocking the response on it.
 /// </summary>
 public sealed class CreateJobAnalysisFromUploadUseCase
 {

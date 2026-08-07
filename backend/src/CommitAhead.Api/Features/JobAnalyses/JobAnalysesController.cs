@@ -12,7 +12,7 @@ public sealed class JobAnalysesController : ControllerBase
 {
     private readonly GetJobAnalysisUseCase _getUseCase;
     private readonly GetJobAnalysesUseCase _getAllUseCase;
-    private readonly CreateJobAnalysisUseCase _createUseCase;
+    private readonly CreateJobAnalysisFromPastedTextUseCase _createUseCase;
     private readonly CreateJobAnalysisFromUploadUseCase _createFromUploadUseCase;
     private readonly UpdateJobAnalysisUseCase _updateUseCase;
     private readonly DeleteJobAnalysisUseCase _deleteUseCase;
@@ -20,7 +20,7 @@ public sealed class JobAnalysesController : ControllerBase
     public JobAnalysesController(
         GetJobAnalysisUseCase getUseCase,
         GetJobAnalysesUseCase getAllUseCase,
-        CreateJobAnalysisUseCase createUseCase,
+        CreateJobAnalysisFromPastedTextUseCase createUseCase,
         CreateJobAnalysisFromUploadUseCase createFromUploadUseCase,
         UpdateJobAnalysisUseCase updateUseCase,
         DeleteJobAnalysisUseCase deleteUseCase)
@@ -89,15 +89,15 @@ public sealed class JobAnalysesController : ControllerBase
 public sealed record JobAnalysisCreatedResponse(Guid Id);
 
 /// <summary>
-/// Only pasted text is acceptable here. An UploadedFile's StorageObjectKey/ExtractedText must
-/// never come from a raw client request field (see CreateJobAnalysisUseCase's own trust-boundary
-/// doc-comment) — a PDF upload goes through the separate POST .../upload endpoint below, whose
-/// own use case is the only thing trusted to construct an UploadedFile.
+/// Only pasted text is acceptable here — CreateJobAnalysisFromPastedTextUseCase takes the posting
+/// text as a plain string and constructs the PastedText itself, so this record has no way to wire
+/// an UploadedFile through even by mistake. A PDF upload goes through the separate POST
+/// .../upload endpoint below, whose own use case is the only thing trusted to construct one.
 /// </summary>
 public sealed record CreateJobAnalysisRequest(string Title, string JobPostingText, string? NotesMarkdown)
 {
-    public Task<Guid> CreateAsync(CreateJobAnalysisUseCase useCase, CancellationToken cancellationToken)
-        => useCase.ExecuteAsync(Title, new PastedText(JobPostingText), NotesMarkdown, cancellationToken);
+    public Task<Guid> CreateAsync(CreateJobAnalysisFromPastedTextUseCase useCase, CancellationToken cancellationToken)
+        => useCase.ExecuteAsync(Title, JobPostingText, NotesMarkdown, cancellationToken);
 }
 
 public sealed class CreateJobAnalysisFromUploadRequest
