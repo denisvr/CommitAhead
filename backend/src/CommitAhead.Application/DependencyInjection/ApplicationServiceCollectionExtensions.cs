@@ -59,6 +59,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReplaceProfileLinkSelectionsUseCase>();
 
         services.AddScoped<CreateJobAnalysisUseCase>();
+        services.AddScoped<CreateJobAnalysisFromUploadUseCase>();
         services.AddScoped<UpdateJobAnalysisUseCase>();
         services.AddScoped<DeleteJobAnalysisUseCase>();
         services.AddScoped<GetJobAnalysisUseCase>();

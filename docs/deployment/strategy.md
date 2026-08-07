@@ -6,7 +6,7 @@
 |---|---|---|
 | Database | PostgreSQL on Supabase | Managed, encrypted at rest |
 | Auth | Supabase Auth | Magic link + PKCE; JWKS endpoint for JWT validation |
-| Storage | Supabase Storage | Private bucket; backend service-role access only |
+| Storage | Supabase Storage | Private `job-postings` bucket; backend-mediated, forwarding the current user's own JWT per call — no service-role key at runtime (ADR-0018); bucket/RLS policy provisioning (`006_storage_job_postings.sql`) is a one-time operator action against the real project, deferred to deployment |
 | Secrets | TBD (see below) | `.NET User Secrets` for local dev |
 
 ## TBD

@@ -13,6 +13,7 @@ public sealed class JobAnalysesController : ControllerBase
     private readonly GetJobAnalysisUseCase _getUseCase;
     private readonly GetJobAnalysesUseCase _getAllUseCase;
     private readonly CreateJobAnalysisUseCase _createUseCase;
+    private readonly CreateJobAnalysisFromUploadUseCase _createFromUploadUseCase;
     private readonly UpdateJobAnalysisUseCase _updateUseCase;
     private readonly DeleteJobAnalysisUseCase _deleteUseCase;
 
@@ -20,12 +21,14 @@ public sealed class JobAnalysesController : ControllerBase
         GetJobAnalysisUseCase getUseCase,
         GetJobAnalysesUseCase getAllUseCase,
         CreateJobAnalysisUseCase createUseCase,
+        CreateJobAnalysisFromUploadUseCase createFromUploadUseCase,
         UpdateJobAnalysisUseCase updateUseCase,
         DeleteJobAnalysisUseCase deleteUseCase)
     {
         _getUseCase = getUseCase;
         _getAllUseCase = getAllUseCase;
         _createUseCase = createUseCase;
+        _createFromUploadUseCase = createFromUploadUseCase;
         _updateUseCase = updateUseCase;
         _deleteUseCase = deleteUseCase;
     }
@@ -51,6 +54,23 @@ public sealed class JobAnalysesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id }, new JobAnalysisCreatedResponse(id));
     }
 
+    /// <summary>
+    /// The size limits here are a coarse HTTP-boundary pre-filter (~6 MB: the 5 MB file-content
+    /// cap plus headroom for multipart overhead and the other form fields) — the exact 5 MB
+    /// content cap is enforced precisely inside CreateJobAnalysisFromUploadUseCase by actually
+    /// counting bytes while copying, never by trusting this request's reported length.
+    /// </summary>
+    [HttpPost("upload")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+    public async Task<ActionResult<JobAnalysisCreatedResponse>> PostUpload([FromForm] CreateJobAnalysisFromUploadRequest request, CancellationToken cancellationToken)
+    {
+        await using var stream = request.File.OpenReadStream();
+        var id = await _createFromUploadUseCase.ExecuteAsync(
+            request.Title, stream, request.File.FileName, request.File.ContentType, request.NotesMarkdown, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id }, new JobAnalysisCreatedResponse(id));
+    }
+
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateJobAnalysisRequest request, CancellationToken cancellationToken)
     {
@@ -71,13 +91,22 @@ public sealed record JobAnalysisCreatedResponse(Guid Id);
 /// <summary>
 /// Only pasted text is acceptable here. An UploadedFile's StorageObjectKey/ExtractedText must
 /// never come from a raw client request field (see CreateJobAnalysisUseCase's own trust-boundary
-/// doc-comment) — this slice has no upload endpoint at all, so there is no safe way to accept an
-/// UploadedFile JobSource yet. That lands together with the upload flow itself, not here.
+/// doc-comment) — a PDF upload goes through the separate POST .../upload endpoint below, whose
+/// own use case is the only thing trusted to construct an UploadedFile.
 /// </summary>
 public sealed record CreateJobAnalysisRequest(string Title, string JobPostingText, string? NotesMarkdown)
 {
     public Task<Guid> CreateAsync(CreateJobAnalysisUseCase useCase, CancellationToken cancellationToken)
         => useCase.ExecuteAsync(Title, new PastedText(JobPostingText), NotesMarkdown, cancellationToken);
+}
+
+public sealed class CreateJobAnalysisFromUploadRequest
+{
+    public string Title { get; set; } = string.Empty;
+
+    public string? NotesMarkdown { get; set; }
+
+    public IFormFile File { get; set; } = null!;
 }
 
 /// <summary>JobSource is immutable after creation (JobAnalysis.cs) — Update never touches it, only Title/NotesMarkdown.</summary>

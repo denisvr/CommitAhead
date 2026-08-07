@@ -61,17 +61,6 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ---
 
-## Document Processing
-
-### PDF text extraction library and hard limits
-**Needed for:** Phase 3
-**Decided:** Library is **PdfPig** (NuGet package ID `PdfPig`, C# namespace `UglyToad.PdfPig`), Apache-2.0 licensed, pure .NET. PdfPig itself is a general PDF library — CommitAhead's Infrastructure adapter uses only its read/text-extraction APIs, never PDF creation, image extraction, rendering, annotations, embedded links, scripts, OCR, or network access.
-**Still open:** The NuGet package has not been added yet; the exact version is selected and pinned when the Infrastructure adapter is built, reviewing the maintainer/release status at that time. Exact timeout, memory, and page-count limits also remain open, to supplement the already-decided 5 MB / 50 000-character limits.
-**Constraints:** No rendering, script execution, embedded-link fetching, OCR, or parser network access; malformed, encrypted, image-only, and over-limit documents are rejected
-**Affects:** Infrastructure adapter, upload validation, container resources, security tests
-
----
-
 ## Operations
 
 ### Data Protection key ring storage

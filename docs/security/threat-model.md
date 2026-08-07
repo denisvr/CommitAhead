@@ -24,7 +24,7 @@
 | Backend API | Validated + sanitised inputs | Browser, uploaded files, pasted text, AI output |
 | Supabase PostgreSQL | Backend (least-privileged credential) | All direct client access (blocked by RLS) |
 | Supabase Auth | Backend PKCE callback and server-held Supabase credentials | Browser and unauthenticated internet; no Supabase key is shipped to React |
-| Supabase Storage | Backend (service-role key) | All direct client access |
+| Supabase Storage | Backend, forwarding the current user's own JWT (ADR-0018) | All direct client access |
 | AI provider | Backend `IAIProvider` call | Frontend, domain layer |
 | CI / deployment / secrets | Secrets store, GitHub Actions secrets | Code repository (secrets never committed) |
 
@@ -137,7 +137,7 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 - `.NET User Secrets` for local development
 - Hosting/CI secrets store in deployed environments (provider TBD)
 - Supabase anon key: backend-only (not shipped to browser)
-- Supabase service-role key: backend-only; used only for Auth/Storage admin
+- Supabase service-role key: backend-only; used only for Auth-session administration and one-time Storage bucket/policy provisioning (`006_storage_job_postings.sql`) — never a runtime credential for uploading or deleting Storage objects, which forward the current user's own JWT instead (ADR-0018)
 - AI provider key: backend-only; never logged or included in prompts
 - ASP.NET Data Protection key ring: persisted, encrypted; used for cookies and antiforgery
 - Credentials rotated when exposed

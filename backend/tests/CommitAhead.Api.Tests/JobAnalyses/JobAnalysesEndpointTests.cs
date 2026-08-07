@@ -1,5 +1,7 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using CommitAhead.Api.Features.JobAnalyses;
 using CommitAhead.Api.Tests.StudyItems;
 
@@ -16,6 +18,57 @@ public class JobAnalysesEndpointTests
     }
 
     private static CreateJobAnalysisRequest ValidCreateRequest() => new("Senior Backend Engineer", "Job posting text.", "Some notes.");
+
+    /// <summary>A hand-crafted minimal valid single-page PDF (never authored with PdfPig itself) — the real PdfPigTextExtractor runs unmodified in this test host, only IJobPostingStorage is faked.</summary>
+    private static byte[] ValidMinimalPdf()
+    {
+        var contentStream = "BT /F1 24 Tf 100 700 Td (Hello World) Tj ET";
+        var objects = new[]
+        {
+            "<</Type/Catalog/Pages 2 0 R>>",
+            "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+            "<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>",
+            "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+            $"<</Length {contentStream.Length}>>stream\n{contentStream}\nendstream",
+        };
+
+        using var stream = new MemoryStream();
+        void Write(string s)
+        {
+            var bytes = Encoding.ASCII.GetBytes(s);
+            stream.Write(bytes, 0, bytes.Length);
+        }
+
+        Write("%PDF-1.4\n");
+        var offsets = new List<long>();
+        for (var i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(stream.Length);
+            Write($"{i + 1} 0 obj{objects[i]}endobj\n");
+        }
+
+        var xrefOffset = stream.Length;
+        Write($"xref\n0 {offsets.Count + 1}\n0000000000 65535 f \n");
+        foreach (var offset in offsets)
+        {
+            Write($"{offset:D10} 00000 n \n");
+        }
+
+        Write($"trailer<</Size {offsets.Count + 1}/Root 1 0 R>>\nstartxref\n{xrefOffset}\n%%EOF");
+        return stream.ToArray();
+    }
+
+    private static MultipartFormDataContent UploadRequestContent(byte[] pdfBytes, string title, string fileName = "posting.pdf", string contentType = "application/pdf")
+    {
+        var content = new MultipartFormDataContent
+        {
+            { new StringContent(title), "Title" },
+        };
+        var fileContent = new ByteArrayContent(pdfBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "File", fileName);
+        return content;
+    }
 
     [Fact]
     public async Task Get_WithoutAnyToken_ReturnsUnauthorized()
@@ -115,5 +168,51 @@ public class JobAnalysesEndpointTests
         var response = await client.SendMutatingAsync(HttpMethod.Delete, $"/api/job-analyses/{Guid.NewGuid()}", accessCookie);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUpload_WithAValidPdf_CreatesAnAnalysisWithTheUploadedFileJobSource()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(ownerUserId);
+
+        var postResponse = await client.SendMultipartAsync(
+            HttpMethod.Post, "/api/job-analyses/upload", accessCookie, UploadRequestContent(ValidMinimalPdf(), "Senior Backend Engineer"));
+        Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
+        var created = await postResponse.Content.ReadFromJsonAsync<JobAnalysisCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var getResponse = await client.SendGetAsync($"/api/job-analyses/{created!.Id}", accessCookie);
+        var analysis = await getResponse.Content.ReadFromJsonAsync<JobAnalysisResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal("Senior Backend Engineer", analysis!.Title);
+        var uploadedFile = Assert.IsType<UploadedFileResponse>(analysis.JobSource);
+        Assert.Equal("posting.pdf", uploadedFile.OriginalFileName);
+        Assert.Equal("application/pdf", uploadedFile.MimeType);
+        Assert.Equal("Hello World", uploadedFile.ExtractedText);
+
+        var uploadCall = Assert.Single(_factory.JobPostingStorage.UploadCalls);
+        Assert.StartsWith($"{ownerUserId:D}/", uploadCall.Key, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PostUpload_WithAnEmptyFile_ReturnsUnprocessableEntity()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await client.SendMultipartAsync(
+            HttpMethod.Post, "/api/job-analyses/upload", accessCookie, UploadRequestContent([], "Title"));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUpload_WithoutThePdfMagicBytes_ReturnsUnprocessableEntity()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var notAPdf = Encoding.ASCII.GetBytes("Not a PDF at all.");
+
+        var response = await client.SendMultipartAsync(
+            HttpMethod.Post, "/api/job-analyses/upload", accessCookie, UploadRequestContent(notAPdf, "Title"));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 }

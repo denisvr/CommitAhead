@@ -1,4 +1,6 @@
 using CommitAhead.Api.Tests.Auth;
+using CommitAhead.Api.Tests.JobAnalyses;
+using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace CommitAhead.Api.Tests.StudyItems;
@@ -29,6 +32,9 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
         .Build();
 
     public string ConnectionString => _container.GetConnectionString();
+
+    /// <summary>Replaces the real SupabaseStorageClient — no real Supabase Storage or network call in any Api.Tests run. The real CurrentUserAccessTokenAccessor/PdfPigTextExtractor still run unmodified: the test host's own JWT cookie and PdfPig's own parsing are exercised for real.</summary>
+    public FakeJobPostingStorage JobPostingStorage { get; } = new();
 
     async Task IAsyncLifetime.InitializeAsync()
     {
@@ -68,6 +74,9 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
                 options.TokenValidationParameters.ValidAudience = "authenticated";
                 options.TokenValidationParameters.IssuerSigningKey = AuthTestWebApplicationFactory.SigningKey;
             });
+
+            services.RemoveAll<IJobPostingStorage>();
+            services.AddSingleton<IJobPostingStorage>(JobPostingStorage);
         });
     }
 }

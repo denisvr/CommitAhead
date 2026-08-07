@@ -54,6 +54,19 @@ public static class InfrastructureServiceCollectionExtensions
             client.DefaultRequestHeaders.Add("apikey", options.AnonKey);
         });
 
+        // Reuses SupabaseAuthOptions (Url + AnonKey) rather than a redundant options type — Storage
+        // and Auth are the same Supabase project's same two values (ADR-0018: no service-role key,
+        // no new secret). The current request's user JWT is added per-call inside
+        // SupabaseStorageClient itself, never as a default header here.
+        services.AddHttpClient<IJobPostingStorage, SupabaseStorageClient>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<SupabaseAuthOptions>>().Value;
+            client.BaseAddress = new Uri(options.Url);
+            client.DefaultRequestHeaders.Add("apikey", options.AnonKey);
+        });
+
+        services.AddScoped<IPdfTextExtractor, PdfPigTextExtractor>();
+
         return services;
     }
 }

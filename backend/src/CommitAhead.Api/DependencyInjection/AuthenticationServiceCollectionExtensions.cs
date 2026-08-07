@@ -87,6 +87,7 @@ public static class AuthenticationServiceCollectionExtensions
 
         services.AddScoped<CurrentUserAccessor>();
         services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserAccessor>());
+        services.AddScoped<ICurrentUserAccessToken, CurrentUserAccessTokenAccessor>();
 
         return services;
     }

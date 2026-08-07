@@ -69,6 +69,18 @@ internal static class StudyItemsApiTestHelpers
         return await client.SendAsync(request);
     }
 
+    /// <summary>For multipart/form-data requests (e.g. file uploads) — JsonContent.Create in SendMutatingAsync above only fits a JSON body.</summary>
+    public static async Task<HttpResponseMessage> SendMultipartAsync(this HttpClient client, HttpMethod method, string url, string accessCookie, MultipartFormDataContent content)
+    {
+        var (csrfToken, csrfCookie) = await GetCsrfTokenAsync(client, accessCookie);
+
+        var request = new HttpRequestMessage(method, url) { Content = content };
+        request.Headers.Add("Cookie", $"{accessCookie}; {csrfCookie}");
+        request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+
+        return await client.SendAsync(request);
+    }
+
     private static async Task<(string Token, string Cookie)> GetCsrfTokenAsync(HttpClient client, string accessCookie)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, "/auth/csrf");
