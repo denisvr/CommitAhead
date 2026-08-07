@@ -134,6 +134,46 @@ public class JobAnalysisRepositoryTests : IAsyncLifetime
         Assert.Empty(reloaded.Gaps);
     }
 
+    /// <summary>
+    /// The in-memory invariant (JobAnalysis.AddGap) already rejects an invalid RequirementId
+    /// before anything is persisted — these two tests instead bypass the aggregate entirely
+    /// (raw <see cref="DbContext.Set{TEntity}"/> + a manually-set shadow FK) to prove the
+    /// composite FK added in JobGapConfiguration rejects the same invalid write at the database
+    /// level too, as defense-in-depth against a future bug that skips AddGap.
+    /// </summary>
+    [Fact]
+    public async Task SaveChanges_WithAGapReferencingANonexistentRequirement_ThrowsFromTheDatabaseConstraint()
+    {
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var analysis = CreateAnalysis(ownerUserId);
+        await new JobAnalysisRepository(_dbContext).AddAsync(analysis, CancellationToken.None);
+
+        var invalidGap = new JobGap(Guid.NewGuid(), Guid.NewGuid(), JobGapMatchLevel.Partial, JobGapSeverity.Medium, "References a requirement that doesn't exist.");
+        _dbContext.Set<JobGap>().Add(invalidGap);
+        _dbContext.Entry(invalidGap).Property("JobAnalysisId").CurrentValue = analysis.Id;
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => _dbContext.SaveChangesAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SaveChanges_WithAGapReferencingARequirementFromADifferentAnalysis_ThrowsFromTheDatabaseConstraint()
+    {
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var analysisWithRequirement = CreateAnalysis(ownerUserId);
+        var requirement = new JobRequirement(Guid.NewGuid(), "5+ years of C#.", JobRequirementKind.Technical, JobRequirementPriority.Required, "Must have 5+ years of C# experience.");
+        analysisWithRequirement.AddRequirement(requirement, DateTime.UtcNow);
+        var repository = new JobAnalysisRepository(_dbContext);
+        await repository.AddAsync(analysisWithRequirement, CancellationToken.None);
+        var otherAnalysis = CreateAnalysis(ownerUserId);
+        await repository.AddAsync(otherAnalysis, CancellationToken.None);
+
+        var crossAnalysisGap = new JobGap(Guid.NewGuid(), requirement.Id, JobGapMatchLevel.Partial, JobGapSeverity.Medium, "References a requirement from a different analysis.");
+        _dbContext.Set<JobGap>().Add(crossAnalysisGap);
+        _dbContext.Entry(crossAnalysisGap).Property("JobAnalysisId").CurrentValue = otherAnalysis.Id;
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => _dbContext.SaveChangesAsync(CancellationToken.None));
+    }
+
     [Fact]
     public async Task DeleteAsync_RemovesTheAnalysisAndItsChildren()
     {

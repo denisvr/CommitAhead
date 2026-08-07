@@ -24,12 +24,18 @@ public sealed class JobGapConfiguration : IEntityTypeConfiguration<JobGap>
         builder.Property(g => g.Severity).HasColumnName("severity").HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(g => g.Rationale).HasColumnName("rationale").HasMaxLength(ValidationLimits.GapRationaleMaxLength).IsRequired();
 
-        // No FK from RequirementId to job_requirements — same reasoning as EvidenceLink's
-        // polymorphic sourceType/sourceId columns having no database FK: invariant 16 (a gap's
-        // RequirementId must reference a requirement on the same JobAnalysis) is already fully
-        // enforced in memory by JobAnalysis.AddGap/RemoveRequirement before either collection is
-        // ever persisted, and both types are children of the same aggregate root — there is no
-        // cross-aggregate gap this index needs to close, just a lookup helper.
-        builder.HasIndex(g => g.RequirementId);
+        // Composite FK to JobRequirement's (Id, JobAnalysisId) alternate key — not just an index —
+        // so PostgreSQL itself rejects a gap referencing a requirement from a different
+        // JobAnalysis, as defense-in-depth alongside the in-memory invariant already enforced by
+        // JobAnalysis.AddGap/RemoveRequirement. Restrict, not Cascade: JobGap already cascades
+        // directly from JobAnalysis (below) — deleting a JobAnalysis removes both children via that
+        // shorter path in the same SaveChanges, so this FK never blocks a real deletion; it only
+        // rejects the invalid write this invariant exists to prevent. No navigation property either
+        // side, same as EvidenceLink's polymorphic sourceType/sourceId columns.
+        builder.HasOne<JobRequirement>()
+            .WithMany()
+            .HasForeignKey("RequirementId", "JobAnalysisId")
+            .HasPrincipalKey(nameof(JobRequirement.Id), "JobAnalysisId")
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

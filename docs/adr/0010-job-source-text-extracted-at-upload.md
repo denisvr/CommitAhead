@@ -13,11 +13,11 @@ A `JobAnalysis` can be created from a pasted job description or an uploaded PDF.
 
 `JobSource` is a discriminated union: `PastedText(content)` or `UploadedFile(storageObjectKey, originalFileName, mimeType, extractedText)`.
 
-For uploaded PDFs, text extraction happens once during the upload request using a maintained text-only library under strict constraints: timeout, memory limit, page-count limit, and a 50 000-character output cap. The extracted text is stored in `UploadedFile.extractedText`. The `storageObjectKey` is a backend-generated quarantine key; the original filename is never used as a storage path.
+For uploaded PDFs, text extraction happens once during the upload request using a maintained text-only library under strict page-count and 50 000-character output caps, enforced explicitly by the extractor itself, plus a best-effort extraction timeout — the library's own API is synchronous and uncancellable, so the timeout is a wall-clock race, not a hard parser-level guarantee; container memory/CPU limits are the real backstop against a runaway parse. The extracted text is stored in `UploadedFile.extractedText`. The `storageObjectKey` is a backend-generated quarantine key; the original filename is never used as a storage path.
 
 The AI provider always receives the extracted text string. It never fetches files from Supabase Storage, receives URLs, or accesses embedded content. Explicit rejection with a user-visible error replaces silent truncation when limits are exceeded.
 
-Rejected uploads (malformed, encrypted, image-only, wrong MIME, or oversized) have their Storage objects deleted immediately; no orphaned files are retained for failed uploads.
+Rejected uploads (malformed, encrypted, image-only, wrong MIME, or oversized) have their Storage objects deleted best-effort; on a delete failure, the orphaned object's key is logged for manual cleanup rather than the response being blocked on it.
 
 ## Consequences
 

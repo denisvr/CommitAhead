@@ -1,6 +1,8 @@
 using CommitAhead.Application.JobAnalyses;
+using CommitAhead.Application.Tests.Auth;
 using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Domain.JobAnalyses;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CommitAhead.Application.Tests.JobAnalyses;
@@ -92,5 +94,25 @@ public class DeleteJobAnalysisUseCaseTests
 
         Assert.Equal(JobAnalysisMutationResult.Success, result);
         Assert.Empty(repository.Analyses);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStorageDeleteFails_LogsTheStorageObjectKey_NeverTheException()
+    {
+        var repository = new FakeJobAnalysisRepository();
+        var storage = new FakeJobPostingStorage { ExceptionToThrowOnDelete = new HttpRequestException("Storage is unreachable") };
+        var ownerUserId = Guid.NewGuid();
+        var analysis = CreateUploadedFileAnalysis(ownerUserId, "owner/abc123");
+        await repository.AddAsync(analysis, CancellationToken.None);
+        var logger = new RecordingLogger<DeleteJobAnalysisUseCase>();
+        var useCase = new DeleteJobAnalysisUseCase(
+            repository, storage, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" }, logger);
+
+        await useCase.ExecuteAsync(analysis.Id, CancellationToken.None);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Null(entry.Exception);
+        Assert.Contains("owner/abc123", entry.Message, StringComparison.Ordinal);
     }
 }

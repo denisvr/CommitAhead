@@ -1,8 +1,10 @@
 using System.Text;
 using CommitAhead.Application.JobAnalyses;
+using CommitAhead.Application.Tests.Auth;
 using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Domain;
 using CommitAhead.Domain.JobAnalyses;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CommitAhead.Application.Tests.JobAnalyses;
@@ -14,8 +16,17 @@ public class CreateJobAnalysisFromUploadUseCaseTests
     private static MemoryStream ValidPdfContent(int totalBytes = 20) => new(Encoding.ASCII.GetBytes("%PDF-" + new string('A', totalBytes - 5)));
 
     private static CreateJobAnalysisFromUploadUseCase CreateUseCase(
-        FakeJobAnalysisRepository repository, FakeJobPostingStorage storage, FakePdfTextExtractor extractor, Guid ownerUserId)
-        => new(repository, storage, extractor, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" }, NullLogger<CreateJobAnalysisFromUploadUseCase>.Instance);
+        FakeJobAnalysisRepository repository,
+        FakeJobPostingStorage storage,
+        FakePdfTextExtractor extractor,
+        Guid ownerUserId,
+        ILogger<CreateJobAnalysisFromUploadUseCase>? logger = null)
+        => new(
+            repository,
+            storage,
+            extractor,
+            new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
+            logger ?? NullLogger<CreateJobAnalysisFromUploadUseCase>.Instance);
 
     [Fact]
     public async Task ExecuteAsync_WithAValidPdf_CreatesAnAnalysisAndReturnsItsId()
@@ -130,6 +141,25 @@ public class CreateJobAnalysisFromUploadUseCaseTests
         var uploadedKey = Assert.Single(storage.UploadCalls).Key;
         Assert.Equal([uploadedKey], storage.DeletedKeys);
         Assert.Empty(repository.Analyses);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenBothExtractionAndTheCleanupDeleteFail_LogsTheStorageObjectKey_NeverTheException()
+    {
+        var repository = new FakeJobAnalysisRepository();
+        var storage = new FakeJobPostingStorage { ExceptionToThrowOnDelete = new HttpRequestException("Storage is unreachable") };
+        var extractor = new FakePdfTextExtractor { ExceptionToThrow = new PdfExtractionException(PdfExtractionFailureReason.Malformed) };
+        var logger = new RecordingLogger<CreateJobAnalysisFromUploadUseCase>();
+        var useCase = CreateUseCase(repository, storage, extractor, Guid.NewGuid(), logger);
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => useCase.ExecuteAsync("Title", ValidPdfContent(), "posting.pdf", "application/pdf", null, CancellationToken.None));
+
+        var uploadedKey = Assert.Single(storage.UploadCalls).Key;
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Null(entry.Exception);
+        Assert.Contains(uploadedKey, entry.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

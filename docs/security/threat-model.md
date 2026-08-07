@@ -75,9 +75,9 @@
 - Validation: extension, declared MIME, `%PDF-` magic bytes, page count, non-empty extracted text
 - Rejected if: malformed, encrypted, image-only, wrong MIME, oversized
 - Storage path: backend-generated quarantine key; original filename never used as path
-- Parsing: text-only library; strict timeout, memory, page-count, and 50 000-character output limits
+- Parsing: text-only library; a strict page-count and 50 000-character output limit, enforced explicitly by the extractor itself. The 10-second extraction budget is best-effort, not a hard guarantee: the parser has no cancellable API, so a slow parse can keep running on its own thread past the budget or a caller cancellation; container memory/CPU limits are the real backstop against a runaway parse, not an in-process one
 - Parsed once at upload; never re-executed
-- Failed uploads: Storage object deleted immediately
+- Failed uploads: Storage object delete attempted best-effort; on failure, the orphaned object's key (never the exception) is logged for manual cleanup rather than blocking the response
 - Never serve PDFs inline; never render scripts or follow embedded links; no parser network access
 - Files whose extracted text exceeds the 50 000-character limit are rejected with an explicit user-visible error; extraction is never silently truncated
 

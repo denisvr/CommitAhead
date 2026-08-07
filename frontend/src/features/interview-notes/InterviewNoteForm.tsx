@@ -6,6 +6,7 @@ import { fetchJobAnalyses, type JobAnalysisResponse } from '../job-analyses/api'
 import layout from '../job-analyses/FormLayout.module.css'
 import { createInterviewNote, toNumber, updateInterviewNote, type InterviewNoteResponse, type InterviewRound, type UpdateInterviewNoteRequest } from './api'
 import styles from './InterviewNoteForm.module.css'
+import { toLocalDateInputValue } from './localDate'
 import { StringEntryListEditor } from './StringEntryListEditor'
 
 type FormValues = UpdateInterviewNoteRequest & { jobAnalysisId: string | null }
@@ -16,7 +17,7 @@ const DEFAULT_VALUES: FormValues = {
   interviewRound: 'RecruiterScreening',
   sequenceNumber: 1,
   otherLabel: null,
-  date: new Date().toISOString().slice(0, 10),
+  date: toLocalDateInputValue(new Date()),
   questions: [],
   gaps: [],
   lessons: [],

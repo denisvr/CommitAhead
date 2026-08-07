@@ -112,7 +112,8 @@ public sealed class CreateJobAnalysisFromUploadUseCase
         catch (Exception cleanupException)
         {
             _logger.LogWarning(
-                "Best-effort Storage cleanup failed for a rejected upload. Exception type: {ExceptionType}", cleanupException.GetType().Name);
+                "Best-effort Storage cleanup failed for a rejected upload. StorageObjectKey: {StorageObjectKey}. Exception type: {ExceptionType}",
+                storageObjectKey, cleanupException.GetType().Name);
         }
     }
 

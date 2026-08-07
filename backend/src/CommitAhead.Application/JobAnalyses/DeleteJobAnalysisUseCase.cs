@@ -71,8 +71,8 @@ public sealed class DeleteJobAnalysisUseCase
         catch (Exception ex)
         {
             _logger.LogWarning(
-                "Best-effort Storage cleanup failed after deleting a JobAnalysis. The database row is already gone; the Storage object is orphaned for manual cleanup. Exception type: {ExceptionType}",
-                ex.GetType().Name);
+                "Best-effort Storage cleanup failed after deleting a JobAnalysis. The database row is already gone; the Storage object is orphaned for manual cleanup. StorageObjectKey: {StorageObjectKey}. Exception type: {ExceptionType}",
+                storageObjectKey, ex.GetType().Name);
         }
     }
 }

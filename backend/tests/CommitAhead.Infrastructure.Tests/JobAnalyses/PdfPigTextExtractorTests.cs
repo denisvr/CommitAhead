@@ -8,12 +8,13 @@ namespace CommitAhead.Infrastructure.Tests.JobAnalyses;
 /// (MinimalPdfFixtures) — never fakes, since the point is proving the real library's behavior for
 /// each rejection reason.
 ///
+/// Encrypted is covered by MinimalPdfFixtures.Encrypted() — a real PDF standard security handler
+/// (Revision 2, 40-bit RC4) encryption dictionary, hand-computed with a genuine non-empty user
+/// password. Opened without that password, PdfPig only tries the empty password by default, its
+/// computed U value doesn't match, and it throws PdfDocumentEncryptedException for real — this is
+/// a real fixture-driven test against the real library, not just the source's catch clause.
+///
 /// Not covered here, deliberately:
-/// - Encrypted: a genuinely encrypted PDF requires real PDF-spec encryption (RC4/AES with a
-///   correctly computed owner/user key) that is impractical to hand-craft as a byte literal; the
-///   Encrypted mapping itself (PdfDocumentEncryptedException -> PdfExtractionFailureReason.Encrypted)
-///   is exercised indirectly by the exact catch clause in PdfPigTextExtractor's source, but no
-///   fixture-driven test exists for it in this slice.
 /// - TimedOut: there is no deterministic way to force PdfPig's synchronous parser to run past the
 ///   10-second budget without a pathological fixture; CreateJobAnalysisFromUploadUseCaseTests
 ///   covers the use case's own handling of a TimedOut failure via a fake extractor instead, which
@@ -34,6 +35,17 @@ public class PdfPigTextExtractorTests
     }
 
     [Fact]
+    public async Task ExtractTextAsync_WithAPasswordProtectedPdf_ThrowsEncrypted()
+    {
+        var pdf = MinimalPdfFixtures.Encrypted();
+
+        var exception = await Assert.ThrowsAsync<PdfExtractionException>(
+            () => _extractor.ExtractTextAsync(new MemoryStream(pdf), CancellationToken.None));
+
+        Assert.Equal(PdfExtractionFailureReason.Encrypted, exception.Reason);
+    }
+
+    [Fact]
     public async Task ExtractTextAsync_WithMalformedBytes_ThrowsMalformed()
     {
         var exception = await Assert.ThrowsAsync<PdfExtractionException>(
@@ -51,6 +63,23 @@ public class PdfPigTextExtractorTests
             () => _extractor.ExtractTextAsync(new MemoryStream(pdf), CancellationToken.None));
 
         Assert.Equal(PdfExtractionFailureReason.ImageOnly, exception.Reason);
+    }
+
+    /// <summary>
+    /// PdfPig's own page.Text carries no trailing separator, so joining pages with a bare append
+    /// would read the last word of one page and the first word of the next as a single merged
+    /// word — proving the extractor's own newline join (not PdfPig itself) keeps them apart.
+    /// </summary>
+    [Fact]
+    public async Task ExtractTextAsync_WithMultiplePages_DoesNotMergeWordsAcrossThePageBoundary()
+    {
+        var pdf = MinimalPdfFixtures.MultiPageWithDistinctText("endsInWordA", "startsWithWordB");
+
+        var text = await _extractor.ExtractTextAsync(new MemoryStream(pdf), CancellationToken.None);
+
+        Assert.DoesNotContain("endsInWordAstartsWithWordB", text);
+        Assert.Contains("endsInWordA", text);
+        Assert.Contains("startsWithWordB", text);
     }
 
     [Fact]

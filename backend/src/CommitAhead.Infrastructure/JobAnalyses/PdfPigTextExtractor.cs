@@ -71,7 +71,15 @@ public sealed class PdfPigTextExtractor : IPdfTextExtractor
             var text = new StringBuilder();
             foreach (var page in document.GetPages())
             {
-                text.Append(page.Text);
+                // A newline between pages, not a bare append — otherwise the last word of one
+                // page and the first word of the next would read as a single merged word, since
+                // PdfPig's own page.Text carries no trailing separator of its own.
+                if (text.Length > 0)
+                {
+                    text.Append('\n');
+                }
+
+                text.Append(NormalizeLineEndings(page.Text));
                 if (text.Length > ValidationLimits.JobSourceTextMaxLength)
                 {
                     // Reject, never truncate (ADR-0010) — stop as soon as the cap is crossed,
@@ -102,12 +110,11 @@ public sealed class PdfPigTextExtractor : IPdfTextExtractor
         {
             throw new PdfExtractionException(PdfExtractionFailureReason.Malformed);
         }
-        catch (Exception)
-        {
-            // Any other PdfPig-internal failure (corrupt fonts, unexpected structure, etc.) —
-            // treated as malformed rather than letting a raw parser exception escape. Its message
-            // is never logged or exposed; only the safe, closed PdfExtractionFailureReason is.
-            throw new PdfExtractionException(PdfExtractionFailureReason.Malformed);
-        }
+        // No catch-all: anything other than the two known PdfPig failure types above (a corrupt
+        // font table, an unexpected internal parser bug, etc.) is a genuine infrastructure
+        // failure, not a validation problem — it propagates unchanged rather than being silently
+        // reclassified as Malformed.
     }
+
+    private static string NormalizeLineEndings(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
 }
