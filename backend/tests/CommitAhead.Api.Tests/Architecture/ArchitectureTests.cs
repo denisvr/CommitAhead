@@ -147,12 +147,12 @@ public class ArchitectureTests
     }
 
     [Fact(Skip =
-        "Pending: CLAUDE.md rule 5's IAIProvider half cannot be verified yet — Application declares no " +
-        "IAIProvider interface until Phase 4. The repository half is now covered for real by " +
-        "RepositoryImplementations_ShouldOnlyExistInInfrastructure above (IUserRepository/UserRepository). " +
-        "Rewrite this test once Application declares IAIProvider: assert " +
+        "Pending: CLAUDE.md rule 5's IAIProvider half still cannot be verified — Application now declares " +
+        "IAIProvider (Phase 4, Slice 2), but no Infrastructure implementation exists yet, since real " +
+        "provider/model selection is deferred (docs/tbd.md). Unskip once ProviderAIAdapter exists: assert " +
         "Types.InAssembly(...).That().ImplementInterface(typeof(IAIProvider)) exist only in " +
-        "CommitAhead.Infrastructure, excluding test fakes.")]
+        "CommitAhead.Infrastructure among the four production assemblies (Domain/Application/Infrastructure/Api) " +
+        "— test fakes like FakeAIProvider live in test-only assemblies this check never inspects.")]
     public void AIProviderImplementations_ShouldOnlyExistInInfrastructure()
     {
     }

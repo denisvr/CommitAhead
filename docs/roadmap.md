@@ -99,13 +99,13 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 **Outcome:** All three explicit AI commands produce reviewable drafts; accepted effects are applied atomically with controlled cost.
 
-**Decide first:** AI provider/model, default budgets/currency, StructuredSuggestion allowlist.
+**Decide first:** AI provider/model, default budgets/currency, ~~StructuredSuggestion allowlist~~ — decided (docs/tbd.md). Real provider/model selection is deferred by explicit user decision — Slices 1-2 below cover only what needs no real provider.
 
-- [ ] Finalise IAIProvider contracts and command-specific minimised input projections
-- [ ] Implement FakeAIProvider with six deterministic scenarios per command
-- [ ] Implement ProviderAIAdapter with structured output, time/token limits, and safe error mapping
-- [ ] Implement AnalysisDraft and immutable proposed/separate accepted proposal payload persistence
-- [ ] Implement AIUsageRecord Reserved → Completed/Failed lifecycle, durable idempotency, lazy stale-reservation reconciliation, and budget checks
+- [x] Finalise IAIProvider contracts and command-specific minimised input projections — `IAIProvider` + `JobAnalysisAiInput`/`CVPresentationAiInput`/`InterviewNoteAiInput`/`StudyItemCatalogueEntry`/`AiAnalysisResult` (`backend/src/CommitAhead.Application/AI/`)
+- [x] Implement FakeAIProvider with six deterministic scenarios per command — `FakeAIProvider`/`FakeAIScenario` (`backend/tests/CommitAhead.Application.Tests/AI/`); same six scenarios apply uniformly across all three analyze methods
+- [ ] Implement ProviderAIAdapter with structured output, time/token limits, and safe error mapping — blocked on real provider/model selection
+- [ ] Implement AnalysisDraft and immutable proposed/separate accepted proposal payload persistence — the Domain aggregate itself is done (Slice 1: `AnalysisDraft`/`SuggestionProposal`/`LinkProposal`/`StudyItemProposal`, `backend/src/CommitAhead.Domain/AnalysisDrafts/`); EF persistence is not
+- [ ] Implement AIUsageRecord Reserved → Completed/Failed lifecycle, durable idempotency, lazy stale-reservation reconciliation, and budget checks — the Domain aggregate itself is done (Slice 1: `AIUsageRecord`, `backend/src/CommitAhead.Domain/AIUsage/`); durable idempotency/budget checks need EF persistence, not done
 - [ ] Implement AnalyzeJobAnalysis, AnalyzeCVPresentation, and AnalyzeInterviewNote
 - [ ] Implement ApplyAnalysisDraft with exactly one decision per proposal and one atomic accepted-effects transaction
 - [ ] Implement EvidenceLink creation via accepted LinkProposals and DeleteEvidenceLink (moved from Phase 3 — no mutable EvidenceLink port or creation path could exist before AnalysisDraft did)

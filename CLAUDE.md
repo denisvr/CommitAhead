@@ -39,7 +39,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 2. Application has no dependency on Infrastructure, API, EF Core, Npgsql, ASP.NET Core, or Supabase.
 3. Infrastructure has no dependency on API.
 4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services. The API composition root is the explicit exception for Infrastructure registration.
-5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). **Repository half is active**: Phase 1 declared `IStudyItemRepository`/`IScoringConfigRepository`/etc., so this half of the rule runs for real, not vacuously. **`IAIProvider` half still pending**: skipped until Application declares an `IAIProvider` interface (Phase 4) — there is nothing to check that half against yet.
+5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). **Repository half is active**: Phase 1 declared `IStudyItemRepository`/`IScoringConfigRepository`/etc., so this half of the rule runs for real, not vacuously. **`IAIProvider` half still pending**: Application now declares `IAIProvider` (Phase 4, Slice 2), but stays skipped until Infrastructure has a real implementation (`ProviderAIAdapter`, once provider/model selection resolves docs/tbd.md) — `Assert.NotEmpty` on zero implementations would just fail, not vacuously pass.
 
 ## Project structure (target)
 ```
