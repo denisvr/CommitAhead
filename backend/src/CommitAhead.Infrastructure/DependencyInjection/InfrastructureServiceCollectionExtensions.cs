@@ -1,3 +1,5 @@
+using CommitAhead.Application.AIUsage;
+using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
@@ -6,6 +8,8 @@ using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
+using CommitAhead.Infrastructure.AIUsage;
+using CommitAhead.Infrastructure.AnalysisDrafts;
 using CommitAhead.Infrastructure.Auth;
 using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.EvidenceLinks;
@@ -39,6 +43,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICVPresentationRepository, CVPresentationRepository>();
         services.AddScoped<IJobAnalysisRepository, JobAnalysisRepository>();
         services.AddScoped<IInterviewNoteRepository, InterviewNoteRepository>();
+        services.AddScoped<IAnalysisDraftRepository, AnalysisDraftRepository>();
+        services.AddScoped<IAIUsageRecordRepository, AIUsageRecordRepository>();
 
         // No .ValidateOnStart(): the build-time OpenAPI document generator actually runs the host
         // (not just builds it) without user-secrets loaded, so eager validation here would break

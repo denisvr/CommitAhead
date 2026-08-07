@@ -48,9 +48,10 @@ runs `scripts/database/001_roles.sql` automatically on first start, creating the
 `commitahead_app`/`commitahead_migrator` roles from `.env`), applies pending EF Core migrations,
 then applies `scripts/database/002_rls_users.sql` (RLS on `users`), `scripts/database/003_rls_phase1.sql`
 (grants/RLS on the Phase 1 business tables), `scripts/database/004_rls_phase2.sql` (grants/RLS on
-the Phase 2 ProfessionalProfile/CVPresentation tables), and `scripts/database/005_rls_phase3.sql`
-(grants/RLS on the Phase 3 JobAnalysis/InterviewNote tables) — all safe to re-run. When the real
-Supabase project is created, the same five SQL scripts are the template for setting it up (see
+the Phase 2 ProfessionalProfile/CVPresentation tables), `scripts/database/005_rls_phase3.sql`
+(grants/RLS on the Phase 3 JobAnalysis/InterviewNote tables), and `scripts/database/007_rls_phase4.sql`
+(grants/RLS on the Phase 4 AnalysisDraft/AIUsageRecord tables) — all safe to re-run. When the real
+Supabase project is created, the same SQL scripts are the template for setting it up (see
 `backend/scripts/database/`) — only the connection host/credentials change.
 
 `scripts/database/006_storage_job_postings.sql` is different in kind, not just number: it targets

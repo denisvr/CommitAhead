@@ -1,3 +1,5 @@
+using CommitAhead.Domain.AIUsage;
+using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.EvidenceLinks;
 using CommitAhead.Domain.Identity;
@@ -5,6 +7,8 @@ using CommitAhead.Domain.InterviewNotes;
 using CommitAhead.Domain.JobAnalyses;
 using CommitAhead.Domain.ProfessionalProfiles;
 using CommitAhead.Domain.StudyItems;
+using CommitAhead.Infrastructure.AIUsage;
+using CommitAhead.Infrastructure.AnalysisDrafts;
 using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.EvidenceLinks;
 using CommitAhead.Infrastructure.Identity;
@@ -37,6 +41,10 @@ public sealed class CommitAheadDbContext : DbContext
 
     public DbSet<InterviewNote> InterviewNotes => Set<InterviewNote>();
 
+    public DbSet<AnalysisDraft> AnalysisDrafts => Set<AnalysisDraft>();
+
+    public DbSet<AIUsageRecord> AIUsageRecords => Set<AIUsageRecord>();
+
     internal DbSet<ScoringConfigOverrideRow> ScoringConfigOverrides => Set<ScoringConfigOverrideRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -59,5 +67,10 @@ public sealed class CommitAheadDbContext : DbContext
         modelBuilder.ApplyConfiguration(new JobRequirementConfiguration());
         modelBuilder.ApplyConfiguration(new JobGapConfiguration());
         modelBuilder.ApplyConfiguration(new InterviewNoteConfiguration());
+        modelBuilder.ApplyConfiguration(new AnalysisDraftConfiguration());
+        modelBuilder.ApplyConfiguration(new SuggestionProposalConfiguration());
+        modelBuilder.ApplyConfiguration(new LinkProposalConfiguration());
+        modelBuilder.ApplyConfiguration(new StudyItemProposalConfiguration());
+        modelBuilder.ApplyConfiguration(new AIUsageRecordConfiguration());
     }
 }

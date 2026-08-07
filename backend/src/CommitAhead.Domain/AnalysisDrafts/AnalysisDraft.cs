@@ -16,9 +16,9 @@ namespace CommitAhead.Domain.AnalysisDrafts;
 /// </summary>
 public sealed class AnalysisDraft
 {
-    private readonly List<SuggestionProposal> _suggestionProposals;
-    private readonly List<LinkProposal> _linkProposals;
-    private readonly List<StudyItemProposal> _studyItemProposals;
+    private readonly List<SuggestionProposal> _suggestionProposals = [];
+    private readonly List<LinkProposal> _linkProposals = [];
+    private readonly List<StudyItemProposal> _studyItemProposals = [];
 
     public Guid Id { get; }
     public Guid OwnerUserId { get; }
@@ -67,6 +67,26 @@ public sealed class AnalysisDraft
         _studyItemProposals = RequireUniqueIds(studyItemProposals, p => p.Id, nameof(studyItemProposals));
         Status = AnalysisDraftStatus.Pending;
         CreatedAtUtc = createdAtUtc;
+    }
+
+    /// <summary>
+    /// EF Core materialization only — the public constructor's collection parameters can't be
+    /// bound to navigation properties, so this one matches every scalar property instead (EF's
+    /// constructor-binding convention matches parameter names to property names), letting EF use
+    /// it and then populate the three collection navigations separately via the configured
+    /// relationships and their already-empty-initialized backing fields.
+    /// </summary>
+    private AnalysisDraft(
+        Guid id, Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, AnalysisDraftStatus status, DateTime createdAtUtc, DateTime? appliedAtUtc, DateTime? discardedAtUtc)
+    {
+        Id = id;
+        OwnerUserId = ownerUserId;
+        SourceType = sourceType;
+        SourceId = sourceId;
+        Status = status;
+        CreatedAtUtc = createdAtUtc;
+        AppliedAtUtc = appliedAtUtc;
+        DiscardedAtUtc = discardedAtUtc;
     }
 
     /// <summary>
