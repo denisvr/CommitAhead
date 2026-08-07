@@ -1,6 +1,8 @@
 using System.Reflection;
 using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
+using CommitAhead.Application.InterviewNotes;
+using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
@@ -114,6 +116,8 @@ public class ArchitectureTests
         typeof(IRlsSessionContext),
         typeof(IProfessionalProfileRepository),
         typeof(ICVPresentationRepository),
+        typeof(IJobAnalysisRepository),
+        typeof(IInterviewNoteRepository),
     ];
 
     [Fact]

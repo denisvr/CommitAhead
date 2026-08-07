@@ -34,9 +34,9 @@ public sealed class InterviewNote
         int sequenceNumber,
         string? otherLabel,
         DateOnly date,
-        IEnumerable<string> questions,
-        IEnumerable<string> gaps,
-        IEnumerable<string> lessons,
+        IReadOnlyList<string> questions,
+        IReadOnlyList<string> gaps,
+        IReadOnlyList<string> lessons,
         Guid? jobAnalysisId,
         DateTime createdAtUtc)
     {

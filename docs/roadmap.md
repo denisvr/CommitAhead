@@ -81,13 +81,13 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 **Decide first:** PDF extraction library and parser resource limits.
 
-- [ ] Implement JobAnalysis, JobSource, JobRequirement, JobGap, and InterviewNote
-- [ ] Add pasted-text and secure PDF-upload flows: validation, private quarantine key, bounded one-time extraction, and failure cleanup
-- [ ] Implement Create/Update/Delete JobAnalysis and InterviewNote
-- [ ] Apply the uploaded-file-cleanup half of ADR-0011 only: after a JobAnalysis/InterviewNote deletion commits, best-effort delete its `UploadedFile`'s Storage object. The EvidenceLink/AnalysisDraft transactional-cleanup half of ADR-0011 moves to Phase 4 (see below) — neither aggregate has a creation path yet, so there is nothing for a Phase 3 deletion use case to clean up
-- [ ] Preserve InterviewNotes when their optional JobAnalysis is deleted (`ON DELETE SET NULL`) — a real PostgreSQL FK, verified with a real-Postgres integration test, not application code
-- [ ] Build JobAnalysis and InterviewNote interfaces, including extracted-text verification
-- [ ] Add PDF fixtures/failure tests, source-deletion integration tests, and API/component coverage
+- [x] Implement JobAnalysis, JobSource, JobRequirement, JobGap, and InterviewNote
+- [ ] Add pasted-text and secure PDF-upload flows: validation, private quarantine key, bounded one-time extraction, and failure cleanup — deferred; the Api layer below accepts only pasted text so far (`CreateJobAnalysisRequest`), deliberately with no path for a client to supply `UploadedFile`'s `storageObjectKey`/`extractedText` until this flow exists
+- [x] Implement Create/Update/Delete JobAnalysis and InterviewNote (Application use cases, EF repositories/migration, and `JobAnalysesController`/`InterviewNotesController`)
+- [ ] Apply the uploaded-file-cleanup half of ADR-0011 only: after a JobAnalysis/InterviewNote deletion commits, best-effort delete its `UploadedFile`'s Storage object. Still pending — no Storage client exists yet (lands with the upload flow above). The EvidenceLink/AnalysisDraft transactional-cleanup half of ADR-0011 moves to Phase 4 (see below) — neither aggregate has a creation path yet, so there is nothing for a Phase 3 deletion use case to clean up
+- [x] Preserve InterviewNotes when their optional JobAnalysis is deleted (`ON DELETE SET NULL`) — a real PostgreSQL FK (`InterviewNoteConfiguration`), verified with a real-Postgres integration test (`InterviewNoteRepositoryTests.DeletingTheReferencedJobAnalysis_NullsTheNotesReference_AndPreservesTheNote`), not application code
+- [ ] Build JobAnalysis and InterviewNote interfaces, including extracted-text verification — frontend, not started
+- [ ] Add PDF fixtures/failure tests, source-deletion integration tests, and API/component coverage — source-deletion integration tests and API coverage exist (Infrastructure.Tests, Api.Tests); PDF fixtures/failure tests and frontend component coverage remain, tracked with the upload flow and frontend UI above
 
 **Exit criteria:** pasted and PDF job sources plus interview notes are fully manageable; malicious/unsupported PDFs are rejected safely.
 

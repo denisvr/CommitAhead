@@ -1,6 +1,8 @@
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
+using CommitAhead.Application.InterviewNotes;
+using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Application.StudyItems;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +57,18 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReplaceCertificationSelectionsUseCase>();
         services.AddScoped<ReplaceProjectSelectionsUseCase>();
         services.AddScoped<ReplaceProfileLinkSelectionsUseCase>();
+
+        services.AddScoped<CreateJobAnalysisUseCase>();
+        services.AddScoped<UpdateJobAnalysisUseCase>();
+        services.AddScoped<DeleteJobAnalysisUseCase>();
+        services.AddScoped<GetJobAnalysisUseCase>();
+        services.AddScoped<GetJobAnalysesUseCase>();
+
+        services.AddScoped<CreateInterviewNoteUseCase>();
+        services.AddScoped<UpdateInterviewNoteUseCase>();
+        services.AddScoped<DeleteInterviewNoteUseCase>();
+        services.AddScoped<GetInterviewNoteUseCase>();
+        services.AddScoped<GetInterviewNotesUseCase>();
 
         return services;
     }

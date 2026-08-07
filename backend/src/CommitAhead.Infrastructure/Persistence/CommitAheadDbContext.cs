@@ -1,11 +1,15 @@
 using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.EvidenceLinks;
 using CommitAhead.Domain.Identity;
+using CommitAhead.Domain.InterviewNotes;
+using CommitAhead.Domain.JobAnalyses;
 using CommitAhead.Domain.ProfessionalProfiles;
 using CommitAhead.Domain.StudyItems;
 using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.EvidenceLinks;
 using CommitAhead.Infrastructure.Identity;
+using CommitAhead.Infrastructure.InterviewNotes;
+using CommitAhead.Infrastructure.JobAnalyses;
 using CommitAhead.Infrastructure.ProfessionalProfiles;
 using CommitAhead.Infrastructure.StudyItems;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +33,10 @@ public sealed class CommitAheadDbContext : DbContext
 
     public DbSet<CVPresentation> CVPresentations => Set<CVPresentation>();
 
+    public DbSet<JobAnalysis> JobAnalyses => Set<JobAnalysis>();
+
+    public DbSet<InterviewNote> InterviewNotes => Set<InterviewNote>();
+
     internal DbSet<ScoringConfigOverrideRow> ScoringConfigOverrides => Set<ScoringConfigOverrideRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -47,5 +55,9 @@ public sealed class CommitAheadDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ProjectEntryConfiguration());
         modelBuilder.ApplyConfiguration(new ProfileLinkConfiguration());
         modelBuilder.ApplyConfiguration(new CVPresentationConfiguration());
+        modelBuilder.ApplyConfiguration(new JobAnalysisConfiguration());
+        modelBuilder.ApplyConfiguration(new JobRequirementConfiguration());
+        modelBuilder.ApplyConfiguration(new JobGapConfiguration());
+        modelBuilder.ApplyConfiguration(new InterviewNoteConfiguration());
     }
 }
