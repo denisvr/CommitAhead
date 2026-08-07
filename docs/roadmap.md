@@ -84,9 +84,8 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [ ] Implement JobAnalysis, JobSource, JobRequirement, JobGap, and InterviewNote
 - [ ] Add pasted-text and secure PDF-upload flows: validation, private quarantine key, bounded one-time extraction, and failure cleanup
 - [ ] Implement Create/Update/Delete JobAnalysis and InterviewNote
-- [ ] Apply ADR-0011: source deletion removes EvidenceLinks and AnalysisDrafts transactionally; uploaded-file cleanup is best effort after commit
-- [ ] Preserve InterviewNotes when their optional JobAnalysis is deleted (`ON DELETE SET NULL`)
-- [ ] Implement DeleteEvidenceLink; creation remains exclusive to accepted LinkProposals
+- [ ] Apply the uploaded-file-cleanup half of ADR-0011 only: after a JobAnalysis/InterviewNote deletion commits, best-effort delete its `UploadedFile`'s Storage object. The EvidenceLink/AnalysisDraft transactional-cleanup half of ADR-0011 moves to Phase 4 (see below) — neither aggregate has a creation path yet, so there is nothing for a Phase 3 deletion use case to clean up
+- [ ] Preserve InterviewNotes when their optional JobAnalysis is deleted (`ON DELETE SET NULL`) — a real PostgreSQL FK, verified with a real-Postgres integration test, not application code
 - [ ] Build JobAnalysis and InterviewNote interfaces, including extracted-text verification
 - [ ] Add PDF fixtures/failure tests, source-deletion integration tests, and API/component coverage
 
@@ -107,7 +106,8 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [ ] Implement AIUsageRecord Reserved → Completed/Failed lifecycle, durable idempotency, lazy stale-reservation reconciliation, and budget checks
 - [ ] Implement AnalyzeJobAnalysis, AnalyzeCVPresentation, and AnalyzeInterviewNote
 - [ ] Implement ApplyAnalysisDraft with exactly one decision per proposal and one atomic accepted-effects transaction
-- [ ] Extend all evidence-source deletion use cases/tests to remove AnalysisDrafts and proposal children according to ADR-0011
+- [ ] Implement EvidenceLink creation via accepted LinkProposals and DeleteEvidenceLink (moved from Phase 3 — no mutable EvidenceLink port or creation path could exist before AnalysisDraft did)
+- [ ] Extend all evidence-source deletion use cases/tests to remove EvidenceLinks, AnalysisDrafts, and proposal children transactionally according to ADR-0011 (moved from Phase 3 for the same reason)
 - [ ] Build draft review UI with editable final accepted payloads
 - [ ] Add adapter tests with stubbed HTTP, use-case/API scenarios, integration atomicity tests, and frontend tests
 
