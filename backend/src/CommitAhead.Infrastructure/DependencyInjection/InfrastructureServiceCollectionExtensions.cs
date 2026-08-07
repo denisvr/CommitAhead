@@ -45,6 +45,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInterviewNoteRepository, InterviewNoteRepository>();
         services.AddScoped<IAnalysisDraftRepository, AnalysisDraftRepository>();
         services.AddScoped<IAIUsageRecordRepository, AIUsageRecordRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         // No .ValidateOnStart(): the build-time OpenAPI document generator actually runs the host
         // (not just builds it) without user-secrets loaded, so eager validation here would break

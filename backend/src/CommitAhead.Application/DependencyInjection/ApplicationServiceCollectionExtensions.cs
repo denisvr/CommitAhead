@@ -71,6 +71,13 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetInterviewNoteUseCase>();
         services.AddScoped<GetInterviewNotesUseCase>();
 
+        // AnalyzeJobAnalysisUseCase is intentionally not registered here yet — it depends on
+        // IAIProvider, which has no Infrastructure implementation until ProviderAIAdapter exists
+        // (blocked on real provider/model selection, docs/tbd.md). Registering it now would fail
+        // ASP.NET Core's own DI validation on every application start (ValidateOnBuild, enabled by
+        // default outside Production) with no controller yet to justify it. Composition-root
+        // wiring is deferred to whichever slice adds both a real provider and a controller.
+
         return services;
     }
 }

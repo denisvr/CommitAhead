@@ -11,4 +11,5 @@ public sealed record AiAnalysisResult(
     IReadOnlyList<AiLinkProposal> LinkProposals,
     IReadOnlyList<AiStudyItemProposal> StudyItemProposals,
     int InputTokens,
-    int OutputTokens);
+    int OutputTokens,
+    decimal ActualCost);

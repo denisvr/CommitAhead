@@ -1,3 +1,5 @@
+using CommitAhead.Domain.AIUsage;
+
 namespace CommitAhead.Application.AI;
 
 /// <summary>
@@ -9,6 +11,12 @@ namespace CommitAhead.Application.AI;
 /// </summary>
 public interface IAIProvider
 {
+    /// <summary>
+    /// This provider's own execution metadata for <paramref name="commandType"/> — read by the
+    /// analyzing use case before any reservation or call, never hardcoded there.
+    /// </summary>
+    AiProviderDescriptor Describe(AiCommandType commandType);
+
     Task<AiAnalysisResult> AnalyzeJobAnalysisAsync(JobAnalysisAiInput input, AiCallLimits limits, CancellationToken cancellationToken);
 
     Task<AiAnalysisResult> AnalyzeCVPresentationAsync(CVPresentationAiInput input, AiCallLimits limits, CancellationToken cancellationToken);

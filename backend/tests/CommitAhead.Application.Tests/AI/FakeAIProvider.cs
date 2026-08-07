@@ -1,4 +1,5 @@
 using CommitAhead.Application.AI;
+using CommitAhead.Domain.AIUsage;
 using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.StudyItems;
 
@@ -14,6 +15,17 @@ namespace CommitAhead.Application.Tests.AI;
 public sealed class FakeAIProvider : IAIProvider
 {
     public FakeAIScenario Scenario { get; set; } = FakeAIScenario.Success;
+
+    /// <summary>Explicit, obviously-fake metadata — never mistaken for a real provider's pricing/limits.</summary>
+    public AiProviderDescriptor Describe(AiCommandType commandType) => new(
+        Provider: "fake",
+        Model: "fake-test-model",
+        PricingVersion: "fake-v1",
+        Currency: "USD",
+        MaxInputTokens: 8_000,
+        MaxOutputTokens: 2_000,
+        Timeout: TimeSpan.FromSeconds(30),
+        EstimatedMaxCost: 0m);
 
     public Task<AiAnalysisResult> AnalyzeJobAnalysisAsync(JobAnalysisAiInput input, AiCallLimits limits, CancellationToken cancellationToken) =>
         ProduceResultAsync(cancellationToken);
@@ -45,9 +57,10 @@ public sealed class FakeAIProvider : IAIProvider
         LinkProposals: [new AiLinkProposal(Guid.NewGuid(), 3, "Directly demonstrates this skill.")],
         StudyItemProposals: [new AiStudyItemProposal("Consistent Hashing", StudyItemCategory.Theory, "{\"summaryMarkdown\":\"...\"}", ["distributed-systems"], 4)],
         InputTokens: 500,
-        OutputTokens: 150);
+        OutputTokens: 150,
+        ActualCost: 0m);
 
-    private static AiAnalysisResult EmptyResult() => new([], [], [], InputTokens: 400, OutputTokens: 10);
+    private static AiAnalysisResult EmptyResult() => new([], [], [], InputTokens: 400, OutputTokens: 10, ActualCost: 0m);
 
     /// <summary>Weight 10 is out of LinkProposal's [0,5] range — an analyzing use case must reject this proposal, not construct a Domain LinkProposal from it.</summary>
     private static AiAnalysisResult MalformedResult() => new(
@@ -55,7 +68,8 @@ public sealed class FakeAIProvider : IAIProvider
         LinkProposals: [new AiLinkProposal(Guid.NewGuid(), 10, "Weight is out of range.")],
         StudyItemProposals: [],
         InputTokens: 500,
-        OutputTokens: 50);
+        OutputTokens: 50,
+        ActualCost: 0m);
 
     private static AiAnalysisResult DuplicatesResult()
     {
@@ -69,6 +83,7 @@ public sealed class FakeAIProvider : IAIProvider
             ],
             StudyItemProposals: [],
             InputTokens: 500,
-            OutputTokens: 80);
+            OutputTokens: 80,
+            ActualCost: 0m);
     }
 }

@@ -1,12 +1,17 @@
+using CommitAhead.Application.AI;
 using CommitAhead.Application.AIUsage;
 using CommitAhead.Domain.AIUsage;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CommitAhead.Infrastructure.AIUsage;
 
 public sealed class AIUsageRecordRepository : IAIUsageRecordRepository
 {
+    // https://www.postgresql.org/docs/current/errcodes-appendix.html — unique_violation.
+    private const string PostgresUniqueViolationSqlState = "23505";
+
     private readonly CommitAheadDbContext _dbContext;
 
     public AIUsageRecordRepository(CommitAheadDbContext dbContext)
@@ -20,10 +25,24 @@ public sealed class AIUsageRecordRepository : IAIUsageRecordRepository
             .SingleOrDefaultAsync(record => record.OwnerUserId == ownerUserId && record.IdempotencyKey == idempotencyKey, cancellationToken);
     }
 
+    public Task<AIUsageRecord?> GetActiveReservationByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        return _dbContext.AIUsageRecords
+            .SingleOrDefaultAsync(record => record.OwnerUserId == ownerUserId && record.Status == AIUsageRecordStatus.Reserved, cancellationToken);
+    }
+
     public async Task AddAsync(AIUsageRecord record, CancellationToken cancellationToken)
     {
         _dbContext.AIUsageRecords.Add(record);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresUniqueViolationSqlState })
+        {
+            throw new AIUsageReservationConflictException();
+        }
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

@@ -42,6 +42,7 @@ Decisions that must be made before the affected phase begins. No decision here s
 **Question:** What billing currency and default daily/monthly ceilings are used, and may they be edited from the settings UI?
 **Constraints:** Per-call token limits remain separate; budget checks include Completed actual cost plus active Reserved cost; provider/model pricing and currency must be versioned with the usage record
 **Depends on:** AI provider and model selection
+**Status:** Still incomplete/unenforced — `IAIUsageRecordRepository.GetSpentCostAsync` exists (owner-scoped, sums Completed actual cost plus active Reserved cost within a caller-supplied window) but `AnalyzeJobAnalysisUseCase` never calls it; no ceiling is checked before a reservation is allowed to proceed. Wiring it in has no value until this entry itself is decided.
 
 ### ~~StructuredSuggestion command allowlist~~ — decided
 Resolved at Phase 4 kickoff to exactly the "minimum candidates" list, with no additions:

@@ -6,7 +6,7 @@ public class FakeAIProviderTests
 {
     private static readonly AiCallLimits Limits = new(MaxInputTokens: 2000, MaxOutputTokens: 500, Timeout: TimeSpan.FromSeconds(10));
 
-    private static JobAnalysisAiInput CreateInput() => new("Job posting text.", ["C#", "PostgreSQL"], []);
+    private static JobAnalysisAiInput CreateInput() => new("Job posting text.", ["C#", "PostgreSQL"], [], []);
 
     [Fact]
     public async Task AnalyzeJobAnalysisAsync_WithSuccessScenario_ReturnsOneProposalOfEachKind()

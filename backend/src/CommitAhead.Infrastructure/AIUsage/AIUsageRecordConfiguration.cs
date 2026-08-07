@@ -34,7 +34,14 @@ public sealed class AIUsageRecordConfiguration : IEntityTypeConfiguration<AIUsag
 
         // ADR-0014: durable idempotency is a real unique constraint, not just an application-level
         // check — a repeated key at the database level fails loudly rather than double-charging.
-        builder.HasIndex(r => r.IdempotencyKey).IsUnique();
+        // Scoped to (OwnerUserId, IdempotencyKey), not IdempotencyKey alone (ADR-0015) — the same
+        // idempotency string is independently reusable by different owners.
+        builder.HasIndex(r => new { r.OwnerUserId, r.IdempotencyKey }).IsUnique();
+
+        // At most one Reserved record per owner — "one AI call in flight" is an owner-scoped
+        // limit, not a system-wide one (ADR-0015): different owners never contend. Same partial
+        // unique index pattern as AnalysisDraft's one-pending-per-source index.
+        builder.HasIndex(r => r.OwnerUserId).IsUnique().HasFilter("status = 'Reserved'");
 
         builder.Property(r => r.CommandType)
             .HasColumnName("command_type")
