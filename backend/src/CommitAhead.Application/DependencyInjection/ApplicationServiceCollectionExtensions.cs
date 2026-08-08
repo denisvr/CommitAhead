@@ -1,3 +1,4 @@
+using CommitAhead.Application.AI;
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.CVPresentations;
@@ -73,17 +74,16 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetInterviewNoteUseCase>();
         services.AddScoped<GetInterviewNotesUseCase>();
 
-        // ApplyAnalysisDraftUseCase has no IAIProvider dependency (unlike every AnalyzeX use
-        // case), so registering it does not break DI validation.
         services.AddScoped<ApplyAnalysisDraftUseCase>();
         services.AddScoped<DeleteEvidenceLinkUseCase>();
 
-        // AnalyzeJobAnalysisUseCase is intentionally not registered here yet — it depends on
-        // IAIProvider, which has no Infrastructure implementation until ProviderAIAdapter exists
-        // (blocked on real provider/model selection, docs/tbd.md). Registering it now would fail
-        // ASP.NET Core's own DI validation on every application start (ValidateOnBuild, enabled by
-        // default outside Production) with no controller yet to justify it. Composition-root
-        // wiring is deferred to whichever slice adds both a real provider and a controller.
+        // Safe to register now that AnthropicAIProvider gives IAIProvider a real Infrastructure
+        // implementation (ADR-0019) — previously these three would have failed ASP.NET Core's own
+        // DI validation (ValidateOnBuild, enabled by default outside Production) on every
+        // application start.
+        services.AddScoped<AnalyzeJobAnalysisUseCase>();
+        services.AddScoped<AnalyzeCVPresentationUseCase>();
+        services.AddScoped<AnalyzeInterviewNoteUseCase>();
 
         return services;
     }

@@ -7,6 +7,6 @@ public enum ApplyAnalysisDraftOutcome
     DraftNotFound,
     DraftNotPending,
 
-    /// <summary>The draft's source no longer exists — possible today because source-deletion cleanup (ADR-0011) isn't implemented yet, not just a theoretical case.</summary>
+    /// <summary>The draft's source no longer exists — e.g. deleted concurrently with an in-flight Apply call.</summary>
     SourceNotFound,
 }

@@ -1,7 +1,10 @@
+using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Security;
+using CommitAhead.Application.AI;
 using CommitAhead.Application.InterviewNotes;
 using CommitAhead.Domain.InterviewNotes;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.Features.InterviewNotes;
 
@@ -15,19 +18,22 @@ public sealed class InterviewNotesController : ControllerBase
     private readonly CreateInterviewNoteUseCase _createUseCase;
     private readonly UpdateInterviewNoteUseCase _updateUseCase;
     private readonly DeleteInterviewNoteUseCase _deleteUseCase;
+    private readonly AnalyzeInterviewNoteUseCase _analyzeUseCase;
 
     public InterviewNotesController(
         GetInterviewNoteUseCase getUseCase,
         GetInterviewNotesUseCase getAllUseCase,
         CreateInterviewNoteUseCase createUseCase,
         UpdateInterviewNoteUseCase updateUseCase,
-        DeleteInterviewNoteUseCase deleteUseCase)
+        DeleteInterviewNoteUseCase deleteUseCase,
+        AnalyzeInterviewNoteUseCase analyzeUseCase)
     {
         _getUseCase = getUseCase;
         _getAllUseCase = getAllUseCase;
         _createUseCase = createUseCase;
         _updateUseCase = updateUseCase;
         _deleteUseCase = deleteUseCase;
+        _analyzeUseCase = analyzeUseCase;
     }
 
     [HttpGet]
@@ -48,7 +54,7 @@ public sealed class InterviewNotesController : ControllerBase
     public async Task<ActionResult<InterviewNoteCreatedResponse>> Post([FromBody] CreateInterviewNoteRequest request, CancellationToken cancellationToken)
     {
         // A jobAnalysisId that doesn't resolve to the current user's own JobAnalysis throws
-        // DomainValidationException (invariant 29); DomainValidationExceptionFilter maps that to
+        // DomainValidationException (invariant 29); ValidationExceptionFilter maps that to
         // 422 for every controller in this API, so no local try/catch is needed here.
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id }, new InterviewNoteCreatedResponse(id));
@@ -66,6 +72,23 @@ public sealed class InterviewNotesController : ControllerBase
     {
         var result = await _deleteUseCase.ExecuteAsync(id, cancellationToken);
         return result == InterviewNoteMutationResult.NotFound ? NotFound() : NoContent();
+    }
+
+    [HttpPost("{id:guid}/analyze")]
+    [EnableRateLimiting("ai-analysis")]
+    public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _analyzeUseCase.ExecuteAsync(id, request.IdempotencyKey, cancellationToken);
+        var response = new AnalyzeCommandResponse(result.Outcome, result.AnalysisDraftId);
+
+        return result.Outcome switch
+        {
+            AnalyzeCommandOutcome.SourceNotFound => NotFound(),
+            AnalyzeCommandOutcome.Created => StatusCode(StatusCodes.Status201Created, response),
+            AnalyzeCommandOutcome.AlreadyCompleted => Ok(response),
+            AnalyzeCommandOutcome.DailyBudgetExceeded or AnalyzeCommandOutcome.MonthlyBudgetExceeded => AiOutcomeResponses.BudgetExceeded(result.Outcome, Response),
+            _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
+        };
     }
 }
 

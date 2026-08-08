@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers(options =>
     {
-        options.Filters.Add<DomainValidationExceptionFilter>();
+        options.Filters.Add<ValidationExceptionFilter>();
         options.Filters.Add<RlsTransactionActionFilter>();
     })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -48,10 +48,14 @@ app.UseRouting();
 
 app.UseCommitAheadCors(app.Environment);
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Moved after UseAuthentication()/UseAuthorization(): the "ai-analysis" policy partitions by the
+// authenticated owner's UserId (ADR-0019), which only exists once authentication middleware has
+// run. The IP-partitioned "login" policy is unaffected by this reorder — it never depended on
+// running before authentication.
+app.UseRateLimiter();
 
 app.UseMiddleware<CsrfMiddleware>();
 

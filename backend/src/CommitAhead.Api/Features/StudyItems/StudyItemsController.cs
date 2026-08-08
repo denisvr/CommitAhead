@@ -56,7 +56,7 @@ public sealed class StudyItemsController : ControllerBase
     public async Task<ActionResult<StudyItemCreatedResponse>> Post([FromBody] CreateStudyItemRequest request, CancellationToken cancellationToken)
     {
         // StudyItem's constructor validates title/importance/initialMastery/category-details
-        // agreement and throws ArgumentException; DomainValidationExceptionFilter maps that to
+        // agreement and throws ArgumentException; ValidationExceptionFilter maps that to
         // 422 for every controller in this API, so no local try/catch is needed here.
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id }, new StudyItemCreatedResponse(id));

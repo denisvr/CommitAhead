@@ -1,5 +1,6 @@
 using CommitAhead.Api.Tests.Auth;
 using CommitAhead.Api.Tests.JobAnalyses;
+using CommitAhead.Application.AI;
 using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -35,6 +36,9 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
 
     /// <summary>Replaces the real SupabaseStorageClient — no real Supabase Storage or network call in any Api.Tests run. The real CurrentUserAccessTokenAccessor/PdfPigTextExtractor still run unmodified: the test host's own JWT cookie and PdfPig's own parsing are exercised for real.</summary>
     public FakeJobPostingStorage JobPostingStorage { get; } = new();
+
+    /// <summary>Replaces AnthropicAIProvider — no real Anthropic call in any Api.Tests run (ADR-0009). Tests set Scenario explicitly and must reset it in a finally block: this factory/fake instance is shared, sequentially, across every test in this collection (DisableParallelization = true).</summary>
+    public FakeAIProvider AIProvider { get; } = new();
 
     async Task IAsyncLifetime.InitializeAsync()
     {
@@ -77,6 +81,9 @@ public sealed class StudyItemsTestWebApplicationFactory : WebApplicationFactory<
 
             services.RemoveAll<IJobPostingStorage>();
             services.AddSingleton<IJobPostingStorage>(JobPostingStorage);
+
+            services.RemoveAll<IAIProvider>();
+            services.AddSingleton<IAIProvider>(AIProvider);
         });
     }
 }

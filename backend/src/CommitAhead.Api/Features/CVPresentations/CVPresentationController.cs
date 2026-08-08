@@ -1,6 +1,9 @@
+using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Security;
+using CommitAhead.Application.AI;
 using CommitAhead.Application.CVPresentations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.Features.CVPresentations;
 
@@ -22,6 +25,7 @@ public sealed class CVPresentationController : ControllerBase
     private readonly ReplaceCertificationSelectionsUseCase _replaceCertificationSelectionsUseCase;
     private readonly ReplaceProjectSelectionsUseCase _replaceProjectSelectionsUseCase;
     private readonly ReplaceProfileLinkSelectionsUseCase _replaceProfileLinkSelectionsUseCase;
+    private readonly AnalyzeCVPresentationUseCase _analyzeUseCase;
 
     public CVPresentationController(
         GetCVPresentationUseCase getUseCase,
@@ -35,7 +39,8 @@ public sealed class CVPresentationController : ControllerBase
         ReplaceLanguageSelectionsUseCase replaceLanguageSelectionsUseCase,
         ReplaceCertificationSelectionsUseCase replaceCertificationSelectionsUseCase,
         ReplaceProjectSelectionsUseCase replaceProjectSelectionsUseCase,
-        ReplaceProfileLinkSelectionsUseCase replaceProfileLinkSelectionsUseCase)
+        ReplaceProfileLinkSelectionsUseCase replaceProfileLinkSelectionsUseCase,
+        AnalyzeCVPresentationUseCase analyzeUseCase)
     {
         _getUseCase = getUseCase;
         _getAllUseCase = getAllUseCase;
@@ -49,6 +54,7 @@ public sealed class CVPresentationController : ControllerBase
         _replaceCertificationSelectionsUseCase = replaceCertificationSelectionsUseCase;
         _replaceProjectSelectionsUseCase = replaceProjectSelectionsUseCase;
         _replaceProfileLinkSelectionsUseCase = replaceProfileLinkSelectionsUseCase;
+        _analyzeUseCase = analyzeUseCase;
     }
 
     [HttpGet]
@@ -133,6 +139,23 @@ public sealed class CVPresentationController : ControllerBase
     {
         var result = await _replaceProfileLinkSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
         return result == CVPresentationMutationResult.NotFound ? NotFound() : NoContent();
+    }
+
+    [HttpPost("{id:guid}/analyze")]
+    [EnableRateLimiting("ai-analysis")]
+    public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _analyzeUseCase.ExecuteAsync(id, request.IdempotencyKey, cancellationToken);
+        var response = new AnalyzeCommandResponse(result.Outcome, result.AnalysisDraftId);
+
+        return result.Outcome switch
+        {
+            AnalyzeCommandOutcome.SourceNotFound => NotFound(),
+            AnalyzeCommandOutcome.Created => StatusCode(StatusCodes.Status201Created, response),
+            AnalyzeCommandOutcome.AlreadyCompleted => Ok(response),
+            AnalyzeCommandOutcome.DailyBudgetExceeded or AnalyzeCommandOutcome.MonthlyBudgetExceeded => AiOutcomeResponses.BudgetExceeded(result.Outcome, Response),
+            _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
+        };
     }
 }
 

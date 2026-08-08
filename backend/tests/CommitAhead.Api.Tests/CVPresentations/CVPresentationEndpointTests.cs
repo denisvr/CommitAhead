@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Features.CVPresentations;
 using CommitAhead.Api.Features.ProfessionalProfiles;
 using CommitAhead.Api.Tests.StudyItems;
+using CommitAhead.Application.AI;
 
 namespace CommitAhead.Api.Tests.CVPresentations;
 
@@ -176,5 +178,20 @@ public class CVPresentationEndpointTests
             HttpMethod.Put, $"/api/cv-presentations/{Guid.NewGuid()}/experience-selections", accessCookie, Array.Empty<Guid>());
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Analyze_WithAValidPresentation_ReturnsCreatedWithADraftId()
+    {
+        var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var response = await client.SendMutatingAsync(
+            HttpMethod.Post, $"/api/cv-presentations/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest($"key-{Guid.NewGuid()}"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal(AnalyzeCommandOutcome.Created, body!.Outcome);
     }
 }

@@ -1,10 +1,12 @@
 using CommitAhead.Application.AIUsage;
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Persistence;
+using CommitAhead.Domain;
 using CommitAhead.Domain.AIUsage;
 using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.EvidenceLinks;
 using Microsoft.Extensions.Logging;
+using AIUsageValidationLimits = CommitAhead.Domain.AIUsage.ValidationLimits;
 
 namespace CommitAhead.Application.AI;
 
@@ -68,7 +70,9 @@ internal sealed class AnalysisCommandOrchestrator
         Func<AiAnalysisResult, AnalysisDraftProposals> validate,
         CancellationToken cancellationToken)
     {
-        var replay = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, idempotencyKey, cancellationToken);
+        var normalizedIdempotencyKey = NormalizeIdempotencyKey(idempotencyKey);
+
+        var replay = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, cancellationToken);
         if (replay is not null)
         {
             return MapReplay(replay);
@@ -85,13 +89,14 @@ internal sealed class AnalysisCommandOrchestrator
 
         var reservedAtUtc = DateTime.UtcNow;
         var reservation = new AIUsageRecord(
-            Guid.NewGuid(), ownerUserId, idempotencyKey, commandType, sourceType, sourceId,
+            Guid.NewGuid(), ownerUserId, normalizedIdempotencyKey, commandType, sourceType, sourceId,
             descriptor.Provider, descriptor.Model, descriptor.PricingVersion, descriptor.Currency,
             descriptor.MaxInputTokens, descriptor.MaxOutputTokens, descriptor.EstimatedMaxCost, reservedAtUtc);
 
+        ReservationOutcome reservationOutcome;
         try
         {
-            await _unitOfWork.ExecuteInTransactionAsync(
+            reservationOutcome = await _unitOfWork.ExecuteInTransactionAsync(
                 async ct =>
                 {
                     var staleCutoffUtc = reservedAtUtc - (descriptor.Timeout + StaleReservationSafetyMargin);
@@ -102,21 +107,55 @@ internal sealed class AnalysisCommandOrchestrator
                         await _usageRepository.SaveChangesAsync(ct);
                     }
 
+                    // ADR-0019: USD 0.25/day, USD 5.00/month, per owner — checked here, inside the
+                    // same transaction as the insert, before any provider call. The per-owner
+                    // "one Reserved row at a time" unique index already serializes concurrent
+                    // attempts for this owner, so no extra locking is needed for this check.
+                    var todayStartUtc = reservedAtUtc.Date;
+                    var dailySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, todayStartUtc, todayStartUtc.AddDays(1), ct);
+                    if (dailySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.DailyLimitUsd)
+                    {
+                        return ReservationOutcome.DailyBudgetExceeded;
+                    }
+
+                    var monthStartUtc = new DateTime(reservedAtUtc.Year, reservedAtUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                    var monthlySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, monthStartUtc, monthStartUtc.AddMonths(1), ct);
+                    if (monthlySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.MonthlyLimitUsd)
+                    {
+                        return ReservationOutcome.MonthlyBudgetExceeded;
+                    }
+
                     await _usageRepository.AddAsync(reservation, ct);
-                    return true;
+                    return ReservationOutcome.Reserved;
                 },
                 cancellationToken);
         }
         catch (AIUsageReservationConflictException)
         {
-            var concurrent = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, idempotencyKey, cancellationToken);
+            var concurrent = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, cancellationToken);
             return concurrent is not null ? MapReplay(concurrent) : new AnalyzeCommandResult(AnalyzeCommandOutcome.AnotherAnalysisInProgress, null);
+        }
+
+        switch (reservationOutcome)
+        {
+            case ReservationOutcome.DailyBudgetExceeded:
+                return new AnalyzeCommandResult(AnalyzeCommandOutcome.DailyBudgetExceeded, null);
+            case ReservationOutcome.MonthlyBudgetExceeded:
+                return new AnalyzeCommandResult(AnalyzeCommandOutcome.MonthlyBudgetExceeded, null);
         }
 
         try
         {
             var aiResult = await invokeProviderAsync(limits, cancellationToken)
                 ?? throw new AiResponseValidationException("The AI provider returned a null result.");
+
+            // Defence in depth: never persist a Completed record whose reported usage exceeds what
+            // was actually reserved — a provider bug or a compromised/misbehaving implementation
+            // must not be able to record (and be billed for) more than the descriptor allowed.
+            if (aiResult.InputTokens > descriptor.MaxInputTokens || aiResult.OutputTokens > descriptor.MaxOutputTokens)
+            {
+                throw new AiResponseValidationException("The AI provider reported token usage exceeding its own reserved limits.");
+            }
 
             var proposals = validate(aiResult);
 
@@ -140,9 +179,36 @@ internal sealed class AnalysisCommandOrchestrator
         }
         catch (Exception ex)
         {
-            await ReconcileFailureAsync(ownerUserId, idempotencyKey, ex);
+            await ReconcileFailureAsync(ownerUserId, normalizedIdempotencyKey, ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Trims and validates once, before any lookup, so " key " and "key" resolve to the same
+    /// replay/reservation instead of silently being treated as different idempotency keys.
+    /// </summary>
+    private static string NormalizeIdempotencyKey(string idempotencyKey)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            throw new DomainValidationException("IdempotencyKey is required.");
+        }
+
+        var trimmed = idempotencyKey.Trim();
+        if (trimmed.Length > AIUsageValidationLimits.IdempotencyKeyMaxLength)
+        {
+            throw new DomainValidationException($"IdempotencyKey must be at most {AIUsageValidationLimits.IdempotencyKeyMaxLength} characters.");
+        }
+
+        return trimmed;
+    }
+
+    private enum ReservationOutcome
+    {
+        Reserved,
+        DailyBudgetExceeded,
+        MonthlyBudgetExceeded,
     }
 
     private static AnalyzeCommandResult MapReplay(AIUsageRecord record) => record.Status switch

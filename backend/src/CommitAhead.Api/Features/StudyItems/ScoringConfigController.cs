@@ -31,7 +31,7 @@ public sealed class ScoringConfigController : ControllerBase
     public async Task<IActionResult> Put([FromBody] UpdateScoringConfigRequest request, CancellationToken cancellationToken)
     {
         // ScoringWeights' constructor validates non-negativity and the sum-to-100 invariant and
-        // throws ArgumentException; DomainValidationExceptionFilter maps that to 422 for every
+        // throws ArgumentException; ValidationExceptionFilter maps that to 422 for every
         // controller in this API, so no local try/catch is needed here.
         await _updateUseCase.ExecuteAsync(request.ImportanceWeight, request.DemandWeight, request.MasteryGapWeight, cancellationToken);
         return NoContent();

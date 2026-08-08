@@ -31,17 +31,20 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ## AI Provider
 
-### Default AI budgets
-**Needed for:** Phase 4
-**Question:** What billing currency and default daily/monthly ceilings are used, and may they be edited from the settings UI?
-**Constraints:** Per-call token limits remain separate; budget checks include Completed actual cost plus active Reserved cost; provider/model pricing and currency must be versioned with the usage record
-**Status:** Still incomplete/unenforced — `IAIUsageRecordRepository.GetSpentCostAsync` exists (owner-scoped, sums Completed actual cost plus active Reserved cost within a caller-supplied window) but `AnalyzeJobAnalysisUseCase` never calls it; no ceiling is checked before a reservation is allowed to proceed. The provider/model dependency this entry used to have on the resolved entry below is gone — Anthropic's own per-token pricing is the basis to price against — but the ceiling amounts and whether they're user-editable are still undecided.
-
 ### ~~AI provider selection~~ — decided
-Resolved (ADR-0019): Anthropic, model Claude Haiku 4.5, called directly via the Messages API with
-tool-use forced via `tool_choice` for structured output. Every `AnalyzeX` command uses this model;
-a per-command override remains possible later (`IAIProvider.Describe(AiCommandType)` is already
-commandType-scoped) without reopening this decision.
+Resolved (ADR-0019): Anthropic is the initial configured provider (not a permanent dependency —
+`IAIProvider` stays provider-neutral; which implementation runs is one explicit,
+configuration-driven choice made at startup), model Claude Haiku 4.5 pinned to
+`claude-haiku-4-5-20251001`, called directly via the Messages API using native Structured Outputs
+(not tool-use). Every `AnalyzeX` command uses this model; a per-command override remains possible
+later without reopening this decision.
+
+### ~~Default AI budgets~~ — decided
+Resolved (ADR-0019): USD 0.25/day and USD 5.00/month, per owner, enforced inside the same atomic
+reservation transaction ADR-0014 describes (`IAIUsageRecordRepository.GetSpentCostAsync` — Completed
+actual cost plus active Reserved cost). Not user-editable from a settings UI; changing the ceiling
+is a code/config change, not a runtime one, matching the "no runtime fallback or automatic routing"
+posture ADR-0019 also takes for provider selection.
 
 ### ~~StructuredSuggestion command allowlist~~ — decided
 Resolved at Phase 4 kickoff to exactly the "minimum candidates" list, with no additions:

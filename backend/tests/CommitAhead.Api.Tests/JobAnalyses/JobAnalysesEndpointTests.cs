@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Features.JobAnalyses;
 using CommitAhead.Api.Tests.StudyItems;
+using CommitAhead.Application.AI;
 
 namespace CommitAhead.Api.Tests.JobAnalyses;
 
@@ -214,5 +216,63 @@ public class JobAnalysesEndpointTests
             HttpMethod.Post, "/api/job-analyses/upload", accessCookie, UploadRequestContent(notAPdf, "Title"));
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Analyze_WithAValidJobAnalysis_ReturnsCreatedWithADraftId()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/job-analyses", accessCookie, ValidCreateRequest());
+        var created = await postResponse.Content.ReadFromJsonAsync<JobAnalysisCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var response = await client.SendMutatingAsync(
+            HttpMethod.Post, $"/api/job-analyses/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest($"key-{Guid.NewGuid()}"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal(AnalyzeCommandOutcome.Created, body!.Outcome);
+        Assert.NotNull(body.AnalysisDraftId);
+    }
+
+    [Fact]
+    public async Task Analyze_WithNoSuchJobAnalysis_ReturnsNotFound()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await client.SendMutatingAsync(
+            HttpMethod.Post, $"/api/job-analyses/{Guid.NewGuid()}/analyze", accessCookie, new AnalyzeCommandRequest("key-1"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Analyze_ReplayingTheSameIdempotencyKey_ReturnsAlreadyCompleted_WithTheSameDraftId()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/job-analyses", accessCookie, ValidCreateRequest());
+        var created = await postResponse.Content.ReadFromJsonAsync<JobAnalysisCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var idempotencyKey = $"key-{Guid.NewGuid()}";
+
+        var first = await client.SendMutatingAsync(HttpMethod.Post, $"/api/job-analyses/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest(idempotencyKey));
+        var firstBody = await first.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var second = await client.SendMutatingAsync(HttpMethod.Post, $"/api/job-analyses/{created.Id}/analyze", accessCookie, new AnalyzeCommandRequest(idempotencyKey));
+        var secondBody = await second.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(AnalyzeCommandOutcome.AlreadyCompleted, secondBody!.Outcome);
+        Assert.Equal(firstBody!.AnalysisDraftId, secondBody.AnalysisDraftId);
+    }
+
+    [Fact]
+    public async Task Analyze_WithABlankIdempotencyKey_ReturnsBadRequest()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/job-analyses", accessCookie, ValidCreateRequest());
+        var created = await postResponse.Content.ReadFromJsonAsync<JobAnalysisCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var response = await client.SendMutatingAsync(HttpMethod.Post, $"/api/job-analyses/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest(""));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

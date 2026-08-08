@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Features.InterviewNotes;
 using CommitAhead.Api.Features.JobAnalyses;
 using CommitAhead.Api.Tests.StudyItems;
+using CommitAhead.Application.AI;
 using CommitAhead.Domain.InterviewNotes;
 
 namespace CommitAhead.Api.Tests.InterviewNotes;
@@ -144,5 +146,20 @@ public class InterviewNotesEndpointTests
         var response = await client.SendMutatingAsync(HttpMethod.Delete, $"/api/interview-notes/{Guid.NewGuid()}", accessCookie);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Analyze_WithAValidNote_ReturnsCreatedWithADraftId()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/interview-notes", accessCookie, ValidCreateRequest());
+        var created = await postResponse.Content.ReadFromJsonAsync<InterviewNoteCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var response = await client.SendMutatingAsync(
+            HttpMethod.Post, $"/api/interview-notes/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest($"key-{Guid.NewGuid()}"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal(AnalyzeCommandOutcome.Created, body!.Outcome);
     }
 }

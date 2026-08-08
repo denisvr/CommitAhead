@@ -1,4 +1,5 @@
 using System.Reflection;
+using CommitAhead.Application.AI;
 using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.InterviewNotes;
@@ -146,15 +147,28 @@ public class ArchitectureTests
         }
     }
 
-    [Fact(Skip =
-        "Pending: CLAUDE.md rule 5's IAIProvider half still cannot be verified — Application now declares " +
-        "IAIProvider (Phase 4, Slice 2), but no Infrastructure implementation exists yet, since real " +
-        "provider/model selection is deferred (docs/tbd.md). Unskip once ProviderAIAdapter exists: assert " +
-        "Types.InAssembly(...).That().ImplementInterface(typeof(IAIProvider)) exist only in " +
-        "CommitAhead.Infrastructure among the four production assemblies (Domain/Application/Infrastructure/Api) " +
-        "— test fakes like FakeAIProvider live in test-only assemblies this check never inspects.")]
+    /// <summary>CLAUDE.md rule 5's IAIProvider half — AnthropicAIProvider (ADR-0019) is the only production implementation; test fakes like FakeAIProvider live in test-only assemblies this check never inspects.</summary>
+    [Fact]
     public void AIProviderImplementations_ShouldOnlyExistInInfrastructure()
     {
+        var nonInfrastructureAssemblies = new[] { DomainAssembly, ApplicationAssembly, ApiAssembly };
+
+        foreach (var assembly in nonInfrastructureAssemblies)
+        {
+            var matchingTypes = Types.InAssembly(assembly)
+                .That()
+                .ImplementInterface(typeof(IAIProvider))
+                .GetTypes();
+
+            Assert.Empty(matchingTypes);
+        }
+
+        var infrastructureImplementations = Types.InAssembly(InfrastructureAssembly)
+            .That()
+            .ImplementInterface(typeof(IAIProvider))
+            .GetTypes();
+
+        Assert.NotEmpty(infrastructureImplementations);
     }
 
     private static string Describe(TestResult result)

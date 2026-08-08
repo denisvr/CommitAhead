@@ -55,6 +55,54 @@ now starts one step earlier, at the call itself.
   `AnalyzeX` use cases — swapping the model, or overriding it per `AiCommandType`, changes only
   `ProviderAIAdapter` and its Descriptor values.
 
+## Technical parameters
+
+These were resolved alongside the provider/model choice, once real controller/adapter wiring made
+them concrete decisions rather than abstract ones:
+
+- **Anthropic is the initial configured provider, not a permanent architectural dependency.**
+  `IAIProvider` stays the provider-neutral Application boundary (unchanged, pre-existing design);
+  the concrete Anthropic implementation is named for what it is — `AnthropicAIProvider`, not a
+  generic "ProviderAIAdapter" — and lives entirely in `Infrastructure/AI/`. Which implementation is
+  active is one explicit, configuration-driven choice made once at application startup
+  (`AI:Provider`, resolved by a plain `switch` in the composition root) — never a reflection-based
+  plugin system, dynamic assembly loading, runtime fallback, multi-provider routing, or per-user
+  provider selection. Adding OpenAI, Gemini, or a local Ollama provider later requires: one new
+  Infrastructure implementation, its own options/credentials/HTTP registration, one new explicit
+  `case` in the composition-root switch, and its own adapter tests — no change to Domain, the
+  `AnalyzeX` use cases, `AnalysisCommandOrchestrator`, or any controller.
+- **Model pinned to an exact snapshot id**, `claude-haiku-4-5-20251001` — not a moving alias —
+  reproducible cost and behavior, upgraded only by an explicit future decision.
+- **A model cannot be selected independently of its pricing.** `AI:Providers:Anthropic:Model` picks
+  among an internal, code-defined table of supported model profiles (exact model id, input/output
+  price per token, pricing version, token limits) — it is never accepted as free-form configuration
+  paired with pricing pulled from the same untrusted config. Configuring an unsupported model id
+  fails startup safely, the same way an unknown `AI:Provider` value does. Only
+  `claude-haiku-4-5-20251001` is in that table today.
+  - Pricing: **USD 1.00 / 1M input tokens, USD 5.00 / 1M output tokens** (Anthropic's published
+    Claude Haiku 4.5 pricing at the time of this decision), pricing version `"anthropic-haiku-4.5-2025-10"`.
+  - Adding Claude Sonnet (or any other model) later requires an explicit new profile entry with its
+    own prices, its own tests, and a documentation update here — never inferred or copied from an
+    existing entry.
+- **Native Structured Outputs**, not forced tool-use. `ProviderAIAdapter` — since renamed
+  `AnthropicAIProvider` — calls the Messages API with `output_config.format` set to a strict JSON
+  Schema, not `tools`/`tool_choice`. Tool-use would mean the model is handed a callable tool, which
+  contradicts this project's own threat model ("AI receives no tools, URLs, DB access, or secrets").
+  Structured Outputs keeps the "never trust the model's raw text as a database reference" posture
+  this project already applies at the validation layer, one step earlier — at the call itself —
+  without handing the model anything resembling a capability.
+- **No extended thinking, no automatic retries, no automatic model fallback.** Every retry is an
+  explicit user action (unchanged from the existing AI Cost Controls). Automatic fallback — to a
+  different model or a different provider — is explicitly prohibited: it would change cost,
+  privacy posture, and behavior silently, exactly what this project's "never guess" posture
+  (ADR-0009) exists to prevent. Claude Sonnet is a possible future upgrade, but only via a manually
+  added model profile evaluated and chosen by a person, never a runtime decision.
+- Budget: **USD 0.25/day, USD 5.00/month, per owner** — enforced inside the same atomic reservation
+  transaction ADR-0014 already describes (Completed actual cost plus active Reserved cost).
+- Rate limit: **10 `AnalyzeX` requests/hour per authenticated owner** — corrects this project's own
+  earlier threat-model wording, which said "globally"; the lock and the limit have always been
+  intended per-owner (ADR-0015), never system-wide.
+
 ## Consequences
 
 - `docs/tbd.md`'s "AI provider selection" entry is resolved; "Default AI budgets" now has a real

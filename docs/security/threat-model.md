@@ -125,11 +125,11 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 
 ### AI Cost Controls
 - Authentication required to trigger any AI command
-- Global rate limit: 10 calls/hour (configurable); 429 + `Retry-After` when exceeded
-- One AI call in flight globally at a time
+- Rate limit: 10 `AnalyzeX` requests/hour per authenticated owner (configurable); 429 + `Retry-After` when exceeded
+- One AI call in flight per owner at a time (never system-wide — ADR-0015)
 - One Pending draft per source (natural deduplication guard)
 - Idempotency key required; server deduplicates duplicate requests
-- Daily and monthly budgets persisted; a Reserved AIUsageRecord atomically reserves maximum estimated cost before the provider call and transitions to Completed or Failed afterward
+- Daily (USD 0.25) and monthly (USD 5.00) budgets, per owner (ADR-0019); a Reserved AIUsageRecord atomically reserves maximum estimated cost before the provider call and transitions to Completed or Failed afterward
 - No automatic retries; every retry is an explicit user action
 - `AIUsageRecord`: unique idempotency key, command/source, provider/model/pricing version/currency, Reserved/Completed/Failed status, reserved and actual tokens/cost, timestamps, safe outcome code, and optional draft ID — never content
 

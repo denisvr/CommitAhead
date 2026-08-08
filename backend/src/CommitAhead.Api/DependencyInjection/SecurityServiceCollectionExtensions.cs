@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using CommitAhead.Api.Security;
+using CommitAhead.Application.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.DependencyInjection;
@@ -25,6 +26,8 @@ public static class SecurityServiceCollectionExtensions
 
         services.AddRateLimiter(options =>
         {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
             options.AddPolicy("login", context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -34,6 +37,30 @@ public static class SecurityServiceCollectionExtensions
                         PermitLimit = 5,
                         QueueLimit = 0,
                     }));
+
+            // Per-owner, not per-IP (ADR-0019/ADR-0015) — the partition key needs the authenticated
+            // identity, so this policy only works correctly evaluated after UseAuthentication()/
+            // UseAuthorization() in the pipeline (Program.cs). Applied only to the three AnalyzeX
+            // "analyze" actions, never to ApplyAnalysisDraft.
+            options.AddPolicy("ai-analysis", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.RequestServices.GetRequiredService<ICurrentUser>().UserId.ToString(),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        Window = TimeSpan.FromHours(1),
+                        PermitLimit = 10,
+                        QueueLimit = 0,
+                    }));
+
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                {
+                    context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
+                }
+
+                await context.HttpContext.Response.WriteAsync("Rate limit exceeded.", cancellationToken);
+            };
         });
 
         if (environment.IsDevelopment())
