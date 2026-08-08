@@ -34,6 +34,12 @@ public sealed class FakeAnalysisDraftRepository : IAnalysisDraftRepository
         return Task.CompletedTask;
     }
 
+    public Task DeleteAllForSourceAsync(Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, CancellationToken cancellationToken)
+    {
+        _drafts.RemoveAll(d => d.OwnerUserId == ownerUserId && d.SourceType == sourceType && d.SourceId == sourceId);
+        return Task.CompletedTask;
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         // In-memory: mutations already apply directly to the tracked instance.

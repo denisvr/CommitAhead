@@ -12,6 +12,12 @@ namespace CommitAhead.Infrastructure.Persistence;
 /// never a stale in-memory value left over from a change that never committed (e.g. an
 /// <c>AIUsageRecord</c> whose in-memory status still reads Completed after Postgres reverted it to
 /// Reserved).
+///
+/// If a transaction is already active on this DbContext — e.g. RlsTransactionActionFilter's own
+/// owner-scoped transaction, active for the whole duration of a [UsesOwnerScopedData] controller
+/// action — this nests inside it instead of beginning a second one: Npgsql/EF Core does not
+/// support two transactions on the same connection at once. In that case, this call does not
+/// commit or roll back anything itself; the ambient transaction's own commit/rollback governs.
 /// </summary>
 public sealed class EfUnitOfWork : IUnitOfWork
 {
@@ -26,7 +32,17 @@ public sealed class EfUnitOfWork : IUnitOfWork
         _logger = logger;
     }
 
-    public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+    public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.CurrentTransaction is not null)
+        {
+            return operation(cancellationToken);
+        }
+
+        return ExecuteInNewTransactionAsync(operation, cancellationToken);
+    }
+
+    private async Task<T> ExecuteInNewTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
     {
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 

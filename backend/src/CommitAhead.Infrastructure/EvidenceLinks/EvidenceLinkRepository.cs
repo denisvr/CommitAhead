@@ -27,6 +27,11 @@ public sealed class EvidenceLinkRepository : IEvidenceLinkRepository
             cancellationToken);
     }
 
+    public Task<EvidenceLink?> GetByIdAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken)
+    {
+        return _dbContext.EvidenceLinks.SingleOrDefaultAsync(link => link.OwnerUserId == ownerUserId && link.Id == id, cancellationToken);
+    }
+
     public async Task AddAsync(EvidenceLink link, CancellationToken cancellationToken)
     {
         _dbContext.EvidenceLinks.Add(link);
@@ -39,6 +44,19 @@ public sealed class EvidenceLinkRepository : IEvidenceLinkRepository
         {
             throw new EvidenceLinkConflictException();
         }
+    }
+
+    public Task DeleteAsync(EvidenceLink link, CancellationToken cancellationToken)
+    {
+        _dbContext.EvidenceLinks.Remove(link);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAllForSourceAsync(Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, CancellationToken cancellationToken)
+    {
+        return _dbContext.EvidenceLinks
+            .Where(link => link.OwnerUserId == ownerUserId && link.SourceType == sourceType && link.SourceId == sourceId)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

@@ -1,6 +1,7 @@
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.CVPresentations;
+using CommitAhead.Application.EvidenceLinks;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.InterviewNotes;
 using CommitAhead.Application.JobAnalyses;
@@ -75,6 +76,7 @@ public static class ApplicationServiceCollectionExtensions
         // ApplyAnalysisDraftUseCase has no IAIProvider dependency (unlike every AnalyzeX use
         // case), so registering it does not break DI validation.
         services.AddScoped<ApplyAnalysisDraftUseCase>();
+        services.AddScoped<DeleteEvidenceLinkUseCase>();
 
         // AnalyzeJobAnalysisUseCase is intentionally not registered here yet — it depends on
         // IAIProvider, which has no Infrastructure implementation until ProviderAIAdapter exists

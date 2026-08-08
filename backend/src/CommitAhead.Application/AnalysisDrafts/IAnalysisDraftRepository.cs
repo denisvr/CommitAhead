@@ -28,6 +28,13 @@ public interface IAnalysisDraftRepository
 
     Task AddAsync(AnalysisDraft draft, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// ADR-0011 source-deletion cleanup — bulk-deletes every AnalysisDraft (any status, including
+    /// Pending) for one polymorphic source, without loading them first. Proposal children cascade
+    /// via the database's own ON DELETE CASCADE foreign keys.
+    /// </summary>
+    Task DeleteAllForSourceAsync(Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, CancellationToken cancellationToken);
+
     /// <summary>Persists mutations made through AnalysisDraft's own methods (and its proposals') on an already-tracked entity.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

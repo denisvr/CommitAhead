@@ -109,4 +109,36 @@ public sealed class EfUnitOfWorkTests : IAsyncLifetime
 
         Assert.Equal("Simulated failure after the caller's own token was cancelled.", exception.Message);
     }
+
+    /// <summary>
+    /// RlsTransactionActionFilter already wraps every [UsesOwnerScopedData] controller action in
+    /// its own transaction for the whole action — ExecuteInTransactionAsync must nest inside an
+    /// already-active transaction rather than attempting a second BeginTransactionAsync on the
+    /// same connection, which Npgsql/EF Core rejects.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteInTransactionAsync_WithAnAlreadyActiveTransaction_NestsInsideItInsteadOfStartingASecondOne()
+    {
+        var unitOfWork = new EfUnitOfWork(_dbContext, NullLogger<EfUnitOfWork>.Instance);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var draftRepository = new AnalysisDraftRepository(_dbContext);
+        var draftId = Guid.NewGuid();
+
+        await using var ambientTransaction = await _dbContext.Database.BeginTransactionAsync();
+
+        var result = await unitOfWork.ExecuteInTransactionAsync(
+            async ct =>
+            {
+                var draft = new AnalysisDraft(draftId, ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), [], [], [], DateTime.UtcNow);
+                await draftRepository.AddAsync(draft, ct);
+                return true;
+            },
+            CancellationToken.None);
+
+        Assert.True(result);
+        await ambientTransaction.CommitAsync();
+
+        await using var reloadDbContext = new CommitAheadDbContext(new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+        Assert.NotNull(await new AnalysisDraftRepository(reloadDbContext).GetByIdAsync(ownerUserId, draftId, CancellationToken.None));
+    }
 }

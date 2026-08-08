@@ -229,4 +229,31 @@ public sealed class AnalysisDraftRepositoryTests : IAsyncLifetime
         Assert.True(bReachedLock);
         Assert.NotNull(resultB);
     }
+
+    /// <summary>ADR-0011 source-deletion cleanup — bulk-deletes only the matching source's drafts (any status), and proves the real cascade removes proposal children too.</summary>
+    [Fact]
+    public async Task DeleteAllForSourceAsync_RemovesOnlyDraftsForThatExactSource_AndCascadesTheirProposals()
+    {
+        var repository = new AnalysisDraftRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var targetSourceId = Guid.NewGuid();
+        var otherSourceId = Guid.NewGuid();
+
+        var targetDraft = CreateDraft(ownerUserId, targetSourceId);
+        await repository.AddAsync(targetDraft, CancellationToken.None);
+        var otherDraft = CreateDraft(ownerUserId, otherSourceId);
+        await repository.AddAsync(otherDraft, CancellationToken.None);
+
+        await repository.DeleteAllForSourceAsync(ownerUserId, EvidenceSourceType.JobAnalysis, targetSourceId, CancellationToken.None);
+
+        await using var reloadDbContext = new CommitAheadDbContext(new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+        var reloadedRepository = new AnalysisDraftRepository(reloadDbContext);
+        Assert.Null(await reloadedRepository.GetByIdAsync(ownerUserId, targetDraft.Id, CancellationToken.None));
+        Assert.NotNull(await reloadedRepository.GetByIdAsync(ownerUserId, otherDraft.Id, CancellationToken.None));
+
+        var remainingSuggestionProposalCount = await reloadDbContext.Database
+            .SqlQuery<int>($"SELECT COUNT(*)::int AS \"Value\" FROM suggestion_proposals WHERE analysis_draft_id = {targetDraft.Id}")
+            .SingleAsync();
+        Assert.Equal(0, remainingSuggestionProposalCount);
+    }
 }

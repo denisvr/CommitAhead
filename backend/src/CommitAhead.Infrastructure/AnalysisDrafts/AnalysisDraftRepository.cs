@@ -65,6 +65,15 @@ public sealed class AnalysisDraftRepository : IAnalysisDraftRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public Task DeleteAllForSourceAsync(Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, CancellationToken cancellationToken)
+    {
+        // Proposal children cascade via AnalysisDraftConfiguration's own ON DELETE CASCADE foreign
+        // keys — no status filter, per ADR-0011 ("including a Pending draft if one exists").
+        return _dbContext.AnalysisDrafts
+            .Where(draft => draft.OwnerUserId == ownerUserId && draft.SourceType == sourceType && draft.SourceId == sourceId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         return _dbContext.SaveChangesAsync(cancellationToken);

@@ -88,4 +88,33 @@ public sealed class EvidenceLinkRepositoryTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<EvidenceLinkConflictException>(() => evidenceLinkRepository.AddAsync(duplicate, CancellationToken.None));
     }
+
+    /// <summary>ADR-0011 source-deletion cleanup — bulk-deletes only the matching source's links, leaving others (different source, different owner) untouched.</summary>
+    [Fact]
+    public async Task DeleteAllForSourceAsync_RemovesOnlyLinksForThatExactSource()
+    {
+        var studyItemRepository = new StudyItemRepository(_dbContext);
+        var evidenceLinkRepository = new EvidenceLinkRepository(_dbContext);
+        var ownerAId = await TestUsers.CreateAsync(_dbContext);
+        var ownerBId = await TestUsers.CreateAsync(_dbContext);
+        var studyItem = CreateStudyItem(ownerAId);
+        await studyItemRepository.AddAsync(studyItem, CancellationToken.None);
+        var targetSourceId = Guid.NewGuid();
+        var otherSourceId = Guid.NewGuid();
+
+        await evidenceLinkRepository.AddAsync(
+            new EvidenceLink(Guid.NewGuid(), ownerAId, EvidenceSourceType.JobAnalysis, targetSourceId, studyItem.Id, 3, "Matches.", DateTime.UtcNow), CancellationToken.None);
+        await evidenceLinkRepository.AddAsync(
+            new EvidenceLink(Guid.NewGuid(), ownerAId, EvidenceSourceType.JobAnalysis, otherSourceId, studyItem.Id, 3, "Matches.", DateTime.UtcNow), CancellationToken.None);
+        var otherOwnerStudyItem = CreateStudyItem(ownerBId);
+        await studyItemRepository.AddAsync(otherOwnerStudyItem, CancellationToken.None);
+        await evidenceLinkRepository.AddAsync(
+            new EvidenceLink(Guid.NewGuid(), ownerBId, EvidenceSourceType.JobAnalysis, targetSourceId, otherOwnerStudyItem.Id, 3, "Matches.", DateTime.UtcNow), CancellationToken.None);
+
+        await evidenceLinkRepository.DeleteAllForSourceAsync(ownerAId, EvidenceSourceType.JobAnalysis, targetSourceId, CancellationToken.None);
+
+        Assert.False(await evidenceLinkRepository.ExistsAsync(ownerAId, EvidenceSourceType.JobAnalysis, targetSourceId, studyItem.Id, CancellationToken.None));
+        Assert.True(await evidenceLinkRepository.ExistsAsync(ownerAId, EvidenceSourceType.JobAnalysis, otherSourceId, studyItem.Id, CancellationToken.None));
+        Assert.True(await evidenceLinkRepository.ExistsAsync(ownerBId, EvidenceSourceType.JobAnalysis, targetSourceId, otherOwnerStudyItem.Id, CancellationToken.None));
+    }
 }
