@@ -24,6 +24,10 @@ public sealed class FakeAnalysisDraftRepository : IAnalysisDraftRepository
         return Task.FromResult(draft);
     }
 
+    /// <summary>No real locking in-memory — real concurrency is proven at the Infrastructure level (Testcontainers Postgres), not simulated here.</summary>
+    public Task<AnalysisDraft?> GetByIdForUpdateAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken) =>
+        GetByIdAsync(ownerUserId, id, cancellationToken);
+
     public Task AddAsync(AnalysisDraft draft, CancellationToken cancellationToken)
     {
         _drafts.Add(draft);

@@ -38,6 +38,27 @@ public sealed class AnalysisDraftRepository : IAnalysisDraftRepository
                 cancellationToken);
     }
 
+    public async Task<AnalysisDraft?> GetByIdForUpdateAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("GetByIdForUpdateAsync must be called inside an active transaction — an unlocked read would defeat its own purpose.");
+        }
+
+        // Acquires and holds the row lock for the ambient transaction's duration; the result set
+        // itself is discarded — the lock, not the data, is the point. Same DbContext/connection/
+        // transaction as the Include-based load below and as whatever later calls SaveChangesAsync.
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM analysis_drafts WHERE id = {id} AND owner_user_id = {ownerUserId} FOR UPDATE",
+            cancellationToken);
+
+        return await _dbContext.AnalysisDrafts
+            .Include(draft => draft.SuggestionProposals)
+            .Include(draft => draft.LinkProposals)
+            .Include(draft => draft.StudyItemProposals)
+            .SingleOrDefaultAsync(draft => draft.OwnerUserId == ownerUserId && draft.Id == id, cancellationToken);
+    }
+
     public async Task AddAsync(AnalysisDraft draft, CancellationToken cancellationToken)
     {
         _dbContext.AnalysisDrafts.Add(draft);

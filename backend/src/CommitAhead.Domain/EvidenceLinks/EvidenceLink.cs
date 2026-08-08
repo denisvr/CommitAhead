@@ -7,9 +7,9 @@ namespace CommitAhead.Domain.EvidenceLinks;
 /// Confirmed evidence that a source (CVPresentation/JobAnalysis/InterviewNote) supports
 /// prioritising a StudyItem — contributes to its Demand (docs/domain/model.md invariant 7-9).
 /// No proposal lifecycle: existence means active. Created only from an accepted LinkProposal
-/// (ADR-0004) — that command does not exist yet (Phase 4), so nothing constructs this today
-/// except tests; the schema exists now so the ranked-queue Demand query has a real table to
-/// join against (docs/roadmap.md Phase 1).
+/// (ADR-0004), applied by ApplyAnalysisDraftUseCase (Phase 4) — the schema existed since Phase 1
+/// so the ranked-queue Demand query always had a real table to join against, ahead of this
+/// creation path landing.
 /// </summary>
 public sealed class EvidenceLink
 {

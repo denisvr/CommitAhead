@@ -2,6 +2,7 @@ using CommitAhead.Application.AIUsage;
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Auth;
 using CommitAhead.Application.CVPresentations;
+using CommitAhead.Application.EvidenceLinks;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.InterviewNotes;
 using CommitAhead.Application.JobAnalyses;
@@ -45,6 +46,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInterviewNoteRepository, InterviewNoteRepository>();
         services.AddScoped<IAnalysisDraftRepository, AnalysisDraftRepository>();
         services.AddScoped<IAIUsageRecordRepository, AIUsageRecordRepository>();
+        services.AddScoped<IEvidenceLinkRepository, EvidenceLinkRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         // No .ValidateOnStart(): the build-time OpenAPI document generator actually runs the host

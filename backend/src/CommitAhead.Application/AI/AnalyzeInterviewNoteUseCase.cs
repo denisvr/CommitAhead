@@ -3,6 +3,7 @@ using CommitAhead.Application.AIUsage;
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.InterviewNotes;
+using CommitAhead.Application.Json;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Domain.AIUsage;
@@ -108,8 +109,6 @@ public sealed class AnalyzeInterviewNoteUseCase
             throw new AiResponseValidationException($"{commandName}.Text failed validation.");
         }
 
-        return JsonSerializer.Serialize(dto, AiJsonOptions.Strict);
+        return JsonSerializer.Serialize(dto, StrictJsonOptions.Strict);
     }
-
-    private sealed record InterviewNoteEntryPayload(string Text);
 }

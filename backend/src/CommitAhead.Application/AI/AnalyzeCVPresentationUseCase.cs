@@ -2,6 +2,7 @@ using System.Text.Json;
 using CommitAhead.Application.AIUsage;
 using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.CVPresentations;
+using CommitAhead.Application.Json;
 using CommitAhead.Application.Identity;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
@@ -127,8 +128,6 @@ public sealed class AnalyzeCVPresentationUseCase
             throw new AiResponseValidationException("UpdateCVPresentationSummary.SummaryMarkdown failed validation.");
         }
 
-        return JsonSerializer.Serialize(dto, AiJsonOptions.Strict);
+        return JsonSerializer.Serialize(dto, StrictJsonOptions.Strict);
     }
-
-    private sealed record UpdateCVPresentationSummaryPayload(string SummaryMarkdown);
 }

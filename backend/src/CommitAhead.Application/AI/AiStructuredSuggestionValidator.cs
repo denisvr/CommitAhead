@@ -1,4 +1,6 @@
 using System.Text.Json;
+using CommitAhead.Application.AnalysisDrafts;
+using CommitAhead.Application.Json;
 using CommitAhead.Domain;
 using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.JobAnalyses;
@@ -127,7 +129,7 @@ internal static class AiStructuredSuggestionValidator
     private static SuggestionProposal BuildRequirementProposal(AddJobRequirementRawPayload requirement, Guid assignedRequirementId)
     {
         var canonical = new AddJobRequirementCanonicalPayload(assignedRequirementId, requirement.Text, requirement.Kind, requirement.Priority, requirement.SourceExcerpt);
-        var payloadJson = JsonSerializer.Serialize(canonical, AiJsonOptions.Strict);
+        var payloadJson = JsonSerializer.Serialize(canonical, StrictJsonOptions.Strict);
         return new SuggestionProposal(Guid.NewGuid(), new StructuredSuggestion(StructuredSuggestionCommandType.AddJobRequirement, payloadJson));
     }
 
@@ -152,12 +154,12 @@ internal static class AiStructuredSuggestionValidator
         }
 
         var canonical = new AddJobGapCanonicalPayload(resolvedRequirementId, gap.MatchLevel, gap.Severity, gap.Rationale);
-        var payloadJson = JsonSerializer.Serialize(canonical, AiJsonOptions.Strict);
+        var payloadJson = JsonSerializer.Serialize(canonical, StrictJsonOptions.Strict);
         return new SuggestionProposal(Guid.NewGuid(), new StructuredSuggestion(StructuredSuggestionCommandType.AddJobGap, payloadJson));
     }
 
     private static T Deserialize<T>(string json) =>
-        WrapJsonException(() => JsonSerializer.Deserialize<T>(json, AiJsonOptions.Strict))
+        WrapJsonException(() => JsonSerializer.Deserialize<T>(json, StrictJsonOptions.Strict))
         ?? throw new AiResponseValidationException("SuggestionProposal.PayloadJson must not be null.");
 
     private static T WrapJsonException<T>(Func<T> parse)
@@ -187,8 +189,4 @@ internal static class AiStructuredSuggestionValidator
     private sealed record AddJobRequirementRawPayload(string ProposalKey, string Text, JobRequirementKind Kind, JobRequirementPriority Priority, string SourceExcerpt);
 
     private sealed record AddJobGapRawPayload(Guid? ExistingRequirementId, string? ProposedRequirementKey, JobGapMatchLevel MatchLevel, JobGapSeverity Severity, string Rationale);
-
-    private sealed record AddJobRequirementCanonicalPayload(Guid AssignedRequirementId, string Text, JobRequirementKind Kind, JobRequirementPriority Priority, string SourceExcerpt);
-
-    private sealed record AddJobGapCanonicalPayload(Guid RequirementId, JobGapMatchLevel MatchLevel, JobGapSeverity Severity, string Rationale);
 }

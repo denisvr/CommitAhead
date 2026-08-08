@@ -1,4 +1,5 @@
 using CommitAhead.Application.Persistence;
+using Microsoft.Extensions.Logging;
 
 namespace CommitAhead.Infrastructure.Persistence;
 
@@ -14,11 +15,15 @@ namespace CommitAhead.Infrastructure.Persistence;
 /// </summary>
 public sealed class EfUnitOfWork : IUnitOfWork
 {
-    private readonly CommitAheadDbContext _dbContext;
+    private static readonly TimeSpan RollbackTimeout = TimeSpan.FromSeconds(5);
 
-    public EfUnitOfWork(CommitAheadDbContext dbContext)
+    private readonly CommitAheadDbContext _dbContext;
+    private readonly ILogger<EfUnitOfWork> _logger;
+
+    public EfUnitOfWork(CommitAheadDbContext dbContext, ILogger<EfUnitOfWork> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
@@ -33,8 +38,29 @@ public sealed class EfUnitOfWork : IUnitOfWork
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
-            _dbContext.ChangeTracker.Clear();
+            // Rollback uses its own short independent token — never the caller's, which may
+            // already be why the operation failed (a cancelled caller token must not also abort
+            // the cleanup). ChangeTracker.Clear() always runs, even if rollback itself throws. A
+            // rollback failure is logged with only its exception type, never a message/object. The
+            // bare `throw;` below always re-raises the *original* exception, never a rollback-path
+            // one.
+            using var rollbackCts = new CancellationTokenSource(RollbackTimeout);
+
+            try
+            {
+                await transaction.RollbackAsync(rollbackCts.Token);
+            }
+            catch (Exception rollbackException)
+            {
+                _logger.LogWarning(
+                    "Failed to roll back a transaction after an operation failure. RollbackExceptionType: {RollbackExceptionType}.",
+                    rollbackException.GetType().Name);
+            }
+            finally
+            {
+                _dbContext.ChangeTracker.Clear();
+            }
+
             throw;
         }
     }

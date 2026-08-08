@@ -1,3 +1,4 @@
+using CommitAhead.Application.Json;
 using System.Text.Json;
 using CommitAhead.Domain.AnalysisDrafts;
 
@@ -64,7 +65,7 @@ internal static class AiSimpleSuggestionValidator
     {
         try
         {
-            return JsonSerializer.Deserialize<T>(json, AiJsonOptions.Strict)
+            return JsonSerializer.Deserialize<T>(json, StrictJsonOptions.Strict)
                 ?? throw new AiResponseValidationException("SuggestionProposal.PayloadJson must not be null.");
         }
         catch (JsonException)

@@ -5,6 +5,7 @@ using CommitAhead.Infrastructure.AIUsage;
 using CommitAhead.Infrastructure.AnalysisDrafts;
 using CommitAhead.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CommitAhead.Infrastructure.Tests.Persistence;
 
@@ -45,7 +46,7 @@ public sealed class EfUnitOfWorkTests : IAsyncLifetime
         var ownerUserId = await TestUsers.CreateAsync(_dbContext);
         var usageRepository = new AIUsageRecordRepository(_dbContext);
         var draftRepository = new AnalysisDraftRepository(_dbContext);
-        var unitOfWork = new EfUnitOfWork(_dbContext);
+        var unitOfWork = new EfUnitOfWork(_dbContext, NullLogger<EfUnitOfWork>.Instance);
 
         var record = new AIUsageRecord(
             Guid.NewGuid(), ownerUserId, "key-1", AiCommandType.AnalyzeJobAnalysis, EvidenceSourceType.JobAnalysis, Guid.NewGuid(),
@@ -83,5 +84,29 @@ public sealed class EfUnitOfWorkTests : IAsyncLifetime
         await using var reloadDbContext = new CommitAheadDbContext(new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
         var finalRecord = await new AIUsageRecordRepository(reloadDbContext).GetByIdempotencyKeyAsync(ownerUserId, "key-1", CancellationToken.None);
         Assert.Equal(AIUsageRecordStatus.Failed, finalRecord!.Status);
+    }
+
+    /// <summary>
+    /// Rollback uses its own short independent token — never the caller's, which may already be
+    /// why the operation failed. Proves that even when the caller's own token is already cancelled
+    /// by the time the operation throws, rollback still succeeds and the *original* exception
+    /// propagates (never an OperationCanceledException from a rollback that never got a chance to
+    /// run with a live token).
+    /// </summary>
+    [Fact]
+    public async Task ExecuteInTransactionAsync_WhenTheCallerTokenIsAlreadyCancelled_StillRollsBackAndRethrowsTheOriginalException()
+    {
+        var unitOfWork = new EfUnitOfWork(_dbContext, NullLogger<EfUnitOfWork>.Instance);
+        using var callerCts = new CancellationTokenSource();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => unitOfWork.ExecuteInTransactionAsync<bool>(
+            _ =>
+            {
+                callerCts.Cancel();
+                throw new InvalidOperationException("Simulated failure after the caller's own token was cancelled.");
+            },
+            callerCts.Token));
+
+        Assert.Equal("Simulated failure after the caller's own token was cancelled.", exception.Message);
     }
 }

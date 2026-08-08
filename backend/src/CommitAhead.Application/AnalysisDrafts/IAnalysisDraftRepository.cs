@@ -16,6 +16,16 @@ public interface IAnalysisDraftRepository
     /// </summary>
     Task<AnalysisDraft?> GetPendingBySourceAsync(Guid ownerUserId, EvidenceSourceType sourceType, Guid sourceId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Row-locks the draft (a real PostgreSQL <c>SELECT ... FOR UPDATE</c>) before loading it, held
+    /// for the ambient transaction's duration — ApplyAnalysisDraftUseCase's guard against two
+    /// concurrent applies of the same draft. Must be called inside an active transaction (an
+    /// unlocked read would defeat the point); throws <see cref="InvalidOperationException"/>
+    /// otherwise. Returns null if no such draft exists for this owner (the lock statement itself
+    /// still runs and finds nothing to lock).
+    /// </summary>
+    Task<AnalysisDraft?> GetByIdForUpdateAsync(Guid ownerUserId, Guid id, CancellationToken cancellationToken);
+
     Task AddAsync(AnalysisDraft draft, CancellationToken cancellationToken);
 
     /// <summary>Persists mutations made through AnalysisDraft's own methods (and its proposals') on an already-tracked entity.</summary>

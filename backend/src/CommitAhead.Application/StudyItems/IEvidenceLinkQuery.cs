@@ -1,9 +1,8 @@
 namespace CommitAhead.Application.StudyItems;
 
 /// <summary>
-/// Both queries hit the same EvidenceLink table (model.md §7) — always empty today since no
-/// command creates EvidenceLinks yet (Phase 4), but both are real queries, not hardcoded stand-ins
-/// (docs/roadmap.md Phase 1).
+/// Both queries hit the same EvidenceLink table (model.md §7) — populated by
+/// ApplyAnalysisDraftUseCase applying accepted LinkProposals (Phase 4).
 /// </summary>
 public interface IEvidenceLinkQuery
 {

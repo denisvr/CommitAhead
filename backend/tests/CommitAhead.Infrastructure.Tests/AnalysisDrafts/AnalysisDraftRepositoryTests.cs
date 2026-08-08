@@ -183,4 +183,50 @@ public sealed class AnalysisDraftRepositoryTests : IAsyncLifetime
         Assert.All(reloaded.LinkProposals, p => Assert.Equal(ProposalStatus.Accepted, p.Status));
         Assert.All(reloaded.StudyItemProposals, p => Assert.Equal(2, p.AcceptedInitialMastery));
     }
+
+    [Fact]
+    public async Task GetByIdForUpdateAsync_WithoutAnActiveTransaction_ThrowsInvalidOperationException()
+    {
+        var repository = new AnalysisDraftRepository(_dbContext);
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.GetByIdForUpdateAsync(ownerUserId, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    /// <summary>ApplyAnalysisDraftUseCase's concurrency guard — a real PostgreSQL row lock, not an application-level flag. A second transaction's own GetByIdForUpdateAsync call must genuinely block until the first commits.</summary>
+    [Fact]
+    public async Task GetByIdForUpdateAsync_BlocksASecondConcurrentTransaction_UntilTheFirstCommits()
+    {
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var draft = CreateDraft(ownerUserId, Guid.NewGuid());
+        await new AnalysisDraftRepository(_dbContext).AddAsync(draft, CancellationToken.None);
+
+        await using var dbContextA = new CommitAheadDbContext(new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+        await using var dbContextB = new CommitAheadDbContext(new DbContextOptionsBuilder<CommitAheadDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+
+        var transactionA = await dbContextA.Database.BeginTransactionAsync();
+        var lockedByA = await new AnalysisDraftRepository(dbContextA).GetByIdForUpdateAsync(ownerUserId, draft.Id, CancellationToken.None);
+        Assert.NotNull(lockedByA);
+
+        var bReachedLock = false;
+        var bTask = Task.Run(async () =>
+        {
+            await using var transactionB = await dbContextB.Database.BeginTransactionAsync();
+            var lockedByB = await new AnalysisDraftRepository(dbContextB).GetByIdForUpdateAsync(ownerUserId, draft.Id, CancellationToken.None);
+            bReachedLock = true;
+            await transactionB.CommitAsync();
+            return lockedByB;
+        });
+
+        await Task.Delay(TimeSpan.FromMilliseconds(300));
+        Assert.False(bReachedLock);
+
+        await transactionA.CommitAsync();
+        await transactionA.DisposeAsync();
+
+        var resultB = await bTask;
+
+        Assert.True(bReachedLock);
+        Assert.NotNull(resultB);
+    }
 }
