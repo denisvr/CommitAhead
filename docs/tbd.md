@@ -31,18 +31,17 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ## AI Provider
 
-### AI provider selection
-**Needed for:** Phase 4
-**Constraints:** Must provide EU-compliant privacy terms; training on submitted data must be opt-out or disabled; minimal data retention where supported; structured output (JSON schema enforcement) required
-**Provider candidates:** Anthropic, OpenAI, Google, Azure OpenAI. Provider and model are selected separately using current privacy, structured-output, quality, latency, and pricing evidence at Phase 4.
-**Affects:** `ProviderAIAdapter` final name and SDK, prompt construction, token pricing for budget calculations, live smoke test parameters
-
 ### Default AI budgets
 **Needed for:** Phase 4
 **Question:** What billing currency and default daily/monthly ceilings are used, and may they be edited from the settings UI?
 **Constraints:** Per-call token limits remain separate; budget checks include Completed actual cost plus active Reserved cost; provider/model pricing and currency must be versioned with the usage record
-**Depends on:** AI provider and model selection
-**Status:** Still incomplete/unenforced — `IAIUsageRecordRepository.GetSpentCostAsync` exists (owner-scoped, sums Completed actual cost plus active Reserved cost within a caller-supplied window) but `AnalyzeJobAnalysisUseCase` never calls it; no ceiling is checked before a reservation is allowed to proceed. Wiring it in has no value until this entry itself is decided.
+**Status:** Still incomplete/unenforced — `IAIUsageRecordRepository.GetSpentCostAsync` exists (owner-scoped, sums Completed actual cost plus active Reserved cost within a caller-supplied window) but `AnalyzeJobAnalysisUseCase` never calls it; no ceiling is checked before a reservation is allowed to proceed. The provider/model dependency this entry used to have on the resolved entry below is gone — Anthropic's own per-token pricing is the basis to price against — but the ceiling amounts and whether they're user-editable are still undecided.
+
+### ~~AI provider selection~~ — decided
+Resolved (ADR-0019): Anthropic, model Claude Haiku 4.5, called directly via the Messages API with
+tool-use forced via `tool_choice` for structured output. Every `AnalyzeX` command uses this model;
+a per-command override remains possible later (`IAIProvider.Describe(AiCommandType)` is already
+commandType-scoped) without reopening this decision.
 
 ### ~~StructuredSuggestion command allowlist~~ — decided
 Resolved at Phase 4 kickoff to exactly the "minimum candidates" list, with no additions:

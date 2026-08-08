@@ -8,7 +8,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 - **ORM:** EF Core 10 + Npgsql
 - **Database:** PostgreSQL on Supabase
 - **Auth/Storage:** Supabase (backend-mediated — no Supabase keys in the browser)
-- **AI:** `IAIProvider` abstraction; provider TBD; never called from frontend or domain layer
+- **AI:** `IAIProvider` abstraction; Anthropic, Claude Haiku 4.5 (ADR-0019); never called from frontend or domain layer
 - **Hosting:** TBD — see `docs/tbd.md`
 
 ## Hard constraints
@@ -31,7 +31,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 **Layer responsibilities:**
 - **Domain** — aggregates, value objects, domain invariants, pure domain policies (e.g. `EffectiveScorePolicy`)
 - **Application** — one use case class per operation (`CreateStudyItemUseCase`, `ApplyAnalysisDraftUseCase`, …); orchestrates domain + repositories; contains `IAIProvider` and repository interfaces
-- **Infrastructure** — EF Core `DbContext`, repository implementations, AI provider adapter (`ProviderAIAdapter`, provider TBD), Supabase Storage client, PDF text extractor
+- **Infrastructure** — EF Core `DbContext`, repository implementations, AI provider adapter (`ProviderAIAdapter`, Anthropic Claude Haiku 4.5 — ADR-0019), Supabase Storage client, PDF text extractor
 - **API** — thin controllers calling use cases directly; middleware for auth, CSRF, error mapping, logging; no business logic. The composition root may call Infrastructure DI registration, but controllers may not reference Infrastructure types.
 
 **NetArchTest enforces** (5 rules):

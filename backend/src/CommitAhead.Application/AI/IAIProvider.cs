@@ -6,8 +6,8 @@ namespace CommitAhead.Application.AI;
 /// The backend abstraction over the AI provider (CONTEXT.md) — the only boundary at which real AI
 /// calls occur. Never called from the frontend or Domain layer. <c>FakeAIProvider</c> (a
 /// deterministic handwritten implementation, ADR-0009) is the only implementation used in
-/// automated tests and CI; <c>ProviderAIAdapter</c> (Infrastructure, real provider TBD —
-/// docs/tbd.md) is the only implementation that ever makes a real network call.
+/// automated tests and CI; <c>ProviderAIAdapter</c> (Infrastructure, Anthropic Claude Haiku 4.5 —
+/// ADR-0019) is the only implementation that ever makes a real network call.
 /// </summary>
 public interface IAIProvider
 {

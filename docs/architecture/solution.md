@@ -24,14 +24,14 @@ ASP.NET Core 10 Web API  ──────────────────�
   │ Infrastructure layer                                    │
   │   EF Core 10 + Npgsql (CommitAheadDbContext)           │
   │   Repository implementations                            │
-  │   ProviderAIAdapter : IAIProvider  (provider TBD)      │
+  │   ProviderAIAdapter : IAIProvider  (Anthropic, ADR-0019)│
   │   PDF text extractor                                    │
   │   Supabase Storage client                               │
   └──────────────────────────────────────────────────────┘
         │                    │                    │                    │
-   PostgreSQL          Supabase Auth        Supabase Storage     AI Provider API
-   (Supabase)          (JWKS + magic        (private bucket;     (provider/model
-                        link + PKCE)         backend-only)         TBD)
+   PostgreSQL          Supabase Auth        Supabase Storage     Anthropic API
+   (Supabase)          (JWKS + magic        (private bucket;     (Claude Haiku 4.5,
+                        link + PKCE)         backend-only)         ADR-0019)
 ```
 
 ## Layer Responsibilities
