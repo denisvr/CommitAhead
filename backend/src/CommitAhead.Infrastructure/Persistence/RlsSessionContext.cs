@@ -12,7 +12,17 @@ public sealed class RlsSessionContext : IRlsSessionContext
         _dbContext = dbContext;
     }
 
-    public async Task RunInOwnerScopeAsync(Guid ownerUserId, Func<Task> action, CancellationToken cancellationToken)
+    public Task RunInOwnerScopeAsync(Guid ownerUserId, Func<Task> action, CancellationToken cancellationToken) =>
+        RunInOwnerScopeAsync<object?>(
+            ownerUserId,
+            async ct =>
+            {
+                await action();
+                return null;
+            },
+            cancellationToken);
+
+    public async Task<T> RunInOwnerScopeAsync<T>(Guid ownerUserId, Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken)
     {
         // set_config(..., is_local: true) is transaction-scoped — it is unset the instant this
         // transaction commits or rolls back, so a later request reusing the same pooled physical
@@ -26,8 +36,9 @@ public sealed class RlsSessionContext : IRlsSessionContext
 
         try
         {
-            await action();
+            var result = await action(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            return result;
         }
         catch
         {

@@ -10,12 +10,14 @@ public class AnthropicAIProviderTests
 {
     private const string ApiKey = "test-anthropic-api-key";
 
-    private static AnthropicAIProvider CreateProvider(RecordingHttpMessageHandler handler)
+    // x-api-key is no longer a DefaultRequestHeader — AnthropicAIProvider attaches it per-request,
+    // lazily, only once a provider method actually runs (never at construction), matching how
+    // InfrastructureServiceCollectionExtensions.AddAIProvider registers the named HttpClient today.
+    private static AnthropicAIProvider CreateProvider(RecordingHttpMessageHandler handler, string? apiKey = ApiKey)
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.anthropic.com/") };
-        httpClient.DefaultRequestHeaders.Add("x-api-key", ApiKey);
         httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-        var options = Options.Create(new AnthropicOptions { ApiKey = ApiKey, Model = "claude-haiku-4-5-20251001" });
+        var options = Options.Create(new AnthropicOptions { ApiKey = apiKey!, Model = "claude-haiku-4-5-20251001" });
         return new AnthropicAIProvider(httpClient, options);
     }
 
@@ -125,6 +127,21 @@ public class AnthropicAIProviderTests
 
         // Haiku 4.5: USD 1.00/1M input + USD 5.00/1M output (ADR-0019).
         Assert.Equal(6.00m, result.ActualCost);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AnalyzeJobAnalysisAsync_WithNoApiKeyConfigured_ThrowsAiProviderException_BeforeSendingAnyHttpRequest(string? apiKey)
+    {
+        var handler = new RecordingHttpMessageHandler((_, _) => throw new InvalidOperationException("Must not send any HTTP request without a configured API key."));
+        var provider = CreateProvider(handler, apiKey);
+
+        await Assert.ThrowsAsync<AiProviderException>(
+            () => provider.AnalyzeJobAnalysisAsync(new JobAnalysisAiInput("Job posting text.", [], [], []), DefaultLimits(), CancellationToken.None));
+
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]

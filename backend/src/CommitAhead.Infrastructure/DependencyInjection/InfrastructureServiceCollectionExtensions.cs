@@ -114,11 +114,16 @@ public static class InfrastructureServiceCollectionExtensions
                 services.Configure<HttpClientFactoryOptions>(AnthropicClientName, options =>
                     options.ShouldRedactHeaderValue = header => string.Equals(header, "x-api-key", StringComparison.OrdinalIgnoreCase));
 
-                services.AddHttpClient(AnthropicClientName, (serviceProvider, client) =>
+                // Deliberately does not read AnthropicOptions.ApiKey here: this delegate runs
+                // whenever IHttpClientFactory builds the named client, which happens whenever
+                // IAIProvider is resolved — and every AnalyzeX use case constructor-injects
+                // IAIProvider, so every request to JobAnalyses/CVPresentations/InterviewNotes
+                // (GET/PUT/DELETE included, not just analyze) would otherwise require the API key
+                // to be configured just to construct the controller. AnthropicAIProvider reads and
+                // validates the key lazily, only when a provider method is actually invoked.
+                services.AddHttpClient(AnthropicClientName, client =>
                     {
-                        var options = serviceProvider.GetRequiredService<IOptions<AnthropicOptions>>().Value;
                         client.BaseAddress = new Uri("https://api.anthropic.com/");
-                        client.DefaultRequestHeaders.Add("x-api-key", options.ApiKey);
                         client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
                     })
                     .AddTypedClient<IAIProvider>((httpClient, serviceProvider) =>

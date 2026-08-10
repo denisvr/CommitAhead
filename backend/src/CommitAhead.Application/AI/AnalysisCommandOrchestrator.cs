@@ -26,12 +26,16 @@ namespace CommitAhead.Application.AI;
 /// this source (<see cref="AnalyzeCommandOutcome.DraftAlreadyPending"/>) are all resolved without
 /// ever calling the AI provider.
 ///
-/// Two transaction boundaries, both via <see cref="IUnitOfWork"/>: the reservation step (reconciles
-/// a stale Reserved record for this owner, then inserts the new one — ADR-0014's lazy
-/// reconciliation, done inline, no background worker), and the draft/completion step (the
-/// AnalysisDraft and the AIUsageRecord's Complete() commit together or not at all). On any failure
-/// after a successful reservation, the usage record is reconciled to Failed by re-reading it fresh
-/// (never reusing the in-memory instance an aborted Complete() call mutated — see
+/// Three independently-committed owner-scoped transactions, all via <see cref="IRlsSessionContext"/>
+/// (ADR-0014): the reservation phase (reconciles a stale Reserved record for this owner, checks the
+/// per-owner daily/monthly budget, then inserts the new Reserved record — committed before the
+/// provider is ever called), the completion phase (the AnalysisDraft and the AIUsageRecord's
+/// Complete() commit together, strictly after the provider call returns), and — only on failure — a
+/// short failure-reconciliation phase that marks the already-committed reservation Failed. No
+/// database transaction is held open during the external AI call: a crash or timeout there can never
+/// roll back a reservation the provider has already accepted/billed. On any failure after a
+/// successful reservation, the usage record is reconciled to Failed by re-reading it fresh (never
+/// reusing the in-memory instance an aborted Complete() call mutated — see
 /// <see cref="ReconcileFailureAsync"/>) using a short independent cancellation token, and the
 /// original exception always propagates unmasked.
 /// </summary>
@@ -43,20 +47,20 @@ internal sealed class AnalysisCommandOrchestrator
     private readonly IAnalysisDraftRepository _draftRepository;
     private readonly IAIUsageRecordRepository _usageRepository;
     private readonly IAIProvider _aiProvider;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IRlsSessionContext _rlsSessionContext;
     private readonly ILogger _logger;
 
     public AnalysisCommandOrchestrator(
         IAnalysisDraftRepository draftRepository,
         IAIUsageRecordRepository usageRepository,
         IAIProvider aiProvider,
-        IUnitOfWork unitOfWork,
+        IRlsSessionContext rlsSessionContext,
         ILogger logger)
     {
         _draftRepository = draftRepository;
         _usageRepository = usageRepository;
         _aiProvider = aiProvider;
-        _unitOfWork = unitOfWork;
+        _rlsSessionContext = rlsSessionContext;
         _logger = logger;
     }
 
@@ -71,78 +75,38 @@ internal sealed class AnalysisCommandOrchestrator
         CancellationToken cancellationToken)
     {
         var normalizedIdempotencyKey = NormalizeIdempotencyKey(idempotencyKey);
-
-        var replay = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, cancellationToken);
-        if (replay is not null)
-        {
-            return MapReplay(replay);
-        }
-
-        var pendingDraft = await _draftRepository.GetPendingBySourceAsync(ownerUserId, sourceType, sourceId, cancellationToken);
-        if (pendingDraft is not null)
-        {
-            return new AnalyzeCommandResult(AnalyzeCommandOutcome.DraftAlreadyPending, null);
-        }
-
-        var descriptor = _aiProvider.Describe(commandType);
-        var limits = new AiCallLimits(descriptor.MaxInputTokens, descriptor.MaxOutputTokens, descriptor.Timeout);
-
         var reservedAtUtc = DateTime.UtcNow;
-        var reservation = new AIUsageRecord(
-            Guid.NewGuid(), ownerUserId, normalizedIdempotencyKey, commandType, sourceType, sourceId,
-            descriptor.Provider, descriptor.Model, descriptor.PricingVersion, descriptor.Currency,
-            descriptor.MaxInputTokens, descriptor.MaxOutputTokens, descriptor.EstimatedMaxCost, reservedAtUtc);
 
-        ReservationOutcome reservationOutcome;
+        ReservationPhaseResult phase;
         try
         {
-            reservationOutcome = await _unitOfWork.ExecuteInTransactionAsync(
-                async ct =>
-                {
-                    var staleCutoffUtc = reservedAtUtc - (descriptor.Timeout + StaleReservationSafetyMargin);
-                    var activeReservation = await _usageRepository.GetActiveReservationByOwnerAsync(ownerUserId, ct);
-                    if (activeReservation is not null && activeReservation.StartedAtUtc < staleCutoffUtc)
-                    {
-                        activeReservation.Fail("stale-reservation-timeout", reservedAtUtc);
-                        await _usageRepository.SaveChangesAsync(ct);
-                    }
-
-                    // ADR-0019: USD 0.25/day, USD 5.00/month, per owner — checked here, inside the
-                    // same transaction as the insert, before any provider call. The per-owner
-                    // "one Reserved row at a time" unique index already serializes concurrent
-                    // attempts for this owner, so no extra locking is needed for this check.
-                    var todayStartUtc = reservedAtUtc.Date;
-                    var dailySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, todayStartUtc, todayStartUtc.AddDays(1), ct);
-                    if (dailySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.DailyLimitUsd)
-                    {
-                        return ReservationOutcome.DailyBudgetExceeded;
-                    }
-
-                    var monthStartUtc = new DateTime(reservedAtUtc.Year, reservedAtUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                    var monthlySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, monthStartUtc, monthStartUtc.AddMonths(1), ct);
-                    if (monthlySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.MonthlyLimitUsd)
-                    {
-                        return ReservationOutcome.MonthlyBudgetExceeded;
-                    }
-
-                    await _usageRepository.AddAsync(reservation, ct);
-                    return ReservationOutcome.Reserved;
-                },
+            phase = await _rlsSessionContext.RunInOwnerScopeAsync(
+                ownerUserId,
+                ct => RunReservationPhaseAsync(ownerUserId, normalizedIdempotencyKey, commandType, sourceType, sourceId, reservedAtUtc, ct),
                 cancellationToken);
         }
         catch (AIUsageReservationConflictException)
         {
-            var concurrent = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, cancellationToken);
+            var concurrent = await _rlsSessionContext.RunInOwnerScopeAsync(
+                ownerUserId, ct => _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, ct), cancellationToken);
             return concurrent is not null ? MapReplay(concurrent) : new AnalyzeCommandResult(AnalyzeCommandOutcome.AnotherAnalysisInProgress, null);
         }
 
-        switch (reservationOutcome)
+        switch (phase.Outcome)
         {
-            case ReservationOutcome.DailyBudgetExceeded:
+            case ReservationPhaseOutcome.Replay:
+                return MapReplay(phase.ReplayRecord!);
+            case ReservationPhaseOutcome.DraftAlreadyPending:
+                return new AnalyzeCommandResult(AnalyzeCommandOutcome.DraftAlreadyPending, null);
+            case ReservationPhaseOutcome.DailyBudgetExceeded:
                 return new AnalyzeCommandResult(AnalyzeCommandOutcome.DailyBudgetExceeded, null);
-            case ReservationOutcome.MonthlyBudgetExceeded:
+            case ReservationPhaseOutcome.MonthlyBudgetExceeded:
                 return new AnalyzeCommandResult(AnalyzeCommandOutcome.MonthlyBudgetExceeded, null);
         }
+
+        var reservation = phase.Reservation!;
+        var descriptor = phase.Descriptor!;
+        var limits = phase.Limits!;
 
         try
         {
@@ -160,7 +124,8 @@ internal sealed class AnalysisCommandOrchestrator
             var proposals = validate(aiResult);
 
             var draftId = Guid.NewGuid();
-            await _unitOfWork.ExecuteInTransactionAsync(
+            await _rlsSessionContext.RunInOwnerScopeAsync(
+                ownerUserId,
                 async ct =>
                 {
                     var completedAtUtc = DateTime.UtcNow;
@@ -185,6 +150,72 @@ internal sealed class AnalysisCommandOrchestrator
     }
 
     /// <summary>
+    /// Everything the reservation phase needs, in one owner-scoped transaction, committed before the
+    /// provider is ever called (ADR-0014): idempotency-key replay, an already-Pending draft for this
+    /// source, the provider's currency (ADR-0019 budgets are USD-only — see
+    /// <see cref="UnsupportedProviderCurrencyException"/>), stale-reservation reconciliation, the
+    /// daily/monthly budget check, and the reservation insert itself.
+    /// </summary>
+    private async Task<ReservationPhaseResult> RunReservationPhaseAsync(
+        Guid ownerUserId, string normalizedIdempotencyKey, AiCommandType commandType, EvidenceSourceType sourceType, Guid sourceId,
+        DateTime reservedAtUtc, CancellationToken cancellationToken)
+    {
+        var replay = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, normalizedIdempotencyKey, cancellationToken);
+        if (replay is not null)
+        {
+            return ReservationPhaseResult.ForReplay(replay);
+        }
+
+        var pendingDraft = await _draftRepository.GetPendingBySourceAsync(ownerUserId, sourceType, sourceId, cancellationToken);
+        if (pendingDraft is not null)
+        {
+            return ReservationPhaseResult.ForOutcome(ReservationPhaseOutcome.DraftAlreadyPending);
+        }
+
+        var descriptor = _aiProvider.Describe(commandType);
+        if (!string.Equals(descriptor.Currency, "USD", StringComparison.Ordinal))
+        {
+            throw new UnsupportedProviderCurrencyException(descriptor.Currency);
+        }
+
+        var limits = new AiCallLimits(descriptor.MaxInputTokens, descriptor.MaxOutputTokens, descriptor.Timeout);
+
+        var staleCutoffUtc = reservedAtUtc - (descriptor.Timeout + StaleReservationSafetyMargin);
+        var activeReservation = await _usageRepository.GetActiveReservationByOwnerAsync(ownerUserId, cancellationToken);
+        if (activeReservation is not null && activeReservation.StartedAtUtc < staleCutoffUtc)
+        {
+            activeReservation.Fail("stale-reservation-timeout", reservedAtUtc);
+            await _usageRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        // ADR-0019: USD 0.25/day, USD 5.00/month, per owner — checked here, inside the same
+        // transaction as the insert, before any provider call. The per-owner "one Reserved row at a
+        // time" unique index already serializes concurrent attempts for this owner, so no extra
+        // locking is needed for this check.
+        var todayStartUtc = reservedAtUtc.Date;
+        var dailySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, todayStartUtc, todayStartUtc.AddDays(1), cancellationToken);
+        if (dailySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.DailyLimitUsd)
+        {
+            return ReservationPhaseResult.ForOutcome(ReservationPhaseOutcome.DailyBudgetExceeded);
+        }
+
+        var monthStartUtc = new DateTime(reservedAtUtc.Year, reservedAtUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthlySpent = await _usageRepository.GetSpentCostAsync(ownerUserId, monthStartUtc, monthStartUtc.AddMonths(1), cancellationToken);
+        if (monthlySpent + descriptor.EstimatedMaxCost > AiBudgetLimits.MonthlyLimitUsd)
+        {
+            return ReservationPhaseResult.ForOutcome(ReservationPhaseOutcome.MonthlyBudgetExceeded);
+        }
+
+        var reservation = new AIUsageRecord(
+            Guid.NewGuid(), ownerUserId, normalizedIdempotencyKey, commandType, sourceType, sourceId,
+            descriptor.Provider, descriptor.Model, descriptor.PricingVersion, descriptor.Currency,
+            descriptor.MaxInputTokens, descriptor.MaxOutputTokens, descriptor.EstimatedMaxCost, reservedAtUtc);
+        await _usageRepository.AddAsync(reservation, cancellationToken);
+
+        return ReservationPhaseResult.ForReservation(reservation, descriptor, limits);
+    }
+
+    /// <summary>
     /// Trims and validates once, before any lookup, so " key " and "key" resolve to the same
     /// replay/reservation instead of silently being treated as different idempotency keys.
     /// </summary>
@@ -204,11 +235,26 @@ internal sealed class AnalysisCommandOrchestrator
         return trimmed;
     }
 
-    private enum ReservationOutcome
+    private enum ReservationPhaseOutcome
     {
-        Reserved,
+        Replay,
+        DraftAlreadyPending,
         DailyBudgetExceeded,
         MonthlyBudgetExceeded,
+        Reserved,
+    }
+
+    private sealed record ReservationPhaseResult(
+        ReservationPhaseOutcome Outcome, AIUsageRecord? ReplayRecord, AIUsageRecord? Reservation, AiProviderDescriptor? Descriptor, AiCallLimits? Limits)
+    {
+        public static ReservationPhaseResult ForReplay(AIUsageRecord replayRecord) =>
+            new(ReservationPhaseOutcome.Replay, replayRecord, null, null, null);
+
+        public static ReservationPhaseResult ForOutcome(ReservationPhaseOutcome outcome) =>
+            new(outcome, null, null, null, null);
+
+        public static ReservationPhaseResult ForReservation(AIUsageRecord reservation, AiProviderDescriptor descriptor, AiCallLimits limits) =>
+            new(ReservationPhaseOutcome.Reserved, null, reservation, descriptor, limits);
     }
 
     private static AnalyzeCommandResult MapReplay(AIUsageRecord record) => record.Status switch
@@ -221,9 +267,10 @@ internal sealed class AnalysisCommandOrchestrator
 
     /// <summary>
     /// Never reuses the in-memory `reservation` instance from the failed attempt — if Complete()
-    /// ran and the transaction then rolled back, Postgres reverts to Reserved but the tracked C#
-    /// object still reads Completed, and calling Fail() on it would throw. Re-reading fresh
-    /// (after IUnitOfWork's rollback has cleared the tracker) always returns a correctly-Reserved
+    /// ran and its transaction then rolled back, Postgres reverts to Reserved but the tracked C#
+    /// object still reads Completed, and calling Fail() on it would throw. Re-reading fresh in its
+    /// own owner-scoped transaction (ADR-0014 — the durable reservation from the already-committed
+    /// reservation phase is what gets marked Failed here) always returns a correctly-Reserved
     /// instance. Uses a short independent cancellation token — never the caller's own, which may
     /// already be the reason for this failure. Swallows its own failure; the original exception is
     /// what the caller always sees.
@@ -235,13 +282,21 @@ internal sealed class AnalysisCommandOrchestrator
 
         try
         {
-            var record = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, idempotencyKey, cleanupCts.Token);
-            recordId = record?.Id;
-            if (record is not null && record.Status == AIUsageRecordStatus.Reserved)
-            {
-                record.Fail(originalException.GetType().Name, DateTime.UtcNow);
-                await _usageRepository.SaveChangesAsync(cleanupCts.Token);
-            }
+            await _rlsSessionContext.RunInOwnerScopeAsync(
+                ownerUserId,
+                async ct =>
+                {
+                    var record = await _usageRepository.GetByIdempotencyKeyAsync(ownerUserId, idempotencyKey, ct);
+                    recordId = record?.Id;
+                    if (record is not null && record.Status == AIUsageRecordStatus.Reserved)
+                    {
+                        record.Fail(originalException.GetType().Name, DateTime.UtcNow);
+                        await _usageRepository.SaveChangesAsync(ct);
+                    }
+
+                    return true;
+                },
+                cleanupCts.Token);
         }
         catch (Exception reconcileException)
         {

@@ -27,6 +27,7 @@ public sealed class AnalyzeJobAnalysisUseCase
     private readonly IStudyItemRepository _studyItemRepository;
     private readonly IProfessionalProfileRepository _profileRepository;
     private readonly IAIProvider _aiProvider;
+    private readonly IRlsSessionContext _rlsSessionContext;
     private readonly ICurrentUser _currentUser;
     private readonly AnalysisCommandOrchestrator _orchestrator;
 
@@ -37,7 +38,7 @@ public sealed class AnalyzeJobAnalysisUseCase
         IStudyItemRepository studyItemRepository,
         IProfessionalProfileRepository profileRepository,
         IAIProvider aiProvider,
-        IUnitOfWork unitOfWork,
+        IRlsSessionContext rlsSessionContext,
         ICurrentUser currentUser,
         ILogger<AnalyzeJobAnalysisUseCase> logger)
     {
@@ -45,22 +46,37 @@ public sealed class AnalyzeJobAnalysisUseCase
         _studyItemRepository = studyItemRepository;
         _profileRepository = profileRepository;
         _aiProvider = aiProvider;
+        _rlsSessionContext = rlsSessionContext;
         _currentUser = currentUser;
-        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, unitOfWork, logger);
+        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, rlsSessionContext, logger);
     }
 
     public async Task<AnalyzeCommandResult> ExecuteAsync(Guid jobAnalysisId, string idempotencyKey, CancellationToken cancellationToken)
     {
         var ownerUserId = _currentUser.UserId;
 
-        var jobAnalysis = await _jobAnalysisRepository.GetByIdAsync(ownerUserId, jobAnalysisId, cancellationToken);
-        if (jobAnalysis is null)
+        // Owner-scoped transaction of its own (ADR-0014) — the ambient RLS transaction no longer
+        // wraps this action, so loading the source and building the AI input needs its own RLS
+        // scope, committed before the reservation phase and the AI call that follow.
+        var input = await _rlsSessionContext.RunInOwnerScopeAsync<JobAnalysisAiInput?>(
+            ownerUserId,
+            async ct =>
+            {
+                var jobAnalysis = await _jobAnalysisRepository.GetByIdAsync(ownerUserId, jobAnalysisId, ct);
+                if (jobAnalysis is null)
+                {
+                    return null;
+                }
+
+                var existingRequirements = jobAnalysis.Requirements.Select(r => new JobRequirementCatalogueEntry(r.Id, r.Text)).ToList();
+                return await BuildInputAsync(jobAnalysis, ownerUserId, existingRequirements, ct);
+            },
+            cancellationToken);
+
+        if (input is null)
         {
             return new AnalyzeCommandResult(AnalyzeCommandOutcome.SourceNotFound, null);
         }
-
-        var existingRequirements = jobAnalysis.Requirements.Select(r => new JobRequirementCatalogueEntry(r.Id, r.Text)).ToList();
-        var input = await BuildInputAsync(jobAnalysis, ownerUserId, existingRequirements, cancellationToken);
 
         return await _orchestrator.ExecuteAsync(
             ownerUserId,
@@ -70,7 +86,7 @@ public sealed class AnalyzeJobAnalysisUseCase
             jobAnalysisId,
             (limits, ct) => _aiProvider.AnalyzeJobAnalysisAsync(input, limits, ct),
             aiResult => new AnalysisDraftProposals(
-                AiStructuredSuggestionValidator.ValidateAndBuild(aiResult.SuggestionProposals, existingRequirements),
+                AiStructuredSuggestionValidator.ValidateAndBuild(aiResult.SuggestionProposals, input.ExistingRequirements),
                 AiProposalValidation.ValidateLinkProposals(aiResult.LinkProposals, input.StudyItemCatalogue),
                 AiProposalValidation.ValidateStudyItemProposals(aiResult.StudyItemProposals)),
             cancellationToken);

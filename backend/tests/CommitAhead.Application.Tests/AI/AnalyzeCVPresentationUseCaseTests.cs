@@ -30,7 +30,7 @@ public class AnalyzeCVPresentationUseCaseTests
             profileRepository,
             studyItemRepository ?? new FakeStudyItemRepository(),
             aiProvider,
-            new FakeUnitOfWork(),
+            new FakeRlsSessionContext(),
             new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
             NullLogger<AnalyzeCVPresentationUseCase>.Instance);
 

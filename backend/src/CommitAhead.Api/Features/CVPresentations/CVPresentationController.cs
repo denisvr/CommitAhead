@@ -10,7 +10,6 @@ namespace CommitAhead.Api.Features.CVPresentations;
 /// <summary>Multi-row per owner (model.md) — unlike ProfessionalProfile, every route below is scoped by {id}.</summary>
 [ApiController]
 [Route("api/cv-presentations")]
-[UsesOwnerScopedData]
 public sealed class CVPresentationController : ControllerBase
 {
     private readonly GetCVPresentationUseCase _getUseCase;
@@ -58,6 +57,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpGet]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<IReadOnlyList<CVPresentationResponse>>> Get(CancellationToken cancellationToken)
     {
         var results = await _getAllUseCase.ExecuteAsync(cancellationToken);
@@ -65,6 +65,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<CVPresentationResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _getUseCase.ExecuteAsync(id, cancellationToken);
@@ -72,6 +73,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPost]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<CVPresentationCreatedResponse>> Post([FromBody] CreateCVPresentationRequest request, CancellationToken cancellationToken)
     {
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
@@ -79,6 +81,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateCVPresentationRequest request, CancellationToken cancellationToken)
     {
         var result = await request.UpdateAsync(_updateUseCase, id, cancellationToken);
@@ -86,6 +89,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var result = await _deleteUseCase.ExecuteAsync(id, cancellationToken);
@@ -93,6 +97,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/experience-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutExperienceSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceExperienceSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -100,6 +105,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/education-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutEducationSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceEducationSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -107,6 +113,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/skill-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutSkillSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceSkillSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -114,6 +121,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/language-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutLanguageSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceLanguageSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -121,6 +129,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/certification-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutCertificationSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceCertificationSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -128,6 +137,7 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/project-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutProjectSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceProjectSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
@@ -135,12 +145,16 @@ public sealed class CVPresentationController : ControllerBase
     }
 
     [HttpPut("{id:guid}/profile-link-selections")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> PutProfileLinkSelections(Guid id, [FromBody] IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken)
     {
         var result = await _replaceProfileLinkSelectionsUseCase.ExecuteAsync(id, entryIds, cancellationToken);
         return result == CVPresentationMutationResult.NotFound ? NotFound() : NoContent();
     }
 
+    // Not [UsesOwnerScopedData] — AnalysisCommandOrchestrator/AnalyzeCVPresentationUseCase open
+    // their own short, independently-committed owner-scoped transactions around each DB phase
+    // (ADR-0014), so no transaction is held open for the duration of the external Anthropic call.
     [HttpPost("{id:guid}/analyze")]
     [EnableRateLimiting("ai-analysis")]
     public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)

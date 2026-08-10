@@ -97,11 +97,20 @@ them concrete decisions rather than abstract ones:
   privacy posture, and behavior silently, exactly what this project's "never guess" posture
   (ADR-0009) exists to prevent. Claude Sonnet is a possible future upgrade, but only via a manually
   added model profile evaluated and chosen by a person, never a runtime decision.
-- Budget: **USD 0.25/day, USD 5.00/month, per owner** — enforced inside the same atomic reservation
-  transaction ADR-0014 already describes (Completed actual cost plus active Reserved cost).
+- Budget: **USD 0.25/day, USD 5.00/month, per owner** — enforced inside the reservation phase of the
+  durable, independently-committed transaction sequence ADR-0014 describes (Completed actual cost
+  plus active Reserved cost), before the provider is ever called. Budgets are USD-only by
+  construction: `AnalysisCommandOrchestrator` rejects any `AiProviderDescriptor` whose `Currency`
+  isn't `"USD"` before writing a reservation, so a future non-USD provider can never have its costs
+  silently summed against these USD ceilings — that provider must make its own explicit
+  currency/exchange-rate decision first.
 - Rate limit: **10 `AnalyzeX` requests/hour per authenticated owner** — corrects this project's own
   earlier threat-model wording, which said "globally"; the lock and the limit have always been
   intended per-owner (ADR-0015), never system-wide.
+- **Provider timeout: 195 seconds** (`AnthropicModelProfile.Timeout`, per-model — a future model or
+  provider sets its own value). Covers the documented one-time Structured Outputs schema
+  compilation a first call with a new/changed schema can incur, on top of ordinary generation
+  latency; not just steady-state call latency.
 
 ## Consequences
 

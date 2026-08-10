@@ -30,7 +30,7 @@ public class AnalyzeJobAnalysisUseCaseTests
             studyItemRepository ?? new FakeStudyItemRepository(),
             profileRepository ?? new FakeProfessionalProfileRepository(),
             aiProvider,
-            new FakeUnitOfWork(),
+            new FakeRlsSessionContext(),
             new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
             NullLogger<AnalyzeJobAnalysisUseCase>.Instance);
 

@@ -24,7 +24,7 @@ public class AnalyzeInterviewNoteUseCaseTests
             usageRepository,
             studyItemRepository ?? new FakeStudyItemRepository(),
             aiProvider,
-            new FakeUnitOfWork(),
+            new FakeRlsSessionContext(),
             new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
             NullLogger<AnalyzeInterviewNoteUseCase>.Instance);
 

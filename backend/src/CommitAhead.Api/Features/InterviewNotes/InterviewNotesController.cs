@@ -10,7 +10,6 @@ namespace CommitAhead.Api.Features.InterviewNotes;
 
 [ApiController]
 [Route("api/interview-notes")]
-[UsesOwnerScopedData]
 public sealed class InterviewNotesController : ControllerBase
 {
     private readonly GetInterviewNoteUseCase _getUseCase;
@@ -37,6 +36,7 @@ public sealed class InterviewNotesController : ControllerBase
     }
 
     [HttpGet]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<IReadOnlyList<InterviewNoteResponse>>> Get(CancellationToken cancellationToken)
     {
         var results = await _getAllUseCase.ExecuteAsync(cancellationToken);
@@ -44,6 +44,7 @@ public sealed class InterviewNotesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<InterviewNoteResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _getUseCase.ExecuteAsync(id, cancellationToken);
@@ -51,6 +52,7 @@ public sealed class InterviewNotesController : ControllerBase
     }
 
     [HttpPost]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<InterviewNoteCreatedResponse>> Post([FromBody] CreateInterviewNoteRequest request, CancellationToken cancellationToken)
     {
         // A jobAnalysisId that doesn't resolve to the current user's own JobAnalysis throws
@@ -61,6 +63,7 @@ public sealed class InterviewNotesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateInterviewNoteRequest request, CancellationToken cancellationToken)
     {
         var result = await request.UpdateAsync(_updateUseCase, id, cancellationToken);
@@ -68,12 +71,16 @@ public sealed class InterviewNotesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var result = await _deleteUseCase.ExecuteAsync(id, cancellationToken);
         return result == InterviewNoteMutationResult.NotFound ? NotFound() : NoContent();
     }
 
+    // Not [UsesOwnerScopedData] — AnalysisCommandOrchestrator/AnalyzeInterviewNoteUseCase open
+    // their own short, independently-committed owner-scoped transactions around each DB phase
+    // (ADR-0014), so no transaction is held open for the duration of the external Anthropic call.
     [HttpPost("{id:guid}/analyze")]
     [EnableRateLimiting("ai-analysis")]
     public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)

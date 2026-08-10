@@ -11,4 +11,7 @@ namespace CommitAhead.Application.Persistence;
 public interface IRlsSessionContext
 {
     Task RunInOwnerScopeAsync(Guid ownerUserId, Func<Task> action, CancellationToken cancellationToken);
+
+    /// <summary>Same owner-scoped transaction as the non-generic overload, but returns a value — the shape AnalysisCommandOrchestrator's multiple, independently-committed phases need (ADR-0014).</summary>
+    Task<T> RunInOwnerScopeAsync<T>(Guid ownerUserId, Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken);
 }

@@ -26,11 +26,13 @@ public sealed class AnthropicAIProvider : IAIProvider
     private const string AnthropicVersion = "2023-06-01";
 
     private readonly HttpClient _httpClient;
+    private readonly IOptions<AnthropicOptions> _options;
     private readonly AnthropicModelProfile _modelProfile;
 
     public AnthropicAIProvider(HttpClient httpClient, IOptions<AnthropicOptions> options)
     {
         _httpClient = httpClient;
+        _options = options;
         _modelProfile = AnthropicModelProfiles.Resolve(options.Value.Model);
     }
 
@@ -106,6 +108,15 @@ public sealed class AnthropicAIProvider : IAIProvider
         AiCommandType commandType, string system, string userContent, IReadOnlyList<StructuredSuggestionCommandType> allowedCommands,
         AiCallLimits limits, CancellationToken cancellationToken)
     {
+        // Read and validate the API key here — lazily, only when a provider method is actually
+        // invoked — never at DI construction time (see InfrastructureServiceCollectionExtensions).
+        // Fails before any HTTP request is built or sent.
+        var apiKey = _options.Value.ApiKey;
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new AiProviderException("The Anthropic API key is not configured.");
+        }
+
         var schema = AnthropicStructuredOutputSchema.BuildResponseSchema(allowedCommands);
         var messages = new[] { new AnthropicMessageDto("user", userContent) };
         var outputConfig = new AnthropicOutputConfigDto(new AnthropicOutputFormatDto("json_schema", schema));
@@ -115,13 +126,13 @@ public sealed class AnthropicAIProvider : IAIProvider
 
         try
         {
-            var countedInputTokens = await CountTokensAsync(system, messages, outputConfig, timeoutCts.Token);
+            var countedInputTokens = await CountTokensAsync(system, messages, outputConfig, apiKey, timeoutCts.Token);
             if (countedInputTokens > limits.MaxInputTokens)
             {
                 throw new AiProviderException("The analysis input exceeds this provider's configured input-token limit.");
             }
 
-            var response = await SendMessagesAsync(system, messages, outputConfig, limits.MaxOutputTokens, timeoutCts.Token);
+            var response = await SendMessagesAsync(system, messages, outputConfig, limits.MaxOutputTokens, apiKey, timeoutCts.Token);
             return ParseResponse(response, commandType);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -133,10 +144,12 @@ public sealed class AnthropicAIProvider : IAIProvider
         }
     }
 
-    private async Task<int> CountTokensAsync(string system, AnthropicMessageDto[] messages, AnthropicOutputConfigDto outputConfig, CancellationToken cancellationToken)
+    private async Task<int> CountTokensAsync(
+        string system, AnthropicMessageDto[] messages, AnthropicOutputConfigDto outputConfig, string apiKey, CancellationToken cancellationToken)
     {
         var body = new AnthropicCountTokensRequestDto(_modelProfile.ModelId, system, messages, outputConfig);
         using var request = new HttpRequestMessage(HttpMethod.Post, "v1/messages/count_tokens") { Content = JsonContent.Create(body) };
+        request.Headers.Add("x-api-key", apiKey);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -146,10 +159,11 @@ public sealed class AnthropicAIProvider : IAIProvider
     }
 
     private async Task<AnthropicMessagesResponseDto> SendMessagesAsync(
-        string system, AnthropicMessageDto[] messages, AnthropicOutputConfigDto outputConfig, int maxOutputTokens, CancellationToken cancellationToken)
+        string system, AnthropicMessageDto[] messages, AnthropicOutputConfigDto outputConfig, int maxOutputTokens, string apiKey, CancellationToken cancellationToken)
     {
         var body = new AnthropicMessagesRequestDto(_modelProfile.ModelId, system, messages, outputConfig, maxOutputTokens);
         using var request = new HttpRequestMessage(HttpMethod.Post, "v1/messages") { Content = JsonContent.Create(body) };
+        request.Headers.Add("x-api-key", apiKey);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 

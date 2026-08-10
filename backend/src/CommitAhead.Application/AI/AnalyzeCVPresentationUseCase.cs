@@ -38,6 +38,7 @@ public sealed class AnalyzeCVPresentationUseCase
     private readonly IProfessionalProfileRepository _profileRepository;
     private readonly IStudyItemRepository _studyItemRepository;
     private readonly IAIProvider _aiProvider;
+    private readonly IRlsSessionContext _rlsSessionContext;
     private readonly ICurrentUser _currentUser;
     private readonly AnalysisCommandOrchestrator _orchestrator;
 
@@ -48,7 +49,7 @@ public sealed class AnalyzeCVPresentationUseCase
         IProfessionalProfileRepository profileRepository,
         IStudyItemRepository studyItemRepository,
         IAIProvider aiProvider,
-        IUnitOfWork unitOfWork,
+        IRlsSessionContext rlsSessionContext,
         ICurrentUser currentUser,
         ILogger<AnalyzeCVPresentationUseCase> logger)
     {
@@ -56,21 +57,29 @@ public sealed class AnalyzeCVPresentationUseCase
         _profileRepository = profileRepository;
         _studyItemRepository = studyItemRepository;
         _aiProvider = aiProvider;
+        _rlsSessionContext = rlsSessionContext;
         _currentUser = currentUser;
-        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, unitOfWork, logger);
+        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, rlsSessionContext, logger);
     }
 
     public async Task<AnalyzeCommandResult> ExecuteAsync(Guid cvPresentationId, string idempotencyKey, CancellationToken cancellationToken)
     {
         var ownerUserId = _currentUser.UserId;
 
-        var cvPresentation = await _cvPresentationRepository.GetByIdAsync(ownerUserId, cvPresentationId, cancellationToken);
-        if (cvPresentation is null)
+        // Owner-scoped transaction of its own (ADR-0014) — see AnalyzeJobAnalysisUseCase for why.
+        var input = await _rlsSessionContext.RunInOwnerScopeAsync<CVPresentationAiInput?>(
+            ownerUserId,
+            async ct =>
+            {
+                var cvPresentation = await _cvPresentationRepository.GetByIdAsync(ownerUserId, cvPresentationId, ct);
+                return cvPresentation is null ? null : await BuildInputAsync(cvPresentation, ownerUserId, ct);
+            },
+            cancellationToken);
+
+        if (input is null)
         {
             return new AnalyzeCommandResult(AnalyzeCommandOutcome.SourceNotFound, null);
         }
-
-        var input = await BuildInputAsync(cvPresentation, ownerUserId, cancellationToken);
 
         return await _orchestrator.ExecuteAsync(
             ownerUserId,

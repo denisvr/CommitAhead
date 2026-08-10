@@ -30,7 +30,10 @@ public static class AnthropicModelProfiles
             PricingVersion: "anthropic-haiku-4.5-2025-10",
             MaxInputTokens: 8_000,
             MaxOutputTokens: 2_000,
-            Timeout: TimeSpan.FromSeconds(30)),
+            // A first call using a new/changed Structured Outputs schema can incur one-time schema
+            // compilation on Anthropic's side, on top of ordinary generation latency — 195s covers
+            // that documented first-call path, not just steady-state calls.
+            Timeout: TimeSpan.FromSeconds(195)),
     };
 
     public static AnthropicModelProfile Resolve(string modelId)

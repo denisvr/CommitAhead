@@ -17,7 +17,7 @@ public class AnalysisCommandOrchestratorBudgetTests
         FakeJobAnalysisRepository jobAnalysisRepository, FakeAnalysisDraftRepository draftRepository, FakeAIUsageRecordRepository usageRepository,
         ScriptedAIProvider provider, Guid ownerUserId) => new(
         jobAnalysisRepository, draftRepository, usageRepository, new FakeStudyItemRepository(), new FakeProfessionalProfileRepository(),
-        provider, new FakeUnitOfWork(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
+        provider, new FakeRlsSessionContext(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" },
         NullLogger<AnalyzeJobAnalysisUseCase>.Instance);
 
     private static JobAnalysis CreateJobAnalysis(Guid ownerUserId) =>

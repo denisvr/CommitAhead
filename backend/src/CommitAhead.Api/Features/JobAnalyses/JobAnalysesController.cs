@@ -10,7 +10,6 @@ namespace CommitAhead.Api.Features.JobAnalyses;
 
 [ApiController]
 [Route("api/job-analyses")]
-[UsesOwnerScopedData]
 public sealed class JobAnalysesController : ControllerBase
 {
     private readonly GetJobAnalysisUseCase _getUseCase;
@@ -40,6 +39,7 @@ public sealed class JobAnalysesController : ControllerBase
     }
 
     [HttpGet]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<IReadOnlyList<JobAnalysisResponse>>> Get(CancellationToken cancellationToken)
     {
         var results = await _getAllUseCase.ExecuteAsync(cancellationToken);
@@ -47,6 +47,7 @@ public sealed class JobAnalysesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<JobAnalysisResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _getUseCase.ExecuteAsync(id, cancellationToken);
@@ -54,6 +55,7 @@ public sealed class JobAnalysesController : ControllerBase
     }
 
     [HttpPost]
+    [UsesOwnerScopedData]
     public async Task<ActionResult<JobAnalysisCreatedResponse>> Post([FromBody] CreateJobAnalysisRequest request, CancellationToken cancellationToken)
     {
         var id = await request.CreateAsync(_createUseCase, cancellationToken);
@@ -67,6 +69,7 @@ public sealed class JobAnalysesController : ControllerBase
     /// counting bytes while copying, never by trusting this request's reported length.
     /// </summary>
     [HttpPost("upload")]
+    [UsesOwnerScopedData]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
     public async Task<ActionResult<JobAnalysisCreatedResponse>> PostUpload([FromForm] CreateJobAnalysisFromUploadRequest request, CancellationToken cancellationToken)
@@ -78,6 +81,7 @@ public sealed class JobAnalysesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateJobAnalysisRequest request, CancellationToken cancellationToken)
     {
         var result = await request.UpdateAsync(_updateUseCase, id, cancellationToken);
@@ -85,12 +89,16 @@ public sealed class JobAnalysesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [UsesOwnerScopedData]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var result = await _deleteUseCase.ExecuteAsync(id, cancellationToken);
         return result == JobAnalysisMutationResult.NotFound ? NotFound() : NoContent();
     }
 
+    // Not [UsesOwnerScopedData] — AnalysisCommandOrchestrator/AnalyzeJobAnalysisUseCase open their
+    // own short, independently-committed owner-scoped transactions around each DB phase (ADR-0014),
+    // so no transaction is held open for the duration of the external Anthropic call.
     [HttpPost("{id:guid}/analyze")]
     [EnableRateLimiting("ai-analysis")]
     public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)

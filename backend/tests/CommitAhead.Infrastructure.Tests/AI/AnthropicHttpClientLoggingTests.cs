@@ -48,7 +48,11 @@ public class AnthropicHttpClientLoggingTests
         using var provider = services.BuildServiceProvider();
         var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient("AnthropicAIProvider");
 
+        // AnthropicAIProvider attaches x-api-key per-request now (never as a DefaultRequestHeader
+        // on the named client) — this test adds it the same way, on the request itself, to prove
+        // ShouldRedactHeaderValue genuinely redacts it regardless of where the header came from.
         using var request = new HttpRequestMessage(HttpMethod.Post, "v1/messages") { Content = new StringContent("{}") };
+        request.Headers.Add("x-api-key", RawApiKey);
         using var response = await httpClient.SendAsync(request);
 
         var messages = loggerProvider.Messages.ToList();

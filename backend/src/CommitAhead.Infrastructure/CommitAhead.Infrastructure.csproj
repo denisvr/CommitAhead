@@ -6,6 +6,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets Infrastructure.Tests exercise AnthropicStructuredOutputSchema directly, without making it public. -->
+    <InternalsVisibleTo Include="CommitAhead.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

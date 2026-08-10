@@ -129,7 +129,7 @@ CSP tested first in report-only mode; exceptions added only after verified viola
 - One AI call in flight per owner at a time (never system-wide — ADR-0015)
 - One Pending draft per source (natural deduplication guard)
 - Idempotency key required; server deduplicates duplicate requests
-- Daily (USD 0.25) and monthly (USD 5.00) budgets, per owner (ADR-0019); a Reserved AIUsageRecord atomically reserves maximum estimated cost before the provider call and transitions to Completed or Failed afterward
+- Daily (USD 0.25) and monthly (USD 5.00) budgets, per owner, USD-only (ADR-0019 — a non-USD `AiProviderDescriptor.Currency` is rejected before any reservation); a Reserved AIUsageRecord is committed, in its own transaction, before the provider is ever called — no database transaction is held open for the duration of the external AI call — and a later, separate transaction transitions it to Completed or Failed (ADR-0014)
 - No automatic retries; every retry is an explicit user action
 - `AIUsageRecord`: unique idempotency key, command/source, provider/model/pricing version/currency, Reserved/Completed/Failed status, reserved and actual tokens/cost, timestamps, safe outcome code, and optional draft ID — never content
 

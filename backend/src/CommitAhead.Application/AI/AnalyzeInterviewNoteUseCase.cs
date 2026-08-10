@@ -36,6 +36,7 @@ public sealed class AnalyzeInterviewNoteUseCase
     private readonly IInterviewNoteRepository _interviewNoteRepository;
     private readonly IStudyItemRepository _studyItemRepository;
     private readonly IAIProvider _aiProvider;
+    private readonly IRlsSessionContext _rlsSessionContext;
     private readonly ICurrentUser _currentUser;
     private readonly AnalysisCommandOrchestrator _orchestrator;
 
@@ -45,28 +46,36 @@ public sealed class AnalyzeInterviewNoteUseCase
         IAIUsageRecordRepository usageRepository,
         IStudyItemRepository studyItemRepository,
         IAIProvider aiProvider,
-        IUnitOfWork unitOfWork,
+        IRlsSessionContext rlsSessionContext,
         ICurrentUser currentUser,
         ILogger<AnalyzeInterviewNoteUseCase> logger)
     {
         _interviewNoteRepository = interviewNoteRepository;
         _studyItemRepository = studyItemRepository;
         _aiProvider = aiProvider;
+        _rlsSessionContext = rlsSessionContext;
         _currentUser = currentUser;
-        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, unitOfWork, logger);
+        _orchestrator = new AnalysisCommandOrchestrator(draftRepository, usageRepository, aiProvider, rlsSessionContext, logger);
     }
 
     public async Task<AnalyzeCommandResult> ExecuteAsync(Guid interviewNoteId, string idempotencyKey, CancellationToken cancellationToken)
     {
         var ownerUserId = _currentUser.UserId;
 
-        var interviewNote = await _interviewNoteRepository.GetByIdAsync(ownerUserId, interviewNoteId, cancellationToken);
-        if (interviewNote is null)
+        // Owner-scoped transaction of its own (ADR-0014) — see AnalyzeJobAnalysisUseCase for why.
+        var input = await _rlsSessionContext.RunInOwnerScopeAsync<InterviewNoteAiInput?>(
+            ownerUserId,
+            async ct =>
+            {
+                var interviewNote = await _interviewNoteRepository.GetByIdAsync(ownerUserId, interviewNoteId, ct);
+                return interviewNote is null ? null : await BuildInputAsync(interviewNote, ownerUserId, ct);
+            },
+            cancellationToken);
+
+        if (input is null)
         {
             return new AnalyzeCommandResult(AnalyzeCommandOutcome.SourceNotFound, null);
         }
-
-        var input = await BuildInputAsync(interviewNote, ownerUserId, cancellationToken);
 
         return await _orchestrator.ExecuteAsync(
             ownerUserId,

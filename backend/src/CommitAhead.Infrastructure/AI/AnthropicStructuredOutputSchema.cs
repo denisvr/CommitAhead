@@ -12,8 +12,12 @@ namespace CommitAhead.Infrastructure.AI;
 /// concrete object variants (one per allowed StructuredSuggestionCommandType, one per
 /// StudyItemCategory) rather than a permissive object — every object declares
 /// additionalProperties:false and every property required (with nullable types made explicit),
-/// per ADR-0019. This schema is descriptive scaffolding for the provider only; every existing
-/// Application-layer validator remains the authoritative check on the resulting data.
+/// per ADR-0019. Each variant is a whole-object union member (Anthropic's anyOf, not oneOf) that
+/// fixes its discriminator (commandType/category) together with its own concrete payload/details
+/// shape, so a commandType/category value can never be paired with a mismatched payload shape —
+/// e.g. category:"Theory" can never validate alongside LeetCode-only fields. This schema is
+/// descriptive scaffolding for the provider only; every existing Application-layer validator
+/// remains the authoritative check on the resulting data.
 /// </summary>
 internal static class AnthropicStructuredOutputSchema
 {
@@ -27,13 +31,22 @@ internal static class AnthropicStructuredOutputSchema
 
     private static JsonObject SuggestionProposalSchema(IReadOnlyList<StructuredSuggestionCommandType> allowedCommands)
     {
-        var payloadVariants = allowedCommands.Select(PayloadSchemaFor).Append(NullSchema()).ToArray();
+        var variants = new JsonNode[] { AdvisorySuggestionVariant() }
+            .Concat(allowedCommands.Select(CommandSuggestionVariant))
+            .ToArray();
 
-        return StrictObject(
-            ("commandType", Nullable(EnumSchema(allowedCommands.Select(c => c.ToString())))),
-            ("payload", OneOf(payloadVariants)),
-            ("advisoryMarkdown", Nullable(StringSchema())));
+        return AnyOf(variants);
     }
+
+    private static JsonObject AdvisorySuggestionVariant() => StrictObject(
+        ("commandType", NullSchema()),
+        ("payload", NullSchema()),
+        ("advisoryMarkdown", StringSchema()));
+
+    private static JsonObject CommandSuggestionVariant(StructuredSuggestionCommandType commandType) => StrictObject(
+        ("commandType", EnumSchema([commandType.ToString()])),
+        ("payload", PayloadSchemaFor(commandType)),
+        ("advisoryMarkdown", NullSchema()));
 
     private static JsonObject PayloadSchemaFor(StructuredSuggestionCommandType commandType) => commandType switch
     {
@@ -61,10 +74,16 @@ internal static class AnthropicStructuredOutputSchema
         ("weight", NumberSchema()),
         ("rationale", StringSchema()));
 
-    private static JsonObject StudyItemProposalSchema() => StrictObject(
+    private static JsonObject StudyItemProposalSchema() => AnyOf(
+        StudyItemVariant(StudyItemCategory.Theory, TheoryDetailsSchema()),
+        StudyItemVariant(StudyItemCategory.LeetCode, LeetCodeDetailsSchema()),
+        StudyItemVariant(StudyItemCategory.SystemDesign, SystemDesignDetailsSchema()),
+        StudyItemVariant(StudyItemCategory.Behavioral, BehavioralDetailsSchema()));
+
+    private static JsonObject StudyItemVariant(StudyItemCategory category, JsonObject detailsSchema) => StrictObject(
         ("title", StringSchema()),
-        ("category", EnumSchema(Enum.GetNames<StudyItemCategory>())),
-        ("details", OneOf(TheoryDetailsSchema(), LeetCodeDetailsSchema(), SystemDesignDetailsSchema(), BehavioralDetailsSchema())),
+        ("category", EnumSchema([category.ToString()])),
+        ("details", detailsSchema),
         ("tags", ArrayOf(StringSchema())),
         ("importance", IntegerSchema()));
 
@@ -147,8 +166,9 @@ internal static class AnthropicStructuredOutputSchema
         return clone;
     }
 
-    private static JsonObject OneOf(params JsonNode[] schemas) => new()
+    /// <summary>Anthropic's Structured Outputs supports anyOf (not oneOf) for whole-object discriminated unions — each variant here fixes its discriminator together with its own concrete payload/details shape.</summary>
+    private static JsonObject AnyOf(params JsonNode[] schemas) => new()
     {
-        ["oneOf"] = new JsonArray(schemas),
+        ["anyOf"] = new JsonArray(schemas),
     };
 }
