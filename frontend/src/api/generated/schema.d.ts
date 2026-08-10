@@ -1957,6 +1957,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analysis-drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnalysisDraftResponse"];
+                        "application/json": components["schemas"]["AnalysisDraftResponse"];
+                        "text/json": components["schemas"]["AnalysisDraftResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/analysis-drafts/{id}/apply": {
         parameters: {
             query?: never;
@@ -2002,6 +2041,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AnalysisDraftResponse: {
+            /** Format: uuid */
+            id: string;
+            sourceType: components["schemas"]["EvidenceSourceType"];
+            /** Format: uuid */
+            sourceId: string;
+            status: components["schemas"]["AnalysisDraftStatus"];
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: date-time */
+            appliedAtUtc: null | string;
+            /** Format: date-time */
+            discardedAtUtc: null | string;
+            suggestionProposals: components["schemas"]["SuggestionProposalResponse"][];
+            linkProposals: components["schemas"]["LinkProposalResponse"][];
+            studyItemProposals: components["schemas"]["StudyItemProposalResponse"][];
+        };
+        /** @enum {unknown} */
+        AnalysisDraftStatus: "Pending" | "Applied" | "Discarded";
         /** @enum {unknown} */
         AnalyzeCommandOutcome: "Created" | "AlreadyCompleted" | "InProgress" | "FailedPreviously" | "AnotherAnalysisInProgress" | "SourceNotFound" | "DraftAlreadyPending" | "DailyBudgetExceeded" | "MonthlyBudgetExceeded";
         AnalyzeCommandRequest: {
@@ -2137,6 +2195,8 @@ export interface components {
         };
         /** @enum {unknown} */
         EmploymentType: "Permanent" | "Contract" | "Freelance" | "Internship" | "Other";
+        /** @enum {unknown} */
+        EvidenceSourceType: "CVPresentation" | "JobAnalysis" | "InterviewNote";
         ExperienceEntryDto: {
             /** Format: uuid */
             id: string;
@@ -2253,6 +2313,19 @@ export interface components {
             weight: null | number | string;
             rationale: null | string;
         };
+        LinkProposalResponse: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["ProposalStatus"];
+            /** Format: uuid */
+            targetStudyItemId: string;
+            /** Format: double */
+            proposedWeight: number | string;
+            proposedRationale: string;
+            /** Format: double */
+            acceptedWeight: null | number | string;
+            acceptedRationale: null | string;
+        };
         LoginRequest: {
             email: string;
         };
@@ -2303,6 +2376,8 @@ export interface components {
             url: null | string;
             skillIds: string[];
         };
+        /** @enum {unknown} */
+        ProposalStatus: "Pending" | "Accepted" | "Rejected";
         RankedStudyItemResponse: {
             /** Format: uuid */
             id: string;
@@ -2360,6 +2435,8 @@ export interface components {
         };
         /** @enum {unknown} */
         SkillProficiency: "Beginner" | "Intermediate" | "Advanced" | "Expert" | null;
+        /** @enum {unknown} */
+        StructuredSuggestionCommandType: "AddJobRequirement" | "AddJobGap" | "UpdateCVPresentationSummary" | "AddInterviewGap" | "AddInterviewLesson" | null;
         /** @enum {unknown} */
         StudyItemCategory: "Theory" | "LeetCode" | "SystemDesign" | "Behavioral";
         StudyItemCreatedResponse: {
@@ -2421,6 +2498,25 @@ export interface components {
             importance: null | number | string;
             /** Format: int32 */
             initialMastery: null | number | string;
+        };
+        StudyItemProposalResponse: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["ProposalStatus"];
+            proposedTitle: string;
+            proposedCategory: components["schemas"]["StudyItemCategory"];
+            proposedDetailsJson: string;
+            proposedTags: string[];
+            /** Format: int32 */
+            proposedImportance: number | string;
+            acceptedTitle: null | string;
+            acceptedCategory: null | components["schemas"]["StudyItemCategory"];
+            acceptedDetailsJson: null | string;
+            acceptedTags: null | string[];
+            /** Format: int32 */
+            acceptedImportance: null | number | string;
+            /** Format: int32 */
+            acceptedInitialMastery: null | number | string;
         };
         StudyItemResponse: {
             /** Format: uuid */
@@ -2484,6 +2580,16 @@ export interface components {
             /** Format: uuid */
             proposalId: string;
             accepted: boolean;
+            acceptedPayloadJson: null | string;
+        };
+        SuggestionProposalResponse: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["ProposalStatus"];
+            proposedCommandType: null | components["schemas"]["StructuredSuggestionCommandType"];
+            proposedPayloadJson: null | string;
+            proposedAdvisoryMarkdown: null | string;
+            acceptedCommandType: null | components["schemas"]["StructuredSuggestionCommandType"];
             acceptedPayloadJson: null | string;
         };
         UpdateCVPresentationRequest: {

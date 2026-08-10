@@ -6,7 +6,7 @@ import { Field } from '../../design-system/components/Field'
 import { Icon } from '../../design-system/Icon'
 import { RestrictedMarkdown } from '../../design-system/components/RestrictedMarkdown'
 import inputStyles from '../../design-system/components/Input.module.css'
-import { deleteJobAnalysis, fetchJobAnalysis, updateJobAnalysis, type JobAnalysisResponse } from './api'
+import { analyzeJobAnalysis, deleteJobAnalysis, fetchJobAnalysis, updateJobAnalysis, type JobAnalysisResponse } from './api'
 import layout from './FormLayout.module.css'
 import styles from './JobAnalysisDetailPage.module.css'
 
@@ -16,10 +16,30 @@ type JobAnalysisDetailPageProps = {
   analysisId: string
   onBack: () => void
   onDeleted: () => void
+  onAnalyzed: (draftId: string) => void
 }
 
 function describeError(caught: unknown, fallback: string): string {
   return caught instanceof Error ? caught.message : fallback
+}
+
+function describeBlockedAnalyzeOutcome(outcomeCode: string): string {
+  switch (outcomeCode) {
+    case 'InProgress':
+      return 'An analysis is already running for this job analysis.'
+    case 'AnotherAnalysisInProgress':
+      return 'Another analysis is already in progress for your account — try again once it finishes.'
+    case 'DraftAlreadyPending':
+      return 'An analysis draft is already pending review for this job analysis.'
+    case 'DailyBudgetExceeded':
+      return "Today's AI usage budget has been reached — try again tomorrow."
+    case 'MonthlyBudgetExceeded':
+      return "This month's AI usage budget has been reached."
+    case 'FailedPreviously':
+      return 'The previous analysis attempt failed — try again.'
+    default:
+      return 'Something went wrong starting the analysis.'
+  }
 }
 
 function EditJobAnalysisForm({ analysis, onSaved, onCancel }: { analysis: JobAnalysisResponse; onSaved: () => void; onCancel: () => void }) {
@@ -72,7 +92,7 @@ function EditJobAnalysisForm({ analysis, onSaved, onCancel }: { analysis: JobAna
 // components.md AppShell destination 4. JobSource is immutable after creation (JobAnalysis
 // domain invariant) — editing here only ever touches title/notes, matching
 // UpdateJobAnalysisRequest's own shape.
-export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted }: JobAnalysisDetailPageProps) {
+export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted, onAnalyzed }: JobAnalysisDetailPageProps) {
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [analysis, setAnalysis] = useState<JobAnalysisResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -80,6 +100,7 @@ export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted }: JobAnal
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -162,6 +183,24 @@ export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted }: JobAnal
     )
   }
 
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true)
+    setActionError(null)
+    try {
+      const result = await analyzeJobAnalysis(data.id, crypto.randomUUID())
+      if (result.kind === 'started') {
+        onAnalyzed(result.analysisDraftId)
+        return
+      }
+
+      setActionError(result.kind === 'sourceNotFound' ? 'This job analysis could not be found.' : describeBlockedAnalyzeOutcome(result.outcomeCode))
+    } catch (caught) {
+      setActionError(describeError(caught, 'Something went wrong analyzing this job analysis.'))
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
   const handleDelete = async () => {
     setIsBusy(true)
     setActionError(null)
@@ -184,6 +223,9 @@ export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted }: JobAnal
       <header className={styles.header}>
         <h1 className={styles.title}>{data.title}</h1>
         <div className={styles.actions}>
+          <Button variant="primary" onClick={handleAnalyze} isLoading={isAnalyzing}>
+            Analyze
+          </Button>
           <Button variant="secondary" onClick={() => setIsEditing(true)}>
             <Icon name="pencil" /> Edit
           </Button>

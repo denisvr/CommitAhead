@@ -3,6 +3,7 @@ import { apiClient, ensureFreshSession } from './api/client'
 import { AppShell } from './design-system/components/AppShell'
 import { BookmarkMark } from './design-system/components/Brand'
 import { Button } from './design-system/components/Button'
+import { AnalysisDraftReviewPage } from './features/analysis-drafts/AnalysisDraftReviewPage'
 import { LoginForm } from './features/auth/LoginForm'
 import { InterviewNoteDetailPage } from './features/interview-notes/InterviewNoteDetailPage'
 import { InterviewNoteForm } from './features/interview-notes/InterviewNoteForm'
@@ -37,6 +38,7 @@ type View =
   | { name: 'jobAnalyses' }
   | { name: 'jobAnalysisDetail'; id: string }
   | { name: 'newJobAnalysis' }
+  | { name: 'analysisDraftReview'; id: string; returnToJobAnalysisId: string }
   | { name: 'interviewNotes' }
   | { name: 'interviewNoteDetail'; id: string }
   | { name: 'newInterviewNote' }
@@ -76,7 +78,7 @@ function describeActiveDestination(view: View): Destination {
     return view.from === 'items' ? 'items' : 'queue'
   }
 
-  if (view.name === 'jobAnalysisDetail' || view.name === 'newJobAnalysis') {
+  if (view.name === 'jobAnalysisDetail' || view.name === 'newJobAnalysis' || view.name === 'analysisDraftReview') {
     return 'jobAnalyses'
   }
 
@@ -255,10 +257,19 @@ function App() {
           analysisId={view.id}
           onBack={() => setView({ name: 'jobAnalyses' })}
           onDeleted={() => setView({ name: 'jobAnalyses' })}
+          onAnalyzed={(draftId) => setView({ name: 'analysisDraftReview', id: draftId, returnToJobAnalysisId: view.id })}
         />
       )}
       {view.name === 'newJobAnalysis' && (
         <NewJobAnalysisPage onCreated={(id) => setView({ name: 'jobAnalysisDetail', id })} onCancel={() => setView({ name: 'jobAnalyses' })} />
+      )}
+      {view.name === 'analysisDraftReview' && (
+        <AnalysisDraftReviewPage
+          key={view.id}
+          draftId={view.id}
+          onApplied={() => setView({ name: 'jobAnalysisDetail', id: view.returnToJobAnalysisId })}
+          onBack={() => setView({ name: 'jobAnalysisDetail', id: view.returnToJobAnalysisId })}
+        />
       )}
       {view.name === 'interviewNotes' && (
         <InterviewNotesListPage

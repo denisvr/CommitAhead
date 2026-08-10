@@ -7,6 +7,7 @@ export type JobRequirementResponse = components['schemas']['JobRequirementRespon
 export type JobGapResponse = components['schemas']['JobGapResponse']
 export type CreateJobAnalysisRequest = components['schemas']['CreateJobAnalysisRequest']
 export type UpdateJobAnalysisRequest = components['schemas']['UpdateJobAnalysisRequest']
+export type AnalyzeCommandResponse = components['schemas']['AnalyzeCommandResponse']
 
 async function csrfHeaders(): Promise<{ 'X-CSRF-TOKEN': string }> {
   const { data } = await apiClient.GET('/auth/csrf')
@@ -117,4 +118,34 @@ export async function deleteJobAnalysis(id: string): Promise<void> {
   if (!response.ok) {
     throw new Error(describeError(error, `Could not delete this job analysis (status ${response.status}).`))
   }
+}
+
+// Only Created (201)/AlreadyCompleted (200) return a real AnalyzeCommandResponse body — every other
+// outcome (InProgress/FailedPreviously/AnotherAnalysisInProgress/DraftAlreadyPending/budget-exceeded)
+// comes back as a 409/429 ProblemDetails with a stable Extensions.outcomeCode, not that response
+// shape (AnalysisDraftsController's AiOutcomeResponses) — so a plain `data` check can't tell them
+// apart from a genuine failure.
+export type AnalyzeOutcome =
+  | { kind: 'started'; analysisDraftId: string }
+  | { kind: 'blocked'; outcomeCode: string }
+  | { kind: 'sourceNotFound' }
+
+export async function analyzeJobAnalysis(id: string, idempotencyKey: string): Promise<AnalyzeOutcome> {
+  const headers = await csrfHeaders()
+  const { data, error, response } = await apiClient.POST('/api/job-analyses/{id}/analyze', { headers, params: { path: { id } }, body: { idempotencyKey } })
+
+  if (response.status === 404) {
+    return { kind: 'sourceNotFound' }
+  }
+
+  if (response.status === 409 || response.status === 429) {
+    const problem = error as { extensions?: { outcomeCode?: string } } | undefined
+    return { kind: 'blocked', outcomeCode: problem?.extensions?.outcomeCode ?? 'Unknown' }
+  }
+
+  if (!response.ok || !data || !data.analysisDraftId) {
+    throw new Error(describeError(error, `Could not analyze this job analysis (status ${response.status}).`))
+  }
+
+  return { kind: 'started', analysisDraftId: data.analysisDraftId }
 }

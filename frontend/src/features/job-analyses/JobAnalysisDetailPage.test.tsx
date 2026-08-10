@@ -20,7 +20,7 @@ describe('JobAnalysisDetailPage', () => {
   it('shows a not-found message for a missing analysis', async () => {
     server.use(http.get('/api/job-analyses/:id', () => new HttpResponse(null, { status: 404 })))
 
-    render(<JobAnalysisDetailPage analysisId="missing" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    render(<JobAnalysisDetailPage analysisId="missing" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={vi.fn()} />)
 
     expect(await screen.findByText('This job analysis could not be found.')).toBeInTheDocument()
   })
@@ -28,7 +28,7 @@ describe('JobAnalysisDetailPage', () => {
   it('shows the extracted text for an uploaded PDF, for verification', async () => {
     server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
 
-    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={vi.fn()} />)
 
     expect(await screen.findByText('We need a backend engineer.')).toBeInTheDocument()
     expect(screen.getByText('Uploaded PDF — posting.pdf')).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('JobAnalysisDetailPage', () => {
       }),
     )
 
-    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={vi.fn()} />)
     await userEvent.click(await screen.findByRole('button', { name: /edit/i }))
     await userEvent.clear(screen.getByLabelText('Title'))
     await userEvent.type(screen.getByLabelText('Title'), 'New title')
@@ -53,12 +53,39 @@ describe('JobAnalysisDetailPage', () => {
     expect(requestBody?.title).toBe('New title')
   })
 
+  it('starts an analysis and hands the returned draft id to onAnalyzed', async () => {
+    server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
+    server.use(http.post('/api/job-analyses/:id/analyze', () => HttpResponse.json({ outcome: 'Created', analysisDraftId: 'draft-1' }, { status: 201 })))
+    const onAnalyzed = vi.fn()
+
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={onAnalyzed} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Analyze' }))
+
+    expect(onAnalyzed).toHaveBeenCalledWith('draft-1')
+  })
+
+  it('shows an inline message instead of navigating when a draft is already pending', async () => {
+    server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
+    server.use(
+      http.post('/api/job-analyses/:id/analyze', () =>
+        HttpResponse.json({ title: 'Conflict', status: 409, extensions: { outcomeCode: 'DraftAlreadyPending' } }, { status: 409 }),
+      ),
+    )
+    const onAnalyzed = vi.fn()
+
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={onAnalyzed} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Analyze' }))
+
+    expect(await screen.findByText(/already pending review/i)).toBeInTheDocument()
+    expect(onAnalyzed).not.toHaveBeenCalled()
+  })
+
   it('deletes the analysis after confirmation', async () => {
     server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
     server.use(http.delete('/api/job-analyses/:id', () => new HttpResponse(null, { status: 204 })))
     const onDeleted = vi.fn()
 
-    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={onDeleted} />)
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={onDeleted} onAnalyzed={vi.fn()} />)
     await userEvent.click(await screen.findByRole('button', { name: /delete/i }))
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }))
 

@@ -4,6 +4,7 @@ using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Features.JobAnalyses;
 using CommitAhead.Api.Tests.StudyItems;
 using CommitAhead.Application.AnalysisDrafts;
+using CommitAhead.Domain.AnalysisDrafts;
 
 namespace CommitAhead.Api.Tests.AnalysisDrafts;
 
@@ -33,6 +34,40 @@ public class AnalysisDraftsEndpointTests
     }
 
     private static ApplyAnalysisDraftRequest EmptyDecisions() => new([], [], []);
+
+    [Fact]
+    public async Task GetById_ForAnAnalyzedJobAnalysis_ReturnsThePendingDraftWithItsProposals()
+    {
+        var (client, accessCookie, draftId) = await CreateAnalyzedJobAnalysisAsync();
+
+        var response = await client.SendGetAsync($"/api/analysis-drafts/{draftId}", accessCookie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AnalysisDraftResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        Assert.Equal(draftId, body!.Id);
+        Assert.Equal(AnalysisDraftStatus.Pending, body.Status);
+    }
+
+    [Fact]
+    public async Task GetById_WithNoSuchDraft_ReturnsNotFound()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await client.SendGetAsync($"/api/analysis-drafts/{Guid.NewGuid()}", accessCookie);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_ForAnotherOwnersDraft_ReturnsNotFound()
+    {
+        var (_, _, draftId) = await CreateAnalyzedJobAnalysisAsync();
+        var (otherClient, otherAccessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await otherClient.SendGetAsync($"/api/analysis-drafts/{draftId}", otherAccessCookie);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 
     [Fact]
     public async Task Apply_WithNoProposalsToDecide_ReturnsNoContent()
