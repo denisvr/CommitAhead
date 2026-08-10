@@ -1,15 +1,20 @@
 using CommitAhead.Application.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CommitAhead.Infrastructure.Persistence;
 
 public sealed class RlsSessionContext : IRlsSessionContext
 {
-    private readonly CommitAheadDbContext _dbContext;
+    private static readonly TimeSpan RollbackTimeout = TimeSpan.FromSeconds(5);
 
-    public RlsSessionContext(CommitAheadDbContext dbContext)
+    private readonly CommitAheadDbContext _dbContext;
+    private readonly ILogger<RlsSessionContext> _logger;
+
+    public RlsSessionContext(CommitAheadDbContext dbContext, ILogger<RlsSessionContext> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public Task RunInOwnerScopeAsync(Guid ownerUserId, Func<Task> action, CancellationToken cancellationToken) =>
@@ -42,7 +47,33 @@ public sealed class RlsSessionContext : IRlsSessionContext
         }
         catch
         {
-            await transaction.RollbackAsync(CancellationToken.None);
+            // Rollback uses its own short independent token — never the caller's, which may
+            // already be why the operation failed. ChangeTracker.Clear() always runs, even if
+            // rollback itself throws — without it, an entity mutated during the failed attempt
+            // (e.g. an AIUsageRecord whose in-memory status still reads Completed after Postgres
+            // reverted it to Reserved) would stay tracked with its stale in-memory state, and a
+            // later query on this same DbContext (failure reconciliation) could return that stale
+            // instance instead of a fresh one reflecting the database's actual post-rollback state.
+            // A rollback failure is logged with only its exception type, never a message/object,
+            // and never replaces the original exception — the bare `throw;` below always re-raises
+            // it. Mirrors EfUnitOfWork's identical rollback pattern.
+            using var rollbackCts = new CancellationTokenSource(RollbackTimeout);
+
+            try
+            {
+                await transaction.RollbackAsync(rollbackCts.Token);
+            }
+            catch (Exception rollbackException)
+            {
+                _logger.LogWarning(
+                    "Failed to roll back an owner-scoped transaction after an operation failure. RollbackExceptionType: {RollbackExceptionType}.",
+                    rollbackException.GetType().Name);
+            }
+            finally
+            {
+                _dbContext.ChangeTracker.Clear();
+            }
+
             throw;
         }
     }

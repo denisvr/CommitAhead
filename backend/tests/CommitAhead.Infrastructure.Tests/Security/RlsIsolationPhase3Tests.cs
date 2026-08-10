@@ -5,6 +5,7 @@ using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.InterviewNotes;
 using CommitAhead.Infrastructure.JobAnalyses;
 using CommitAhead.Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -124,7 +125,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersJobAnalysis_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new JobAnalysisRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -143,7 +144,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersJobAnalysis_EvenWithARawUpdateBypassingTheRepositoryFilter()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new JobAnalysisRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -165,7 +166,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersJobRequirement_TransitivelyThroughItsParentAnalysis()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new JobAnalysisRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -195,7 +196,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersInterviewNote_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new InterviewNoteRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -214,7 +215,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
     public async Task WithoutAnyOwnerContext_QueryingJobAnalysesAndInterviewNotesReturnsNoRows_EvenThoughRowsExist()
     {
         await using var setupDbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(setupDbContext);
+        var rlsSessionContext = new RlsSessionContext(setupDbContext, NullLogger<RlsSessionContext>.Instance);
         var analysisRepository = new JobAnalysisRepository(setupDbContext);
         var noteRepository = new InterviewNoteRepository(setupDbContext);
         var ownerUserId = await CreateUserAsync();
@@ -243,7 +244,7 @@ public sealed class RlsIsolationPhase3Tests : IAsyncLifetime
         await ApplyRlsScriptsAsync();
 
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var analysisRepository = new JobAnalysisRepository(dbContext);
         var noteRepository = new InterviewNoteRepository(dbContext);
         var ownerUserId = await CreateUserAsync();

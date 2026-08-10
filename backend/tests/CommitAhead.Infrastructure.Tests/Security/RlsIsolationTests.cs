@@ -3,6 +3,7 @@ using CommitAhead.Domain.StudyItems;
 using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.Persistence;
 using CommitAhead.Infrastructure.StudyItems;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -128,7 +129,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
     public async Task Owner_CanCreateReadUpdateAndDeleteTheirOwnStudyItem()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new StudyItemRepository(dbContext);
         var ownerUserId = await CreateUserAsync();
         var item = CreateStudyItem(ownerUserId, "Two Sum");
@@ -160,7 +161,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersStudyItem_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new StudyItemRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -182,7 +183,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         // database enforces isolation — a raw UPDATE with no owner_user_id filter in its WHERE
         // clause is the real test of RLS's WITH CHECK/USING behaviour, not just app-level scoping.
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new StudyItemRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -208,7 +209,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
     public async Task WithoutAnyOwnerContext_QueryingStudyItemsReturnsNoRows_EvenThoughRowsExist()
     {
         await using var setupDbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(setupDbContext);
+        var rlsSessionContext = new RlsSessionContext(setupDbContext, NullLogger<RlsSessionContext>.Instance);
         var ownerUserId = await CreateUserAsync();
         var repository = new StudyItemRepository(setupDbContext);
         await rlsSessionContext.RunInOwnerScopeAsync(
@@ -259,7 +260,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
         // row-filtered too, exactly like commitahead_app.
         var ownerUserId = await CreateUserAsync();
         await using var appDbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(appDbContext);
+        var rlsSessionContext = new RlsSessionContext(appDbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new StudyItemRepository(appDbContext);
         await rlsSessionContext.RunInOwnerScopeAsync(
             ownerUserId, () => repository.AddAsync(CreateStudyItem(ownerUserId, "Visible to the owner"), CancellationToken.None), CancellationToken.None);
@@ -288,7 +289,7 @@ public sealed class RlsIsolationTests : IAsyncLifetime
 
         // The database must still work normally afterward.
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var ownerUserId = await CreateUserAsync();
         var repository = new StudyItemRepository(dbContext);
 

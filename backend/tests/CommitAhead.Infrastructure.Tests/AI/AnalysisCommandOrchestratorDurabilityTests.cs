@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CommitAhead.Application.AI;
+using CommitAhead.Application.AIUsage;
 using CommitAhead.Application.Identity;
 using CommitAhead.Domain.AIUsage;
 using CommitAhead.Domain.EvidenceLinks;
@@ -56,7 +57,7 @@ public sealed class AnalysisCommandOrchestratorDurabilityTests : IAsyncLifetime
         new StudyItemRepository(dbContext),
         new ProfessionalProfileRepository(dbContext),
         provider,
-        new RlsSessionContext(dbContext),
+        new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance),
         new StubCurrentUser { UserId = ownerUserId },
         NullLogger<AnalyzeJobAnalysisUseCase>.Instance);
 
@@ -149,6 +150,52 @@ public sealed class AnalysisCommandOrchestratorDurabilityTests : IAsyncLifetime
         Assert.Null(failed.AnalysisDraftId);
     }
 
+    /// <summary>
+    /// Corrective-pass regression: RlsSessionContext's rollback must clear the ChangeTracker, or a
+    /// failed completion phase leaves the in-memory AIUsageRecord reading Completed after Postgres
+    /// has already reverted the row to Reserved — and ReconcileFailureAsync's later query, on the
+    /// same DbContext, would then see that stale Completed instance instead of a fresh one, throw
+    /// on EnsureReserved(), and leave the record stuck Reserved forever.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenTheCompletionPhaseFailsAfterCompleteHasMutatedTheTrackedEntity_RollsBackAndReconciliationMarksItFailed()
+    {
+        var ownerUserId = await TestUsers.CreateAsync(_dbContext);
+        var jobAnalysis = await CreateJobAnalysisAsync(_dbContext, ownerUserId);
+
+        await using var callerDbContext = NewDbContext();
+        var provider = new BlockingAIProvider();
+        provider.Release();
+
+        // Lets reservation.Complete(...) run and its SaveChanges genuinely reach Postgres (still
+        // inside the open completion transaction) before throwing — reproducing "the tracked
+        // entity now reads Completed, but the transaction that wrote it is about to roll back".
+        var decoratedUsageRepository = new ThrowOnceAfterSaveAIUsageRecordRepositoryDecorator(new AIUsageRecordRepository(callerDbContext));
+        var useCase = new AnalyzeJobAnalysisUseCase(
+            new JobAnalysisRepository(callerDbContext),
+            new AnalysisDraftRepository(callerDbContext),
+            decoratedUsageRepository,
+            new StudyItemRepository(callerDbContext),
+            new ProfessionalProfileRepository(callerDbContext),
+            provider,
+            new RlsSessionContext(callerDbContext, NullLogger<RlsSessionContext>.Instance),
+            new StubCurrentUser { UserId = ownerUserId },
+            NullLogger<AnalyzeJobAnalysisUseCase>.Instance);
+
+        var thrown = await Record.ExceptionAsync(() => useCase.ExecuteAsync(jobAnalysis.Id, "key-completion-fail", CancellationToken.None));
+        Assert.IsType<InvalidOperationException>(thrown);
+        Assert.Equal(ThrowOnceAfterSaveAIUsageRecordRepositoryDecorator.FailureMessage, thrown!.Message);
+
+        await using var reloadDbContext = NewDbContext();
+        var reloaded = await new AIUsageRecordRepository(reloadDbContext).GetByIdempotencyKeyAsync(ownerUserId, "key-completion-fail", CancellationToken.None);
+        Assert.NotNull(reloaded);
+        Assert.Equal(AIUsageRecordStatus.Failed, reloaded!.Status);
+        Assert.Null(reloaded.AnalysisDraftId);
+
+        var draftPersisted = await reloadDbContext.AnalysisDrafts.AnyAsync(draft => draft.SourceId == jobAnalysis.Id);
+        Assert.False(draftPersisted, "The completion transaction rolled back — no AnalysisDraft must remain persisted.");
+    }
+
     [Fact]
     public async Task ExecuteAsync_WhileAnotherAnalysisIsBlockedForTheSameOwner_TheSecondCallNeverInvokesTheProvider()
     {
@@ -224,5 +271,46 @@ public sealed class AnalysisCommandOrchestratorDurabilityTests : IAsyncLifetime
             throw new NotSupportedException("This test fake only exercises AnalyzeJobAnalysisAsync.");
 
         public void Release() => _release.TrySetResult();
+    }
+
+    /// <summary>
+    /// Lets a real SaveChangesAsync call genuinely reach Postgres (so reservation.Complete()'s
+    /// mutation is staged, uncommitted, in the still-open transaction) before throwing — once. A
+    /// second call (from ReconcileFailureAsync's own Fail()/SaveChangesAsync, in its own later
+    /// transaction) must succeed normally, or reconciliation itself could never persist Failed.
+    /// </summary>
+    private sealed class ThrowOnceAfterSaveAIUsageRecordRepositoryDecorator : IAIUsageRecordRepository
+    {
+        public const string FailureMessage = "Simulated failure after the completion SaveChanges genuinely reached Postgres.";
+
+        private readonly IAIUsageRecordRepository _inner;
+        private bool _hasThrown;
+
+        public ThrowOnceAfterSaveAIUsageRecordRepositoryDecorator(IAIUsageRecordRepository inner)
+        {
+            _inner = inner;
+        }
+
+        public Task<AIUsageRecord?> GetByIdempotencyKeyAsync(Guid ownerUserId, string idempotencyKey, CancellationToken cancellationToken) =>
+            _inner.GetByIdempotencyKeyAsync(ownerUserId, idempotencyKey, cancellationToken);
+
+        public Task<AIUsageRecord?> GetActiveReservationByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken) =>
+            _inner.GetActiveReservationByOwnerAsync(ownerUserId, cancellationToken);
+
+        public Task AddAsync(AIUsageRecord record, CancellationToken cancellationToken) => _inner.AddAsync(record, cancellationToken);
+
+        public async Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            await _inner.SaveChangesAsync(cancellationToken);
+
+            if (!_hasThrown)
+            {
+                _hasThrown = true;
+                throw new InvalidOperationException(FailureMessage);
+            }
+        }
+
+        public Task<decimal> GetSpentCostAsync(Guid ownerUserId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken) =>
+            _inner.GetSpentCostAsync(ownerUserId, windowStartUtc, windowEndUtc, cancellationToken);
     }
 }

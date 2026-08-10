@@ -5,6 +5,7 @@ using CommitAhead.Infrastructure.CVPresentations;
 using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.Persistence;
 using CommitAhead.Infrastructure.ProfessionalProfiles;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -123,7 +124,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersProfile_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new ProfessionalProfileRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -142,7 +143,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersProfile_EvenWithARawUpdateBypassingTheRepositoryFilter()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new ProfessionalProfileRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -164,7 +165,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersSkill_TransitivelyThroughItsParentProfile()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new ProfessionalProfileRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -192,7 +193,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersCVPresentation_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var profileRepository = new ProfessionalProfileRepository(dbContext);
         var presentationRepository = new CVPresentationRepository(dbContext);
         var ownerAId = await CreateUserAsync();
@@ -217,7 +218,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
     public async Task WithoutAnyOwnerContext_QueryingProfilesAndPresentationsReturnsNoRows_EvenThoughRowsExist()
     {
         await using var setupDbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(setupDbContext);
+        var rlsSessionContext = new RlsSessionContext(setupDbContext, NullLogger<RlsSessionContext>.Instance);
         var profileRepository = new ProfessionalProfileRepository(setupDbContext);
         var presentationRepository = new CVPresentationRepository(setupDbContext);
         var ownerUserId = await CreateUserAsync();
@@ -247,7 +248,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
         await ApplyRlsScriptsAsync();
 
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var profileRepository = new ProfessionalProfileRepository(dbContext);
         var presentationRepository = new CVPresentationRepository(dbContext);
         var ownerUserId = await CreateUserAsync();

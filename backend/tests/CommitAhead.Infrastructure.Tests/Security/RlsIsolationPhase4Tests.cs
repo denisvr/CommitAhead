@@ -6,6 +6,7 @@ using CommitAhead.Infrastructure.AIUsage;
 using CommitAhead.Infrastructure.AnalysisDrafts;
 using CommitAhead.Infrastructure.Identity;
 using CommitAhead.Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -128,7 +129,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersAnalysisDraft_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new AnalysisDraftRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -147,7 +148,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersAnalysisDraft_EvenWithARawUpdateBypassingTheRepositoryFilter()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new AnalysisDraftRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -169,7 +170,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
     public async Task Owner_CannotMutateAnotherOwnersLinkProposal_TransitivelyThroughItsParentDraft()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new AnalysisDraftRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -191,7 +192,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
     public async Task Owner_CannotReadAnotherOwnersAIUsageRecord_ThroughTheRepository()
     {
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var repository = new AIUsageRecordRepository(dbContext);
         var ownerAId = await CreateUserAsync();
         var ownerBId = await CreateUserAsync();
@@ -210,7 +211,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
     public async Task WithoutAnyOwnerContext_QueryingAnalysisDraftsAndAIUsageRecordsReturnsNoRows_EvenThoughRowsExist()
     {
         await using var setupDbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(setupDbContext);
+        var rlsSessionContext = new RlsSessionContext(setupDbContext, NullLogger<RlsSessionContext>.Instance);
         var draftRepository = new AnalysisDraftRepository(setupDbContext);
         var usageRepository = new AIUsageRecordRepository(setupDbContext);
         var ownerUserId = await CreateUserAsync();
@@ -239,7 +240,7 @@ public sealed class RlsIsolationPhase4Tests : IAsyncLifetime
         await ApplyRlsScriptsAsync();
 
         await using var dbContext = CreateAppDbContext();
-        var rlsSessionContext = new RlsSessionContext(dbContext);
+        var rlsSessionContext = new RlsSessionContext(dbContext, NullLogger<RlsSessionContext>.Instance);
         var draftRepository = new AnalysisDraftRepository(dbContext);
         var usageRepository = new AIUsageRecordRepository(dbContext);
         var ownerUserId = await CreateUserAsync();
