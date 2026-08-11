@@ -4,7 +4,8 @@ import { RatingScale } from '../../design-system/components/RatingScale'
 import { TagInput } from '../../design-system/components/TagInput'
 import inputStyles from '../../design-system/components/Input.module.css'
 import type { StudyItemProposalResponse } from './api'
-import { STUDY_ITEM_DETAIL_FIELD_SPECS, type StudyItemDetailsFields } from './payloadFields'
+import { parseStudyItemDetailsFields, STUDY_ITEM_DETAIL_FIELD_SPECS, studyItemProposedFieldSpecs, type StudyItemDetailsFields } from './payloadFields'
+import { ProposedFieldsList } from './ProposedFieldsList'
 import styles from './ProposalCard.module.css'
 
 export type StudyItemDecisionState = {
@@ -28,6 +29,9 @@ type StudyItemProposalCardProps = {
 // (title, details, tags, importance) be finalised, plus InitialMastery, which AI can never propose.
 export function StudyItemProposalCard({ proposal, decision, onChange }: StudyItemProposalCardProps) {
   const fieldSpecs = STUDY_ITEM_DETAIL_FIELD_SPECS[proposal.proposedCategory]
+  // Recomputed from the immutable proposal, not `decision.detailsFields` (the mutable in-progress
+  // edit of the accepted payload) — same reasoning as SuggestionProposalCard.
+  const proposedDetailsFields = parseStudyItemDetailsFields(proposal.proposedCategory, proposal.proposedDetailsJson)
 
   return (
     <li className={styles.card}>
@@ -35,6 +39,9 @@ export function StudyItemProposalCard({ proposal, decision, onChange }: StudyIte
         <p className={styles.commandLabel}>
           {proposal.proposedCategory} — {proposal.proposedTitle}
         </p>
+        <ProposedFieldsList fields={proposedDetailsFields} specs={studyItemProposedFieldSpecs(proposal.proposedCategory)} />
+        <p>Tags: {proposal.proposedTags.length > 0 ? proposal.proposedTags.join(', ') : '—'}</p>
+        <p>Importance: {proposal.proposedImportance}</p>
       </div>
 
       <div className={styles.decisionRow}>

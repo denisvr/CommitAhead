@@ -122,12 +122,16 @@ export async function deleteJobAnalysis(id: string): Promise<void> {
 
 // Only Created (201)/AlreadyCompleted (200) return a real AnalyzeCommandResponse body — every other
 // outcome (InProgress/FailedPreviously/AnotherAnalysisInProgress/DraftAlreadyPending/budget-exceeded)
-// comes back as a 409/429 ProblemDetails with a stable Extensions.outcomeCode, not that response
-// shape (AnalysisDraftsController's AiOutcomeResponses) — so a plain `data` check can't tell them
-// apart from a genuine failure.
+// comes back as a 409/429 ProblemDetails (AnalysisDraftsController's AiOutcomeResponses), not that
+// response shape — so a plain `data` check can't tell them apart from a genuine failure.
+//
+// ASP.NET Core's ProblemDetails serializes Extensions entries as root-level JSON properties —
+// { status, title, outcomeCode, analysisDraftId }, never nested under an "extensions" object —
+// DraftAlreadyPending specifically carries the already-existing Pending draft's Id there so a
+// caller that lost track of it (a refresh, a lost navigation state) can still recover it.
 export type AnalyzeOutcome =
   | { kind: 'started'; analysisDraftId: string }
-  | { kind: 'blocked'; outcomeCode: string }
+  | { kind: 'blocked'; outcomeCode: string; analysisDraftId: string | null }
   | { kind: 'sourceNotFound' }
 
 export async function analyzeJobAnalysis(id: string, idempotencyKey: string): Promise<AnalyzeOutcome> {
@@ -139,8 +143,8 @@ export async function analyzeJobAnalysis(id: string, idempotencyKey: string): Pr
   }
 
   if (response.status === 409 || response.status === 429) {
-    const problem = error as { extensions?: { outcomeCode?: string } } | undefined
-    return { kind: 'blocked', outcomeCode: problem?.extensions?.outcomeCode ?? 'Unknown' }
+    const problem = error as { outcomeCode?: string; analysisDraftId?: string | null } | undefined
+    return { kind: 'blocked', outcomeCode: problem?.outcomeCode ?? 'Unknown', analysisDraftId: problem?.analysisDraftId ?? null }
   }
 
   if (!response.ok || !data || !data.analysisDraftId) {

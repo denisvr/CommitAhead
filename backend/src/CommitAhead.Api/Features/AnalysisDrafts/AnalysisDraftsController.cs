@@ -14,11 +14,13 @@ public sealed class AnalysisDraftsController : ControllerBase
 {
     private readonly GetAnalysisDraftUseCase _getUseCase;
     private readonly ApplyAnalysisDraftUseCase _applyUseCase;
+    private readonly DiscardAnalysisDraftUseCase _discardUseCase;
 
-    public AnalysisDraftsController(GetAnalysisDraftUseCase getUseCase, ApplyAnalysisDraftUseCase applyUseCase)
+    public AnalysisDraftsController(GetAnalysisDraftUseCase getUseCase, ApplyAnalysisDraftUseCase applyUseCase, DiscardAnalysisDraftUseCase discardUseCase)
     {
         _getUseCase = getUseCase;
         _applyUseCase = applyUseCase;
+        _discardUseCase = discardUseCase;
     }
 
     [HttpGet("{id:guid}")]
@@ -40,6 +42,20 @@ public sealed class AnalysisDraftsController : ControllerBase
         {
             ApplyAnalysisDraftOutcome.Applied => NoContent(),
             ApplyAnalysisDraftOutcome.DraftNotFound or ApplyAnalysisDraftOutcome.SourceNotFound => NotFound(),
+            _ => AiOutcomeResponses.Conflict(outcome.ToString()),
+        };
+    }
+
+    // No rate-limit policy here either — discarding never calls the AI provider.
+    [HttpPost("{id:guid}/discard")]
+    public async Task<IActionResult> Discard(Guid id, CancellationToken cancellationToken)
+    {
+        var outcome = await _discardUseCase.ExecuteAsync(id, cancellationToken);
+
+        return outcome switch
+        {
+            DiscardAnalysisDraftOutcome.Discarded => NoContent(),
+            DiscardAnalysisDraftOutcome.DraftNotFound => NotFound(),
             _ => AiOutcomeResponses.Conflict(outcome.ToString()),
         };
     }

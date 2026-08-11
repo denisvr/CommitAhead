@@ -47,3 +47,15 @@
 .status {
   color: var(--text-muted);
 }
+
+.actions {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}

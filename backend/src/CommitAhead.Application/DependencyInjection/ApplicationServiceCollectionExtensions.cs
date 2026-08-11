@@ -76,6 +76,7 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<ApplyAnalysisDraftUseCase>();
         services.AddScoped<GetAnalysisDraftUseCase>();
+        services.AddScoped<DiscardAnalysisDraftUseCase>();
         services.AddScoped<DeleteEvidenceLinkUseCase>();
 
         // Safe to register now that AnthropicAIProvider gives IAIProvider a real Infrastructure

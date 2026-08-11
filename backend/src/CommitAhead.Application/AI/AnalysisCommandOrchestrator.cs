@@ -97,7 +97,10 @@ internal sealed class AnalysisCommandOrchestrator
             case ReservationPhaseOutcome.Replay:
                 return MapReplay(phase.ReplayRecord!);
             case ReservationPhaseOutcome.DraftAlreadyPending:
-                return new AnalyzeCommandResult(AnalyzeCommandOutcome.DraftAlreadyPending, null);
+                // Carries the existing Pending draft's Id so a caller that lost track of it (a
+                // refresh, a lost navigation state) can still recover and review it, instead of
+                // being told a draft exists somewhere with no way back to it.
+                return new AnalyzeCommandResult(AnalyzeCommandOutcome.DraftAlreadyPending, phase.PendingDraftId);
             case ReservationPhaseOutcome.DailyBudgetExceeded:
                 return new AnalyzeCommandResult(AnalyzeCommandOutcome.DailyBudgetExceeded, null);
             case ReservationPhaseOutcome.MonthlyBudgetExceeded:
@@ -169,7 +172,7 @@ internal sealed class AnalysisCommandOrchestrator
         var pendingDraft = await _draftRepository.GetPendingBySourceAsync(ownerUserId, sourceType, sourceId, cancellationToken);
         if (pendingDraft is not null)
         {
-            return ReservationPhaseResult.ForOutcome(ReservationPhaseOutcome.DraftAlreadyPending);
+            return ReservationPhaseResult.ForDraftAlreadyPending(pendingDraft.Id);
         }
 
         var descriptor = _aiProvider.Describe(commandType);
@@ -245,16 +248,19 @@ internal sealed class AnalysisCommandOrchestrator
     }
 
     private sealed record ReservationPhaseResult(
-        ReservationPhaseOutcome Outcome, AIUsageRecord? ReplayRecord, AIUsageRecord? Reservation, AiProviderDescriptor? Descriptor, AiCallLimits? Limits)
+        ReservationPhaseOutcome Outcome, AIUsageRecord? ReplayRecord, Guid? PendingDraftId, AIUsageRecord? Reservation, AiProviderDescriptor? Descriptor, AiCallLimits? Limits)
     {
         public static ReservationPhaseResult ForReplay(AIUsageRecord replayRecord) =>
-            new(ReservationPhaseOutcome.Replay, replayRecord, null, null, null);
+            new(ReservationPhaseOutcome.Replay, replayRecord, null, null, null, null);
+
+        public static ReservationPhaseResult ForDraftAlreadyPending(Guid pendingDraftId) =>
+            new(ReservationPhaseOutcome.DraftAlreadyPending, null, pendingDraftId, null, null, null);
 
         public static ReservationPhaseResult ForOutcome(ReservationPhaseOutcome outcome) =>
-            new(outcome, null, null, null, null);
+            new(outcome, null, null, null, null, null);
 
         public static ReservationPhaseResult ForReservation(AIUsageRecord reservation, AiProviderDescriptor descriptor, AiCallLimits limits) =>
-            new(ReservationPhaseOutcome.Reserved, null, reservation, descriptor, limits);
+            new(ReservationPhaseOutcome.Reserved, null, null, reservation, descriptor, limits);
     }
 
     private static AnalyzeCommandResult MapReplay(AIUsageRecord record) => record.Status switch

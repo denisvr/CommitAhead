@@ -64,12 +64,12 @@ describe('JobAnalysisDetailPage', () => {
     expect(onAnalyzed).toHaveBeenCalledWith('draft-1')
   })
 
-  it('shows an inline message instead of navigating when a draft is already pending', async () => {
+  it('shows an inline message instead of navigating when a draft is already pending with no recoverable id', async () => {
     server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
+    // Real ASP.NET ProblemDetails serializes Extensions entries at the JSON root, not nested
+    // under "extensions" — this reproduces the actual wire shape, not the old incorrect one.
     server.use(
-      http.post('/api/job-analyses/:id/analyze', () =>
-        HttpResponse.json({ title: 'Conflict', status: 409, extensions: { outcomeCode: 'DraftAlreadyPending' } }, { status: 409 }),
-      ),
+      http.post('/api/job-analyses/:id/analyze', () => HttpResponse.json({ title: 'Conflict', status: 409, outcomeCode: 'DraftAlreadyPending' }, { status: 409 })),
     )
     const onAnalyzed = vi.fn()
 
@@ -78,6 +78,50 @@ describe('JobAnalysisDetailPage', () => {
 
     expect(await screen.findByText(/already pending review/i)).toBeInTheDocument()
     expect(onAnalyzed).not.toHaveBeenCalled()
+  })
+
+  it('recovers an already-pending draft by navigating to its returned id, from the real root-level ProblemDetails shape', async () => {
+    server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
+    server.use(
+      http.post('/api/job-analyses/:id/analyze', () =>
+        HttpResponse.json({ title: 'Conflict', status: 409, outcomeCode: 'DraftAlreadyPending', analysisDraftId: 'existing-draft' }, { status: 409 }),
+      ),
+    )
+    const onAnalyzed = vi.fn()
+
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={onAnalyzed} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Analyze' }))
+
+    expect(onAnalyzed).toHaveBeenCalledWith('existing-draft')
+  })
+
+  it('retries an analysis attempt with the same idempotency key after a simulated transport failure', async () => {
+    server.use(http.get('/api/job-analyses/:id', () => HttpResponse.json(UPLOADED_ANALYSIS)))
+    const receivedKeys: string[] = []
+    let attempt = 0
+    server.use(
+      http.post('/api/job-analyses/:id/analyze', async ({ request }) => {
+        const body = (await request.json()) as { idempotencyKey: string }
+        receivedKeys.push(body.idempotencyKey)
+        attempt += 1
+        if (attempt === 1) {
+          return HttpResponse.error()
+        }
+
+        return HttpResponse.json({ outcome: 'Created', analysisDraftId: 'draft-1' }, { status: 201 })
+      }),
+    )
+    const onAnalyzed = vi.fn()
+
+    render(<JobAnalysisDetailPage analysisId="a1" onBack={vi.fn()} onDeleted={vi.fn()} onAnalyzed={onAnalyzed} />)
+    const analyzeButton = await screen.findByRole('button', { name: 'Analyze' })
+    await userEvent.click(analyzeButton)
+    await screen.findByRole('alert')
+    await userEvent.click(analyzeButton)
+
+    expect(onAnalyzed).toHaveBeenCalledWith('draft-1')
+    expect(receivedKeys).toHaveLength(2)
+    expect(receivedKeys[0]).toBe(receivedKeys[1])
   })
 
   it('deletes the analysis after confirmation', async () => {

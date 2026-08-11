@@ -3,7 +3,16 @@ import { Field } from '../../design-system/components/Field'
 import { RestrictedMarkdown } from '../../design-system/components/RestrictedMarkdown'
 import inputStyles from '../../design-system/components/Input.module.css'
 import type { SuggestionProposalResponse } from './api'
-import { JOB_GAP_MATCH_LEVELS, JOB_GAP_SEVERITIES, JOB_REQUIREMENT_KINDS, JOB_REQUIREMENT_PRIORITIES, type SuggestionFields } from './payloadFields'
+import {
+  JOB_GAP_MATCH_LEVELS,
+  JOB_GAP_SEVERITIES,
+  JOB_REQUIREMENT_KINDS,
+  JOB_REQUIREMENT_PRIORITIES,
+  parseSuggestionFields,
+  SUGGESTION_FIELD_SPECS,
+  type SuggestionFields,
+} from './payloadFields'
+import { ProposedFieldsList } from './ProposedFieldsList'
 import styles from './ProposalCard.module.css'
 
 export type SuggestionDecisionState = { decided: boolean; accepted: boolean; fields: SuggestionFields }
@@ -18,6 +27,10 @@ type SuggestionProposalCardProps = {
 // choice, and — only when Accepted — the complete editable final payload.
 export function SuggestionProposalCard({ proposal, decision, onChange }: SuggestionProposalCardProps) {
   const isAdvisory = proposal.proposedCommandType == null
+  // Recomputed from the immutable proposal on every render — never from `decision.fields`, which
+  // is the mutable in-progress edit of the accepted payload and must not double as "what AI
+  // actually proposed."
+  const proposedFields = proposal.proposedCommandType && proposal.proposedPayloadJson ? parseSuggestionFields(proposal.proposedCommandType, proposal.proposedPayloadJson) : {}
 
   return (
     <li className={styles.card}>
@@ -25,7 +38,10 @@ export function SuggestionProposalCard({ proposal, decision, onChange }: Suggest
         {isAdvisory ? (
           <RestrictedMarkdown>{proposal.proposedAdvisoryMarkdown ?? ''}</RestrictedMarkdown>
         ) : (
-          <p className={styles.commandLabel}>{proposal.proposedCommandType}</p>
+          <>
+            <p className={styles.commandLabel}>{proposal.proposedCommandType}</p>
+            <ProposedFieldsList fields={proposedFields} specs={SUGGESTION_FIELD_SPECS[proposal.proposedCommandType!]} />
+          </>
         )}
       </div>
 

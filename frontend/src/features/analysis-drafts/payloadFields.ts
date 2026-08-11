@@ -41,6 +41,26 @@ export function buildSuggestionPayloadJson(commandType: StructuredSuggestionComm
   }
 }
 
+export type FieldSpec = { key: string; label: string; multiline?: boolean }
+
+/** Labels the flat fields parseSuggestionFields produces, for the always-visible read-only "Proposed" block. */
+export const SUGGESTION_FIELD_SPECS: Record<StructuredSuggestionCommandType, FieldSpec[]> = {
+  AddJobRequirement: [
+    { key: 'text', label: 'Text' },
+    { key: 'kind', label: 'Kind' },
+    { key: 'priority', label: 'Priority' },
+    { key: 'sourceExcerpt', label: 'Source excerpt' },
+  ],
+  AddJobGap: [
+    { key: 'matchLevel', label: 'Match level' },
+    { key: 'severity', label: 'Severity' },
+    { key: 'rationale', label: 'Rationale' },
+  ],
+  UpdateCVPresentationSummary: [{ key: 'summaryMarkdown', label: 'Summary' }],
+  AddInterviewGap: [{ key: 'text', label: 'Text' }],
+  AddInterviewLesson: [{ key: 'text', label: 'Text' }],
+}
+
 export const JOB_REQUIREMENT_KINDS = ['Technical', 'Behavioural', 'Experience', 'Domain', 'Language', 'Other']
 export const JOB_REQUIREMENT_PRIORITIES = ['Required', 'Preferred']
 export const JOB_GAP_MATCH_LEVELS = ['Partial', 'Missing', 'Unknown']
@@ -118,6 +138,11 @@ export const STUDY_ITEM_DETAIL_FIELD_SPECS: Record<StudyItemCategory, StudyItemD
     { key: 'Result', label: 'Result', input: 'textarea' },
     { key: 'Reflection', label: 'Reflection (optional)', input: 'textarea' },
   ],
+}
+
+/** Same field set as STUDY_ITEM_DETAIL_FIELD_SPECS, shaped for the read-only ProposedFieldsList. */
+export function studyItemProposedFieldSpecs(category: StudyItemCategory): FieldSpec[] {
+  return STUDY_ITEM_DETAIL_FIELD_SPECS[category].map((spec) => ({ key: spec.key, label: spec.label, multiline: spec.input === 'multiline' }))
 }
 
 export function buildStudyItemDetailsJson(category: StudyItemCategory, fields: StudyItemDetailsFields): string {

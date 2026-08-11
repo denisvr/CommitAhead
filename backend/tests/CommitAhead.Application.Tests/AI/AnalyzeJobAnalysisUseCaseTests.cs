@@ -230,6 +230,10 @@ public class AnalyzeJobAnalysisUseCaseTests
 
         Assert.Equal(AnalyzeCommandOutcome.DraftAlreadyPending, result.Outcome);
         Assert.Equal(0, provider.CallCount);
+
+        // Carries the existing draft's Id so a caller that lost track of it (a refresh, a lost
+        // navigation state) can still recover and review it, instead of a dead-end conflict.
+        Assert.Equal(pendingDraft.Id, result.AnalysisDraftId);
     }
 
     [Fact]

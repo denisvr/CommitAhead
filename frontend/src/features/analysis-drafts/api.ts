@@ -54,3 +54,11 @@ export async function applyAnalysisDraft(id: string, body: ApplyAnalysisDraftReq
     throw new Error(describeError(error, `Could not apply this analysis draft (status ${response.status}).`))
   }
 }
+
+export async function discardAnalysisDraft(id: string): Promise<void> {
+  const headers = await csrfHeaders()
+  const { error, response } = await apiClient.POST('/api/analysis-drafts/{id}/discard', { headers, params: { path: { id } } })
+  if (!response.ok) {
+    throw new Error(describeError(error, `Could not discard this analysis draft (status ${response.status}).`))
+  }
+}

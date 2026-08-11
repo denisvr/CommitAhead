@@ -10,13 +10,28 @@ namespace CommitAhead.Api.Features.AnalysisDrafts;
 /// </summary>
 internal static class AiOutcomeResponses
 {
-    public static ObjectResult Conflict(string outcomeCode) => new(new ProblemDetails
+    /// <summary>
+    /// <paramref name="analysisDraftId"/> is set only for DraftAlreadyPending — the one Conflict
+    /// outcome with a real draft to recover (a caller that lost track of it, e.g. a refresh, can
+    /// still navigate back to review it). ASP.NET Core serializes ProblemDetails.Extensions entries
+    /// as root-level JSON properties, not nested under an "extensions" object.
+    /// </summary>
+    public static ObjectResult Conflict(string outcomeCode, Guid? analysisDraftId = null)
     {
-        Status = StatusCodes.Status409Conflict,
-        Title = "The request could not be completed in the draft's current state.",
-        Extensions = { ["outcomeCode"] = outcomeCode },
-    })
-    { StatusCode = StatusCodes.Status409Conflict };
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = "The request could not be completed in the draft's current state.",
+            Extensions = { ["outcomeCode"] = outcomeCode },
+        };
+
+        if (analysisDraftId is not null)
+        {
+            problemDetails.Extensions["analysisDraftId"] = analysisDraftId;
+        }
+
+        return new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status409Conflict };
+    }
 
     public static ObjectResult BudgetExceeded(AnalyzeCommandOutcome outcome, HttpResponse response)
     {

@@ -94,6 +94,7 @@ public sealed class InterviewNotesController : ControllerBase
             AnalyzeCommandOutcome.Created => StatusCode(StatusCodes.Status201Created, response),
             AnalyzeCommandOutcome.AlreadyCompleted => Ok(response),
             AnalyzeCommandOutcome.DailyBudgetExceeded or AnalyzeCommandOutcome.MonthlyBudgetExceeded => AiOutcomeResponses.BudgetExceeded(result.Outcome, Response),
+            AnalyzeCommandOutcome.DraftAlreadyPending => AiOutcomeResponses.Conflict(result.Outcome.ToString(), result.AnalysisDraftId),
             _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
         };
     }

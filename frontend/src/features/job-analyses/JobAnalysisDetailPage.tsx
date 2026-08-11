@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '../../design-system/components/Button'
 import { Chip } from '../../design-system/components/Chip'
 import { EmptyState } from '../../design-system/components/EmptyState'
@@ -101,6 +101,11 @@ export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted, onAnalyze
   const [actionError, setActionError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  // Held across a transport/5xx retry — the server may have still completed a request whose
+  // response never arrived, so a same-key retry replays it instead of double-charging. Reset to
+  // null the moment any real server outcome comes back (including FailedPreviously, which per
+  // ADR-0014 must retry with a brand-new key, never the same one).
+  const analyzeIdempotencyKeyRef = useRef<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -186,9 +191,22 @@ export function JobAnalysisDetailPage({ analysisId, onBack, onDeleted, onAnalyze
   const handleAnalyze = async () => {
     setIsAnalyzing(true)
     setActionError(null)
+    // Reused across a caught transport/5xx retry so a definitive server outcome for the same
+    // attempt is never double-charged; cleared once any real outcome comes back below.
+    if (!analyzeIdempotencyKeyRef.current) {
+      analyzeIdempotencyKeyRef.current = crypto.randomUUID()
+    }
+
     try {
-      const result = await analyzeJobAnalysis(data.id, crypto.randomUUID())
+      const result = await analyzeJobAnalysis(data.id, analyzeIdempotencyKeyRef.current)
+      analyzeIdempotencyKeyRef.current = null
+
       if (result.kind === 'started') {
+        onAnalyzed(result.analysisDraftId)
+        return
+      }
+
+      if (result.kind === 'blocked' && result.outcomeCode === 'DraftAlreadyPending' && result.analysisDraftId) {
         onAnalyzed(result.analysisDraftId)
         return
       }
