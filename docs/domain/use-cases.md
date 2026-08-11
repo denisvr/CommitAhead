@@ -41,7 +41,8 @@ Key user journeys. Each maps to one or more application use case classes in the 
    - **StructuredSuggestions** — accept to add JobRequirements or JobGaps via domain commands; reject to discard.
    - **LinkProposals** — accept to create EvidenceLinks from this JobAnalysis to existing StudyItems.
    - **StudyItemProposals** — accept to create new StudyItems not yet in the queue.
-5. Apply the draft (`ApplyAnalysisDraft`) with exactly one Accepted/Rejected decision per proposal and a complete final payload for every accepted actionable proposal. Original AI payloads remain immutable; accepted payloads, effects, final statuses, and the draft transition execute atomically.
+5. Apply the draft (`ApplyAnalysisDraft`) with exactly one Accepted/Rejected decision per proposal and a complete final payload for every accepted actionable proposal. Original AI payloads remain immutable; accepted payloads, effects, final statuses, and the draft transition execute atomically. Alternatively, discard the entire draft (`DiscardAnalysisDraft`, Pending → Discarded only) — this also resolves a draft with zero proposals, which Apply can otherwise leave with nothing to decide.
+6. Re-fetch the draft at any time (`GetAnalysisDraft`) — works for a Pending draft mid-review, or an Applied/Discarded one as a read-only audit record. If a lost navigation state or a refresh loses track of a still-Pending draft, retrying the analyze trigger on the same source returns that draft's Id in the conflict response instead of a dead end.
 
 ---
 
