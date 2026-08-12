@@ -171,6 +171,19 @@ actual script. Fixed, still within this ADR's own hosting-neutral scope:
 - **Reject placeholder credentials.** `setup-production-db.ps1` now refuses to bootstrap a
   "production-like" database still holding `.env.production.example`'s own `change_me` values for
   any required credential.
+- **Atomic, fail-safe restore.** `restore-production-db.ps1` runs `pg_restore` inside
+  `--single-transaction --exit-on-error`, so any error rolls the whole restore back instead of
+  leaving the database half-restored. The script also detects whether `app` was actually running
+  *before* it touched anything (`docker compose ps app --format json`), and restarts it afterward
+  only if all three hold: the restore succeeded, a post-restore `commitahead_app` connection check
+  succeeded, and it was running before. If the restore or that verification fails, the app is left
+  stopped and the script exits non-zero — restarting an app against a database that failed to
+  restore, or whose grants came back wrong, would be worse than leaving it down. The temporary dump
+  file inside the container is always removed in cleanup, whether the restore succeeded or not,
+  without masking whichever failure actually occurred. Verified live in three scenarios: a happy
+  path (app running before, restored, restarted), an already-stopped path (restored, correctly left
+  stopped), and a deliberately corrupted dump (rolled back cleanly, app left stopped, exit 1, data
+  untouched).
 
 None of this changes the ADR's own boundary: still no hosting provider, no TLS infrastructure, no
 centralized logging, no cloud secrets management, no automated cloud backups.

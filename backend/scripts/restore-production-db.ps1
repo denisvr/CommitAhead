@@ -3,9 +3,11 @@
 # Copies the binary pg_dump custom-format file into the container with `docker compose cp` (a raw
 # file copy, never a PowerShell text stream - see backup-production-db.ps1 for why that matters:
 # accented/non-ASCII user content must round-trip byte-for-byte) and restores it with `pg_restore`
-# run INSIDE the container. `--clean --if-exists` drops existing objects (matched by name) before
-# recreating them, so this works against either an empty database or one that already has the
-# current schema.
+# run INSIDE the container, wrapped in `--single-transaction --exit-on-error` - an atomic
+# all-or-nothing restore. Any error rolls the whole thing back instead of leaving the database
+# half-restored (some tables recreated from the backup, others still from before). `--clean
+# --if-exists` (inside that same transaction) drops existing objects before recreating them, so
+# this works against either an empty database or one that already has the current schema.
 #
 # Ownership and grants are restored exactly as dumped (backup-production-db.ps1 deliberately omits
 # --no-owner/--no-privileges) - pg_restore, running as the postgres superuser, reassigns table
@@ -17,9 +19,12 @@
 # with no separate step to reapply 002_rls_users.sql/003-007 afterward.
 #
 # Stops the app for the duration of the restore (a live connection could otherwise hold locks that
-# block `--clean`'s DROP statements, or read from a table mid-DROP/CREATE) and restarts it
-# afterward - `docker compose up -d app` rather than `start`, so it also works if the app container
-# was never created in the first place.
+# block `--clean`'s DROP statements, or read from a table mid-DROP/CREATE). Detects whether the app
+# was actually running BEFORE this script touched anything, and restarts it afterward only if all
+# three hold: the restore succeeded, the post-restore commitahead_app connection check succeeded,
+# AND it was running before. If restore or verification fails, the app is deliberately left
+# stopped and the script exits non-zero - restarting an app pointed at a database that failed to
+# restore (or whose grants came back wrong) would be worse than leaving it down.
 #
 # Usage: backend/scripts/restore-production-db.ps1 -BackupFile "backups/commitahead-<timestamp>.dump"
 #
@@ -38,8 +43,7 @@ Push-Location $backendDir
 
 try {
     if (-not (Test-Path $BackupFile)) {
-        Write-Error "Backup file not found: $BackupFile"
-        exit 1
+        throw "Backup file not found: $BackupFile"
     }
 
     $composeFile = Join-Path $repoRootDir "docker-compose.prod.yml"
@@ -52,35 +56,75 @@ try {
     $timestamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmssfff")
     $containerTempPath = "/tmp/commitahead-restore-$timestamp.dump"
 
-    Write-Host "Stopping the app so it holds no connections during the restore..."
+    # Detect BEFORE touching anything, so a stack where the app was never started (or was already
+    # stopped for some other reason) stays that way afterward, rather than this script starting it
+    # as a side effect.
+    $wasRunning = $false
+    try {
+        $psJson = docker compose @composeArgs ps app --format json 2>$null
+        if ($psJson) {
+            $status = $psJson | ConvertFrom-Json
+            $wasRunning = ($status.State -eq "running")
+        }
+    }
+    catch {
+        $wasRunning = $false
+    }
+
+    Write-Host "Stopping the app (currently running: $wasRunning) so it holds no connections during the restore..."
     docker compose @composeArgs stop app
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if ($LASTEXITCODE -ne 0) { throw "Failed to stop the app service (exit code $LASTEXITCODE)." }
+
+    $restoreSucceeded = $false
+    $verificationSucceeded = $false
+    $failure = $null
 
     try {
         Write-Host "Copying $BackupFile into the db container..."
         docker compose @composeArgs cp $BackupFile "db:${containerTempPath}"
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to copy the backup file into the db container (exit code $LASTEXITCODE)." }
 
-        Write-Host "Restoring (pg_restore --clean --if-exists, run inside the container)..."
-        docker compose @composeArgs exec -T db pg_restore -U postgres -d commitahead --clean --if-exists --no-comments $containerTempPath
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Write-Host "Restoring (pg_restore --single-transaction --exit-on-error --clean --if-exists, run inside the container)..."
+        docker compose @composeArgs exec -T db pg_restore -U postgres -d commitahead --single-transaction --exit-on-error --clean --if-exists --no-comments $containerTempPath
+        if ($LASTEXITCODE -ne 0) { throw "pg_restore failed (exit code $LASTEXITCODE) - the transaction was rolled back; leaving the app stopped." }
+        $restoreSucceeded = $true
 
-        docker compose @composeArgs exec -T db rm -f $containerTempPath
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Write-Host "Verifying the database still accepts connections as commitahead_app..."
+        docker compose @composeArgs exec -T db psql -U commitahead_app -d commitahead -c "SELECT 1;" | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Restore finished, but commitahead_app could not connect afterward (check ownership/grants) - leaving the app stopped." }
+        $verificationSucceeded = $true
+    }
+    catch {
+        $failure = $_
     }
     finally {
-        Write-Host "Restarting the app..."
-        docker compose @composeArgs up -d app
+        # Always attempt to remove the temp dump from the container, whether the restore above
+        # succeeded or not - but a cleanup failure here must never mask the real restore/
+        # verification result captured in $failure above, so it's only ever a warning.
+        docker compose @composeArgs exec -T db rm -f $containerTempPath 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Could not remove the temporary dump file ($containerTempPath) from the container (exit code $LASTEXITCODE)."
+        }
     }
 
-    Write-Host "Verifying the database still accepts connections as commitahead_app..."
-    docker compose @composeArgs exec -T db psql -U commitahead_app -d commitahead -c "SELECT 1;" | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Restore finished, but commitahead_app could not connect afterward - check ownership/grants."
-        exit 1
+    if ($failure) {
+        throw $failure
+    }
+
+    if ($wasRunning) {
+        Write-Host "Restarting the app (it was running before the restore)..."
+        docker compose @composeArgs up -d app
+        if ($LASTEXITCODE -ne 0) { throw "Restore and verification succeeded, but restarting the app failed (exit code $LASTEXITCODE)." }
+    }
+    else {
+        Write-Host "App was not running before the restore - leaving it stopped."
     }
 
     Write-Host "Restore complete."
+}
+catch {
+    Write-Error $_
+    exit 1
 }
 finally {
     Pop-Location

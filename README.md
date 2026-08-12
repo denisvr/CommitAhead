@@ -167,14 +167,20 @@ routinely includes non-ASCII text, e.g. Portuguese), `backend/scripts/backup-pro
 run entirely inside the `db` container, copied out as a raw binary file with `docker compose cp`
 to a timestamped `backend/backups/*.dump` (gitignored). Never passes the dump's bytes through
 PowerShell's text pipeline/encoding, so it round-trips accented characters exactly. Restoring
-(`pg_restore --clean --if-exists`, also run inside the container) intentionally preserves
-ownership/grants exactly as dumped — the dump omits neither, so it reassigns tables back to
-`commitahead_migrator` (required for future EF migrations) and grants back to `commitahead_app`
-(required for the running app), not just the row data; RLS policies come back automatically as
-ordinary table metadata, no separate re-apply step. The script stops the `app` service for the
-duration of the restore and restarts it (`docker compose up -d app`) afterward, then verifies
-`commitahead_app` can still connect. Not automated, not encrypted, not on any retention schedule —
-that's still the deferred cloud-deployment work below.
+(`pg_restore --single-transaction --exit-on-error --clean --if-exists`, also run inside the
+container) is an atomic all-or-nothing operation — any error rolls the whole restore back rather
+than leaving the database half-restored — and intentionally preserves ownership/grants exactly as
+dumped, reassigning tables back to `commitahead_migrator` (required for future EF migrations) and
+grants back to `commitahead_app` (required for the running app), not just the row data; RLS
+policies come back automatically as ordinary table metadata, no separate re-apply step. The script
+detects whether `app` was actually running *before* touching anything, stops it for the duration of
+the restore, and restarts it afterward **only if** the restore succeeded, the post-restore
+`commitahead_app` connection check succeeded, **and** it was running beforehand — otherwise the app
+is left stopped and the script exits non-zero, rather than pointing a running app at a database
+that failed to restore correctly. The temporary dump file inside the container is always removed in
+cleanup, whether the restore succeeded or not, without masking whichever failure actually occurred.
+Not automated, not encrypted, not on any retention schedule — that's still the deferred
+cloud-deployment work below.
 
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
 hosting platform, secrets management, Data Protection key encryption at rest, automated/encrypted
