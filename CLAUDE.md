@@ -14,7 +14,12 @@ Private, invite-only interview preparation app — data is isolated per user by 
 ## Hard constraints
 - No MediatR, no Minimal APIs, no generic `IUseCase<T>` interfaces
 - AI commands produce `AnalysisDraft`s requiring per-proposal human confirmation — AI never writes to domain entities directly
-- Zero real AI calls in CI — `FakeAIProvider` only in automated tests (absolute rule)
+- Zero real *external* AI calls in any automated test (absolute rule). Layers 1–6 use
+  `FakeAIProvider` or stubbed HTTP. **Layer 7 (E2E) is the one documented exception to the
+  mechanism, not the rule**: it runs the real `AnthropicAIProvider` against a deterministic local
+  HTTP stub inside the E2E stack, because `FakeAIProvider` lives in test assemblies and cannot be
+  reached from the production image. Nothing leaves the machine either way — see
+  `docs/testing/strategy.md` §7.6
 - All Supabase keys and the AI provider key are backend-only
 - `EffectiveScore` is computed on-the-fly in the ranked-list query — not persisted on `StudyItem`
 
@@ -108,11 +113,15 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 Before creating or changing anything under `e2e/`, the Playwright config, or the E2E Docker stack,
 read **`docs/testing/strategy.md` Layer 7** (the normative contract — journeys, environment
 isolation, E2E-only auth, locators, external-call rules) and **`e2e/README.md`** (the operational
-runbook). Layer 7 wins if the two ever disagree. Its non-negotiables: exactly four journeys, a
-fully isolated and non-persistent E2E stack that never touches the dev or local-production
-database, E2E-only authentication that fails closed outside the `E2E` environment, `workers: 1`,
-user-facing locators with no `data-testid`, no `waitForTimeout`, and zero real Supabase, Storage,
-or AI calls.
+runbook). Layer 7 wins if the two ever disagree. Its non-negotiables: exactly four journeys, each
+passing independently and in any order (numeric filename prefixes are organizational, never
+load-bearing); a fully isolated and non-persistent E2E stack that never touches the dev or
+local-production database; E2E-only authentication that fails closed outside the `E2E` environment,
+minted per journey by a test-scoped in-memory fixture that runs after the database reset — no setup
+project and no `storageState` file; `workers: 1`; user-facing locators (role, label, text) with
+`data-testid` only as a documented last resort where no meaningful accessible locator exists; no
+CSS/XPath and no `waitForTimeout`; zero real Supabase or Storage calls, and no real AI provider
+call — the local AI stub above is how E2E satisfies that, not a loophole in it.
 
 ## CI quality gates (every PR — all blocking)
 
@@ -128,7 +137,8 @@ or AI calls.
 **Security scans:**
 - `dotnet list package --vulnerable` + `npm audit --audit-level=high` (direct + transitive)
 - Gitleaks secret scanning
-- **Zero real AI calls** — `FakeAIProvider` enforced
+- **Zero real AI calls** — `FakeAIProvider` enforced (PR gates cover layers 1–6 only; Layer 7's
+  local-AI-stub exception is post-merge)
 
 **Tests:**
 - Domain unit tests

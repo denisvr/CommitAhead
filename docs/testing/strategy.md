@@ -13,7 +13,17 @@
 | E2E | Playwright, Chromium only (planned — not implemented; Layer 7 is the normative contract) |
 | AI adapter | xUnit, stubbed HTTP/SDK responses |
 
-**Absolute rule**: zero real AI calls in any automated test. `FakeAIProvider` in all automated contexts.
+**Absolute rule**: zero real *external* AI calls in any automated test — no test, at any layer, may
+reach a real provider endpoint. How that rule is satisfied differs by layer, and both forms are
+compliant:
+
+- **Layers 1–6** use `FakeAIProvider` (use-case and API tests) or stubbed HTTP responses (the AI
+  adapter's own tests). No real `IAIProvider` implementation makes a network call.
+- **Layer 7 (E2E)** is the deliberate exception to the *mechanism*, not to the rule: it runs the
+  real `AnthropicAIProvider` against a **deterministic local HTTP stub** inside the E2E stack.
+  `FakeAIProvider` lives in test assemblies and cannot be reached from the production image, and
+  E2E's whole purpose is to exercise the real deployable artifact — so the provider is redirected,
+  not replaced. Nothing leaves the machine. See Layer 7 §7.6.
 
 ---
 
@@ -205,15 +215,31 @@ justified — see "Sources and project decisions" at the end of this layer.
 
 Four journeys, no more. Each maps to a stated MVP completion criterion
 (`docs/product/brief.md`); a proposed fifth journey is a request to change that list, not an
-addition to it. Because the runner is pinned to `workers: 1` (§7.7), Playwright executes spec files
-in alphabetical order, so the numeric filename prefixes below are load-bearing and must be kept.
+addition to it.
+
+The numeric filename prefixes are **organizational only — never load-bearing**. They keep the four
+journeys in a readable order that matches this table; they carry no dependency. Every journey must
+pass **on its own and in any order**, with no state inherited from another. `workers: 1` (§7.7) is
+a concurrency limit protecting a shared database, not an ordering contract — a journey that only
+passes after another has run is a defect in that journey, and reordering or renaming the files must
+never change the result.
 
 | # | File | Journey | MVP criterion it proves |
 |---|---|---|---|
-| 1 | `001-authenticated-access.spec.ts` | An unauthenticated visitor gets the login screen and cannot reach protected content; an authenticated session renders the app shell and `GET /api/me`; logout ends the session | Security controls in place |
+| 1 | `001-authenticated-access.spec.ts` | An unauthenticated visitor gets the login screen and cannot reach protected content; a test-issued session is consumed and authorizes the app shell and `GET /api/me`; logout ends the session | Security controls in place |
 | 2 | `002-study-queue-ranking.spec.ts` | Create a StudyItem → submit a StudyReview → the study queue reflects the new ranking | The study queue ranks items correctly |
 | 3 | `003-job-analysis-draft.spec.ts` | Create a pasted-text JobAnalysis → Analyze → review the draft → accept some proposals and reject others → Apply → the accepted effects are visible on the source | AI commands produce valid AnalysisDrafts and apply accepted proposals |
 | 4 | `004-cv-presentation-export.spec.ts` | Edit a CVPresentation's selections → export → a PDF is downloaded | At least one CVPresentation can be edited and exported |
+
+**What journey 1 does and does not prove.** It verifies four things: that an unauthenticated
+visitor is kept out, that a *test-issued* session is accepted and consumed by the real
+authentication pipeline, that authorization then admits the user to protected content, and that
+logout ends the session. It says **nothing** about real Supabase magic-link delivery — no email is
+sent, requested, or received. That boundary stays where it already is: the OTP request itself is
+covered by `SupabaseAuthClientTests` (Layer 3, asserting the exact `redirect_to` query parameter
+and request body) and the callback/PKCE exchange by Layer 4 API tests, with real end-to-end
+delivery confirmed by manual verification against the live Supabase project. E2E must not be read
+as evidence that login works for a real user.
 
 Journey 3 uses a **pasted-text** JobAnalysis, never a PDF upload. Upload goes through Supabase
 Storage, which §7.6 forbids; the upload path is already covered end-to-end by Layer 3/4 tests
@@ -282,23 +308,33 @@ The contract:
 - The E2E signing key is a test-fixture value with no production meaning. It must never be reused
   as, or derived from, any real secret.
 
-**`storageState` handling** — Playwright's docs are explicit that a saved browser-state file holds
-cookies that can impersonate the account, and must be gitignored, never committed. For CommitAhead
-that file holds a genuine (if E2E-only) session cookie, so:
+**A test-scoped authenticated fixture — no setup project, no state files.** Playwright's usual
+pattern authenticates once in a `setup` project and persists `storageState` to disk. CommitAhead
+does **not** use that pattern. Instead, a test-scoped fixture mints a fresh session for each
+journey and keeps it in memory:
 
-- Saved state lives under `e2e/.auth/` and **must be gitignored before the first run**.
-- Prefer writing it under the project's `outputDir`, which Playwright clears before every run.
+- **Fresh session per journey.** The fixture mints a new session for every journey that asks for
+  one. This is required, not merely tidier: `AuthenticationServiceCollectionExtensions` enforces a
+  15-minute effective access-token lifetime server-side against the token's `iat` claim,
+  independently of cookie lifetime, so a session minted once per run would go stale part-way
+  through a suite and produce spurious 401s in whichever journey ran last.
+- **In memory only.** The session lives in the test's own `BrowserContext` for the duration of that
+  test. Nothing is written to disk — **no `e2e/.auth/` directory, no `storageState` file, no
+  `storageState` path in the config.** There is therefore no state file to gitignore, expire,
+  refresh, or accidentally commit, which removes the entire class of risk Playwright's own docs
+  warn about for saved browser state.
+- **Ordering: reset, then authenticate.** The fixture depends on the database reset (§7.4) and runs
+  after it. Reset truncates and re-seeds the E2E user; a session minted before that would reference
+  a row the reset then deletes. Any implementation must express this as a real fixture dependency,
+  not as two independent hooks that happen to run in a convenient order.
+- **UI Mode needs no manual step.** Because there is no `setup` project, Playwright's caveat that
+  UI Mode skips setup projects by default simply does not apply. Pressing run in UI Mode
+  authenticates exactly like a terminal run, with no "remember to re-run the auth setup" ritual and
+  no stale-state failure mode. Preserving this property is part of the contract: reintroducing a
+  setup project or a state file would reintroduce that manual step.
 
-**A CommitAhead-specific expiry constraint** the official pattern does not anticipate:
-`AuthenticationServiceCollectionExtensions` enforces a 15-minute effective access-token lifetime
-server-side against the token's `iat` claim, independently of cookie lifetime. A single
-`storageState` minted once by one global `setup` project therefore **goes stale part-way through a
-suite** and would produce spurious 401s in whichever journey happens to run last. The session must
-be re-minted per journey file rather than once per run. This is a deliberate deviation from the
-single-setup-project model, forced by our own session hardening.
-
-Journey 1's unauthenticated half uses the documented empty-state form
-(`test.use({ storageState: { cookies: [], origins: [] } })`) rather than a separate browser launch.
+Journey 1 exercises the unauthenticated case simply by not requesting the authenticated fixture,
+then obtains a session within the test to verify it is consumed and authorizes access.
 
 ### 7.4 Database reset between journeys
 
@@ -308,8 +344,10 @@ Every journey starts from an identical, known database state.
   configuration a journey needs). It must **not** drop the schema or the database: RLS policies and
   the EF migrations-history table must survive, or subsequent journeys would run against an
   unprotected or unmigrated database and still appear to pass.
-- Reset runs before each journey file. With `workers: 1` this is safe by construction; under any
-  future parallelism it would not be (§7.7).
+- Reset runs before each journey, and **before authentication** — the authenticated fixture (§7.3)
+  depends on it, so the E2E user row exists and is freshly seeded before any session is minted
+  against it. With `workers: 1` this is safe by construction; under any future parallelism it would
+  not be (§7.7).
 - Respawn — used at Layer 3 — is deliberately not used here: it is a .NET library with no reach
   from the Playwright process. The reset is SQL executed against the E2E stack's own container.
 - Migrations and all RLS scripts are applied once at stack bring-up, not per journey.
@@ -325,11 +363,13 @@ scratch-equivalent state via truncate-and-reseed, with the persistence layer's o
   `getByLabel`, `getByText`, then the remaining user-facing queries. This continues an existing
   convention rather than introducing one — the frontend currently contains **zero** `data-testid`
   attributes, and the Vitest suites already query exclusively by role and label.
-- **`data-testid` is not permitted.** If an element cannot be addressed by role, accessible name,
-  or label, the defect is the component's accessibility, and the fix belongs in the component —
-  which the design-system contract in `CLAUDE.md` already requires. Playwright's docs present test
-  IDs as a legitimate option; declining them is a CommitAhead decision, justified by that existing
-  accessibility requirement.
+- **`data-testid` is a documented last resort, not a default.** Reach for it only when no
+  meaningful accessible locator exists — and first check whether the real problem is a missing
+  accessible name, in which case the fix belongs in the component, as the design-system contract in
+  `CLAUDE.md` already requires. When a test ID genuinely is the right answer (an element with no
+  semantic role and no user-visible text that could sensibly name it), add it deliberately and
+  leave a brief comment saying why the accessible route was not available. A test ID added to avoid
+  fixing a locator, or to dodge a flaky query, is a defect.
 - CSS and XPath selectors are not permitted, per Playwright's own guidance that they couple tests
   to DOM structure.
 - **Web-first, auto-retrying assertions only** (`toBeVisible`, `toHaveText`, `toHaveValue`, …),
@@ -350,15 +390,18 @@ No E2E run may make a real call to Supabase Auth, Supabase Storage, or any AI pr
 same absolute rule as the rest of the suite, applied to a stack that — unlike
 `WebApplicationFactory` — has real network access.
 
-- **AI.** Two facts constrain the design: `FakeAIProvider` exists only in test assemblies and is
-  not reachable from the production image, and `AnthropicAIProvider`'s base address is currently
-  **hardcoded** to `https://api.anthropic.com/`. The preferred resolution is to make that base
-  address configurable and run a deterministic stub AI service inside the E2E Compose stack: it
-  keeps every test double out of the production assembly, satisfies architecture rule 5, and
-  exercises the real adapter's request construction and deserialisation. The alternative — an
-  E2E-gated `IAIProvider` registration swapped in at the composition root — is acceptable only if
-  it carries the same fail-closed startup guard as §7.3. Whichever is chosen, the requirement is
-  the same: deterministic AI responses, and no egress to a real provider.
+- **AI — the E2E exception, stated plainly.** The absolute rule is *zero real external AI calls*,
+  and E2E honours it. But E2E does **not** use `FakeAIProvider`: that class exists only in test
+  assemblies, unreachable from the production image, and swapping in a test double would leave the
+  one layer that runs the real deployable artifact untested precisely where it matters. Instead,
+  **E2E runs the real `AnthropicAIProvider` against a deterministic local HTTP stub** inside the
+  E2E Compose stack. Nothing leaves the machine, responses are fixed, and the adapter's real
+  request construction, Structured Outputs handling, and deserialisation are exercised end to end
+  — coverage no fake can provide. This requires making the adapter's base address configurable; it
+  is currently **hardcoded** to `https://api.anthropic.com/`, and that change is a prerequisite.
+  The alternative — an E2E-gated `IAIProvider` registration swapped in at the composition root — is
+  a fallback only, acceptable solely if it carries the same fail-closed startup guard as §7.3, and
+  it forfeits the adapter coverage above.
 - **Enforce it, don't assert it.** The app container must have no route to the public internet in
   the E2E stack (internal Compose network, external egress limited to the stub). "We didn't
   configure a real key" is not evidence; an unroutable network is.
@@ -370,15 +413,15 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
 
 - **`workers: 1`, serial, from the start.** Playwright's CI guidance already recommends a single
   worker for stability; here it is also a correctness requirement, because all four journeys share
-  one database, one seeded owner, and one truncate-based reset. Note that Playwright's docs
-  discourage `test.describe.serial` in favour of isolated tests — that guidance concerns
-  interdependent tests within a file, and does not conflict with running independent journey files
-  one at a time; each journey must still be independently runnable in isolation.
+  one database, one seeded owner, and one truncate-based reset. It bounds *concurrency* only — it
+  is not an ordering guarantee and must never be relied on as one (§7.1). Playwright's docs
+  discourage `test.describe.serial` in favour of isolated tests, and that preference is honoured
+  here: journeys are independent, not chained.
 - **The path to parallelism, when it is wanted:** provision one owner account per worker keyed on
-  `parallelIndex` (stable across worker restarts, unlike `workerIndex`), give each its own
-  `storageState`, and replace the global truncate with per-owner cleanup. Until that exists,
-  raising `workers` above 1 will produce cross-journey interference that looks like flakiness.
-  Sharding is out of scope: it is a fix for suites far larger than four journeys.
+  `parallelIndex` (stable across worker restarts, unlike `workerIndex`), mint each worker's session
+  through the same in-memory fixture, and replace the global truncate with per-owner cleanup. Until
+  that exists, raising `workers` above 1 will produce cross-journey interference that looks like
+  flakiness. Sharding is out of scope: it is a fix for suites far larger than four journeys.
 - **Chromium only for the MVP** (`devices['Desktop Chrome']`). Cross-browser rendering risk is
   covered by the design-system component tests; this is a single-user, invite-only application, and
   a browser matrix would multiply E2E runtime for a risk this project does not carry. Revisit only
@@ -452,13 +495,13 @@ source consulted and what CommitAhead decided in light of it.
 |---|---|
 | [Isolation / browser contexts](https://playwright.dev/docs/browser-contexts) | Per-test context isolation is accepted as-is; it does not cover our shared database, so §7.4 adds truncate-and-reseed between journeys |
 | [Best practices](https://playwright.dev/docs/best-practices) | Adopted: user-facing locators, no CSS/XPath, controlled test data, don't test third parties (§7.5, §7.6) |
-| [Authentication](https://playwright.dev/docs/auth) | `storageState` mechanism adopted; UI-based sign-in **rejected** (magic link is external and would be a real Supabase call). Deviation: session re-minted per journey, because our 15-minute `iat` cap staleness-expires a once-per-run state (§7.3) |
-| [Locators](https://playwright.dev/docs/locators) | Priority order adopted verbatim; `getByTestId` **declined** — the frontend has zero `data-testid` and accessible names are already a design-system requirement (§7.5) |
+| [Authentication](https://playwright.dev/docs/auth) | Setup project **and** `storageState` files both **rejected**; a test-scoped in-memory fixture mints a fresh session per journey instead, forced by our 15-minute `iat` cap and keeping UI Mode free of any manual auth step. UI-based sign-in also rejected — the magic link is external and would be a real Supabase call (§7.3) |
+| [Locators](https://playwright.dev/docs/locators) | Priority order adopted verbatim; `getByTestId` permitted only as a documented last resort where no meaningful accessible locator exists (§7.5) |
 | [Assertions](https://playwright.dev/docs/test-assertions) · [Actionability](https://playwright.dev/docs/actionability) | Web-first auto-retrying assertions mandatory; fixed sleeps banned outright, which is stricter than the docs' own framing (§7.5) |
 | [Test retries](https://playwright.dev/docs/test-retries) · [Trace viewer](https://playwright.dev/docs/trace-viewer) · [Videos](https://playwright.dev/docs/videos) · [Screenshots](https://playwright.dev/docs/screenshots) | `retries` 0 local / 1 CI (fewer than the generated config's 2); `on-first-retry` trace, `only-on-failure` screenshot, `retain-on-failure` video (§7.7) |
 | [Parallelism](https://playwright.dev/docs/test-parallel) · [CI](https://playwright.dev/docs/ci) | `workers: 1` adopted — recommended for CI stability, and required here by shared-database state. Per-worker account isolation documented as the prerequisite for ever raising it (§7.7) |
-| [Test projects / dependencies](https://playwright.dev/docs/test-projects#dependencies) | Setup-project dependency model used for auth wiring, subject to the per-journey re-mint in §7.3 |
-| [Fixtures](https://playwright.dev/docs/test-fixtures) · [Page object models](https://playwright.dev/docs/pom) | Fixtures preferred over hooks; POMs deferred until duplication justifies them — a project restraint, not an official position (§7.8) |
+| [Test projects / dependencies](https://playwright.dev/docs/test-projects#dependencies) | Project-level `dependencies` **not used for authentication** — auth is a test-scoped fixture, so there is no setup project to depend on (§7.3) |
+| [Fixtures](https://playwright.dev/docs/test-fixtures) · [Page object models](https://playwright.dev/docs/pom) | Fixtures preferred over hooks, and used as the authentication mechanism itself with an explicit reset→auth dependency (§7.3, §7.4); POMs deferred until duplication justifies them — a project restraint, not an official position (§7.8) |
 | [API testing](https://playwright.dev/docs/api-testing) · [APIRequestContext](https://playwright.dev/docs/api/class-apirequestcontext) | Used for out-of-scope state only; CSRF token and `page.request` cookie-sharing behaviour called out as CommitAhead specifics (§7.9) |
 | [Downloads](https://playwright.dev/docs/downloads) | Download event + `suggestedFilename()` + magic-byte check only; deep PDF assertions stay with PdfPig (§7.10) |
 | [Docker](https://playwright.dev/docs/docker) · [Browsers](https://playwright.dev/docs/browsers) | Chromium-only install; pinned official image with `--ipc=host` if containerised (§7.7) |

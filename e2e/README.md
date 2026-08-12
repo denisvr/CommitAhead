@@ -41,8 +41,10 @@ that it *cannot* reach your real data, and those protections are not optional.
    run mentions `commitahead` without the suffix, it is aimed at the wrong database.
 4. **Back up before troubleshooting near the production-like stack.** If you need real data intact,
    `backend/scripts/backup-production-db.ps1` first — see the main [README](../README.md).
-5. **Never commit `e2e/.auth/`.** It holds a live session cookie for the E2E user. It must be
-   gitignored before the first run.
+5. **There is no auth state file to protect.** Sessions are minted per journey by a test-scoped
+   fixture and kept in memory (`docs/testing/strategy.md` §7.3) — no `e2e/.auth/`, no
+   `storageState` on disk. If you find yourself adding one, you are leaving the contract and
+   creating a committable session cookie.
 
 ---
 
@@ -126,8 +128,10 @@ locator picker. Best first stop when a journey fails:
 npx playwright test --ui
 ```
 
-> UI mode does not run `setup` projects by default. Since authentication comes from a setup step,
-> run the auth setup manually from time to time in UI mode, or re-run it if you start seeing 401s.
+UI Mode needs **no manual authentication step**. Playwright normally skips `setup` projects in UI
+Mode, which is why suites built on a saved `storageState` require you to re-run auth by hand — this
+suite has no setup project and no state file, so each run mints its own session exactly as a
+terminal run does.
 
 **Debug mode** — Playwright Inspector, headed, with test timeouts disabled so you can step:
 
@@ -163,8 +167,9 @@ Re-run only what failed last time:
 npx playwright test --last-failed
 ```
 
-Each journey must be runnable on its own. If one only passes as part of the full run, that is a
-defect in the journey, not a way to run the suite.
+Each journey must pass **on its own and in any order**. The `001`–`004` prefixes are organizational
+only — they keep the files in a readable order and carry no dependency. If a journey only passes as
+part of the full run, that is a defect in the journey, not a way to run the suite.
 
 ---
 
@@ -181,6 +186,9 @@ docker compose -f docker-compose.e2e.yml -p commitahead-e2e exec -T db \
 The reset **truncates business tables and re-seeds the E2E user**. It does not drop the schema or
 the database — RLS policies and the EF migrations-history table must survive, or later journeys
 would run unprotected or unmigrated and still appear to pass.
+
+Reset always runs **before** authentication: the authenticated fixture depends on it, so the E2E
+user row is freshly seeded before any session is minted against it.
 
 If you need a genuinely clean rebuild (schema included), tear the stack down and bring it back up:
 
@@ -223,22 +231,28 @@ when it broke".
 the browser context closes. To keep one for inspection, save it explicitly inside the test with
 `download.saveAs(...)` — do not rely on `download.path()` surviving the run.
 
-`test-results/`, `playwright-report/`, and `e2e/.auth/` are all build output. None of them belong
-in git.
+`test-results/` and `playwright-report/` are build output and do not belong in git. There is no
+auth-state directory to exclude — sessions never touch disk.
 
 ---
 
 ## Troubleshooting
 
-**Every request 401s partway through a run.** Expected symptom of the 15-minute access-token cap
-(`docs/testing/strategy.md` §7.3): the API rejects tokens older than 15 minutes against their `iat`
-claim, regardless of cookie lifetime. The session must be re-minted per journey, not once per run.
-If a long run started failing only in the last journey, this is why.
+**Every request 401s partway through a run, or only in the last journey.** Symptom of the
+15-minute access-token cap (`docs/testing/strategy.md` §7.3): the API rejects tokens older than 15
+minutes against their `iat` claim, regardless of cookie lifetime. Under this contract each journey
+mints its own fresh session, so seeing this means a session is being shared across journeys —
+check that the authenticated fixture is test-scoped and has not been widened to worker scope or
+replaced by a saved state file.
 
 **401s immediately, from the first test.** The E2E auth hook is not enabled. Check that the app
 container has `ASPNETCORE_ENVIRONMENT=E2E` and the E2E signing key configured. If the container
 refuses to start altogether, that is the intended fail-closed guard: the signing key is set while
 the environment is *not* `E2E`.
+
+**A journey 401s or can't find its data when run alone.** The reset→authenticate ordering is
+broken. Reset must run first and the session must be minted after it, expressed as a fixture
+dependency rather than two independent hooks.
 
 **Tests pass alone but fail together.** Almost always leaked state. Confirm the reset actually ran
 between journeys, and that no journey depends on another's data. Do not "fix" it by raising
@@ -247,6 +261,12 @@ between journeys, and that no journey depends on another's data. Do not "fix" it
 **A test only passes when you add a wait.** The wait is hiding a race. Fixed sleeps are banned;
 replace it with a web-first assertion on the thing you were really waiting for (an element becoming
 visible, text changing) so Playwright retries properly.
+
+**Journey 3 hangs or fails at the Analyze step.** The local AI stub is not reachable. E2E runs the
+real `AnthropicAIProvider` pointed at a deterministic stub inside the stack — not `FakeAIProvider`
+(`docs/testing/strategy.md` §7.6) — so check the stub service is up and the adapter's configured
+base address points at it. It must never point at a real provider; the app container has no route
+to the public internet by design.
 
 **Chromium crashes or dies mid-run in Docker.** Missing `--ipc=host`. Playwright documents this as
 a cause of Chromium running out of memory in containers.
