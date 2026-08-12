@@ -23,9 +23,15 @@ public sealed class SupabaseAuthClient : ISupabaseAuthClient
 
     public async Task InitiateMagicLinkAsync(string email, string codeChallenge, CancellationToken cancellationToken)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "auth/v1/otp")
+        // GoTrue's /otp endpoint reads redirect_to from the query string, not the JSON body — a
+        // redirect_to field inside the body is simply ignored. Uri.EscapeDataString (RFC 3986
+        // percent-encoding), not WebUtility.UrlEncode (application/x-www-form-urlencoded, which
+        // would encode space as '+' rather than %20) — matches this codebase's existing precedent
+        // for encoding a value into a URI (SupabaseStorageClient.BuildObjectPath).
+        var encodedCallbackUrl = Uri.EscapeDataString(_callbackUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"auth/v1/otp?redirect_to={encodedCallbackUrl}")
         {
-            Content = JsonContent.Create(new OtpRequest(email, false, codeChallenge, "s256", _callbackUrl)),
+            Content = JsonContent.Create(new OtpRequest(email, false, codeChallenge, "s256")),
         };
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -82,8 +88,7 @@ public sealed class SupabaseAuthClient : ISupabaseAuthClient
         [property: JsonPropertyName("email")] string Email,
         [property: JsonPropertyName("create_user")] bool CreateUser,
         [property: JsonPropertyName("code_challenge")] string CodeChallenge,
-        [property: JsonPropertyName("code_challenge_method")] string CodeChallengeMethod,
-        [property: JsonPropertyName("redirect_to")] string RedirectTo);
+        [property: JsonPropertyName("code_challenge_method")] string CodeChallengeMethod);
 
     private sealed record PkceTokenRequest(
         [property: JsonPropertyName("auth_code")] string AuthCode,

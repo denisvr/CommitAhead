@@ -101,10 +101,12 @@ Also in the Supabase dashboard: Authentication → URL Configuration → add **b
 this project actually uses — `http://localhost:5120/auth/callback` (local `dotnet run`) and
 `http://localhost:8080/auth/callback` (the local Docker stack below, ADR-0021) — to the redirect
 allow-list, and confirm Authentication → Sign In / Providers → "Allow new users to sign up" stays
-off (ADR-0006). Each backend environment sends its own URL as `redirect_to` on the magic-link
-request (`Auth:CallbackUrl` configuration — `appsettings.Development.json` for local dev,
-`Auth__CallbackUrl` in `docker-compose.prod.yml` for Docker); it is trusted backend configuration
-only, never derived from a request's Origin/Referer.
+off (ADR-0006). Each backend environment sends its own URL as a percent-encoded `redirect_to` query
+parameter on the `/auth/v1/otp` call (`Auth:CallbackUrl` configuration — `appsettings.Development.json`
+for local dev, `Auth__CallbackUrl` in `docker-compose.prod.yml` for Docker) — GoTrue reads
+`redirect_to` only from the query string, never from the JSON body, so it must go there, not
+alongside the OTP/PKCE payload. It is trusted backend configuration only, never derived from a
+request's Origin/Referer.
 
 ## Production (Local Docker)
 
@@ -159,11 +161,20 @@ on the machine running that script. `backend/scripts/build-migration-bundle.ps1`
 self-contained EF migration bundle (`backend/artifacts/efbundle`, gitignored) for wherever that
 assumption stops holding — a real deployment target without the .NET SDK installed.
 
-Since this stack is meant to be used extensively, `backend/scripts/backup-production-db.ps1` /
-`restore-production-db.ps1` give it a real, working manual backup command now — a plain-text
-`pg_dump --format=plain --clean --if-exists` to a timestamped `backend/backups/*.sql` file
-(gitignored), restorable with a plain `psql` invocation. Not automated, not encrypted, not on any
-retention schedule — that's still the deferred cloud-deployment work below.
+Since this stack is meant to be used extensively (and its `professional_profiles`/etc. content
+routinely includes non-ASCII text, e.g. Portuguese), `backend/scripts/backup-production-db.ps1` /
+`restore-production-db.ps1` give it a real, lossless manual backup command — `pg_dump --format=custom`
+run entirely inside the `db` container, copied out as a raw binary file with `docker compose cp`
+to a timestamped `backend/backups/*.dump` (gitignored). Never passes the dump's bytes through
+PowerShell's text pipeline/encoding, so it round-trips accented characters exactly. Restoring
+(`pg_restore --clean --if-exists`, also run inside the container) intentionally preserves
+ownership/grants exactly as dumped — the dump omits neither, so it reassigns tables back to
+`commitahead_migrator` (required for future EF migrations) and grants back to `commitahead_app`
+(required for the running app), not just the row data; RLS policies come back automatically as
+ordinary table metadata, no separate re-apply step. The script stops the `app` service for the
+duration of the restore and restarts it (`docker compose up -d app`) afterward, then verifies
+`commitahead_app` can still connect. Not automated, not encrypted, not on any retention schedule —
+that's still the deferred cloud-deployment work below.
 
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
 hosting platform, secrets management, Data Protection key encryption at rest, automated/encrypted

@@ -127,8 +127,11 @@ than a real limit, and the roadmap's own claim of a manual backup command didn't
 actual script. Fixed, still within this ADR's own hosting-neutral scope:
 
 - **Configurable, per-environment Supabase callback.** `AuthOptions.CallbackUrl` (new, bound from
-  the "Auth" configuration section) is sent as `redirect_to` on the magic-link `/auth/v1/otp`
-  request (`SupabaseAuthClient.InitiateMagicLinkAsync`) — trusted backend configuration only, never
+  the "Auth" configuration section) is sent as a percent-encoded `redirect_to` **query parameter**
+  on the magic-link `/auth/v1/otp` request (`SupabaseAuthClient.InitiateMagicLinkAsync`) — GoTrue
+  reads `redirect_to` only from the query string, never the JSON body, so an earlier version of
+  this fix that put it in the OTP/PKCE JSON payload was silently ignored by Supabase; caught and
+  corrected before it shipped further. Sourced only from trusted backend configuration, never
   derived from a request's Origin/Referer. Local `dotnet run` uses
   `http://localhost:5120/auth/callback` (`appsettings.Development.json`); the Docker stack uses
   `http://localhost:8080/auth/callback` (`docker-compose.prod.yml`'s `Auth__CallbackUrl`). Both must
@@ -146,10 +149,25 @@ actual script. Fixed, still within this ADR's own hosting-neutral scope:
 - **Real container resource limits.** `app`'s `deploy.resources.limits` (1 CPU / 1 GiB) makes the
   threat model's own claim — "container memory/CPU limits are the real backstop" against a runaway,
   uncancellable PDF parse — actually true for this stack, not just asserted in prose.
-- **A working manual backup command, not a promise of one.** `backend/scripts/backup-production-db.ps1`
-  / `restore-production-db.ps1` (plain-text `pg_dump --format=plain --clean --if-exists`, restorable
-  with `psql`) replace what had been an unfulfilled reference to "a simple manual `pg_dump`" in
-  `docs/roadmap.md`/`docs/tbd.md` — corrected wording, or a real command, never both drifting apart.
+- **A working manual backup command, not a promise of one — and a lossless, ownership-safe one.**
+  `backend/scripts/backup-production-db.ps1` / `restore-production-db.ps1` replace what had been an
+  unfulfilled reference to "a simple manual `pg_dump`" in `docs/roadmap.md`/`docs/tbd.md`. The first
+  real version used `pg_dump --format=plain` piped through PowerShell and written with
+  `Out-File -Encoding ascii` — deliberately lossy for anything outside ASCII, which this project's
+  own user-entered content (e.g. Portuguese profile text) routinely is; caught before it shipped
+  further and replaced with `pg_dump --format=custom` run entirely inside the `db` container,
+  copied out as a raw binary file with `docker compose cp` (never through a PowerShell text stream).
+  Restore (`pg_restore --clean --if-exists`, also run inside the container) deliberately keeps
+  ownership/grants in the dump rather than passing `--no-owner`/`--no-privileges` — this backs up
+  and restores against the *same* stack's own roles, so preserving them is what puts tables back
+  under `commitahead_migrator` (required for future EF migrations) and grants back on
+  `commitahead_app` (required for the app to run) after a restore, not just the row data; RLS
+  policies come back automatically as ordinary table metadata. The script stops `app` for the
+  restore and restarts it (`docker compose up -d app`) afterward, then verifies `commitahead_app`
+  can still connect. Verified with a real round trip containing Portuguese accented text
+  ("Experiência, educação, São Paulo"): backed up, mutated the row, restored, confirmed the exact
+  original text came back (not the mutation), confirmed ownership/grants were byte-for-byte
+  identical to before the round trip, and confirmed the app container was healthy afterward.
 - **Reject placeholder credentials.** `setup-production-db.ps1` now refuses to bootstrap a
   "production-like" database still holding `.env.production.example`'s own `change_me` values for
   any required credential.

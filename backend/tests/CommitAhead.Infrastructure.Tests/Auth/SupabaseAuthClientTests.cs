@@ -20,11 +20,14 @@ public class SupabaseAuthClientTests
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal("/auth/v1/otp", handler.LastRequest.RequestUri!.AbsolutePath);
+        // redirect_to must be a query parameter, percent-encoded — GoTrue's /otp endpoint reads it
+        // only from there, never from the JSON body.
+        Assert.Equal("redirect_to=https%3A%2F%2Fconfigured.example%2Fauth%2Fcallback", handler.LastRequest.RequestUri.Query.TrimStart('?'));
         Assert.Contains("\"email\":\"owner@example.com\"", handler.LastRequestBody);
         Assert.Contains("\"create_user\":false", handler.LastRequestBody);
         Assert.Contains("\"code_challenge\":\"challenge-value\"", handler.LastRequestBody);
         Assert.Contains("\"code_challenge_method\":\"s256\"", handler.LastRequestBody);
-        Assert.Contains("\"redirect_to\":\"https://configured.example/auth/callback\"", handler.LastRequestBody);
+        Assert.DoesNotContain("redirect_to", handler.LastRequestBody);
     }
 
     [Fact]

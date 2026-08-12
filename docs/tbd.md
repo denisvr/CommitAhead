@@ -99,9 +99,11 @@ deployments?
 **Status:** target policy decided — 30-day retention, quarterly restore test — but automated,
 encrypted, retention-policy-enforcing implementation deferred to the cloud-deployment stage (needs
 real Supabase Postgres + Storage coverage a local Docker stack can't exercise). For now,
-`backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local stack a real
-manual command (`pg_dump --format=plain --clean --if-exists`, restorable with `psql`) — not
-automated, not encrypted, not on a retention schedule.
+`backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local stack a real,
+lossless manual command (`pg_dump --format=custom`/`pg_restore --clean --if-exists`, run inside the
+container and copied in/out as a raw binary file via `docker compose cp` — never through
+PowerShell's text pipeline, so non-ASCII content round-trips exactly) — not automated, not
+encrypted, not on a retention schedule.
 **Question:** How are the decided retention/cadence actually implemented once a hosting platform and Supabase plan are chosen?
 **Constraints:** Must cover PostgreSQL and private Storage; restored data must remain access-controlled and test artifacts must be deleted
 **Depends on:** Supabase plan and hosting platform

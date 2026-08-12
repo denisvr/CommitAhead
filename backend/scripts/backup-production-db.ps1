@@ -5,15 +5,21 @@
 # whenever a hosting platform is chosen. This is the "simple usable command" for the local Docker
 # stack in the meantime, since that stack is meant to be used extensively before then.
 #
-# Plain-text SQL dump (--format=plain), not pg_dump's binary custom format - piping a binary
-# stream through PowerShell's pipeline/redirection risks silent corruption (encoding/newline
-# translation); plain SQL text has no such risk and restores with a plain `psql` invocation.
-# Written as ASCII on purpose (see restore-production-db.ps1) - this schema's own DDL/seed data is
-# ASCII-only; a non-ASCII value (e.g. an accented name) would be replaced with '?' in the dump, an
-# accepted trade-off for a simple local-only command.
+# pg_dump's binary custom format (--format=custom), produced entirely INSIDE the container and
+# copied out with `docker compose cp` - a raw binary file copy, not a byte stream passed through
+# PowerShell's pipeline/redirection. An earlier version of this script piped a text-mode dump
+# through PowerShell text encoding (Out-File -Encoding ascii); that is lossy for anything outside
+# ASCII (accented characters in user-entered profile text, e.g. Portuguese "experiencia") and was
+# never actually lossless. This version never touches the dump's bytes in PowerShell at all.
+#
+# Deliberately does NOT pass --no-owner/--no-privileges: this backs up and restores against the
+# SAME stack's own roles (commitahead_migrator/commitahead_app), so the dump's recorded ownership
+# and grants are exactly what a correct restore needs - restore-production-db.ps1 relies on this to
+# put table ownership back on commitahead_migrator (required for future EF migrations to work) and
+# grants back on commitahead_app (required for the running app to work), not just the data.
 #
 # Usage: backend/scripts/backup-production-db.ps1
-# Output: backend/backups/commitahead-<UTC timestamp>.sql (gitignored)
+# Output: backend/backups/commitahead-<UTC timestamp>.dump (gitignored, pg_dump custom format)
 #
 # NOTE: keep this file plain ASCII - see setup-local-db.ps1's header for why.
 
@@ -35,14 +41,18 @@ try {
     New-Item -ItemType Directory -Force -Path $backupsDir | Out-Null
 
     $timestamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
-    $outputFile = Join-Path $backupsDir "commitahead-$timestamp.sql"
+    $outputFile = Join-Path $backupsDir "commitahead-$timestamp.dump"
+    $containerTempPath = "/tmp/commitahead-backup-$timestamp.dump"
 
-    # --env-file (when present) avoids compose's own "variable not set" stderr warnings while
-    # loading the file - see bootstrap-production-user.ps1 for why those can otherwise turn into a
-    # spurious terminating error on Windows PowerShell 5.1.
-    Write-Host "Dumping the production-like database to $outputFile..."
-    docker compose @composeArgs exec -T db pg_dump -U postgres -d commitahead --format=plain --no-owner --no-privileges --clean --if-exists |
-        Out-File -FilePath $outputFile -Encoding ascii
+    Write-Host "Dumping the production-like database (inside the container)..."
+    docker compose @composeArgs exec -T db pg_dump -U postgres -d commitahead --format=custom -f $containerTempPath
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    Write-Host "Copying the dump out as a raw binary file to $outputFile..."
+    docker compose @composeArgs cp "db:${containerTempPath}" $outputFile
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    docker compose @composeArgs exec -T db rm -f $containerTempPath
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Backup written to $outputFile. Restore with:"
