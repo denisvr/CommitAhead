@@ -76,10 +76,16 @@ CommitAhead/
 │       ├── CommitAhead.Application.Tests/
 │       ├── CommitAhead.Infrastructure.Tests/
 │       └── CommitAhead.Api.Tests/
-└── frontend/                          ← React 19 + Vite app — a separate application, not a
-    ├── package.json                     Clean Architecture layer; builds to frontend/dist
-    ├── src/
-    └── tests (colocated with src, e.g. src/App.test.tsx)
+├── frontend/                          ← React 19 + Vite app — a separate application, not a
+│   ├── package.json                     Clean Architecture layer; builds to frontend/dist
+│   ├── src/
+│   └── tests (colocated with src, e.g. src/App.test.tsx)
+├── docker-compose.e2e.yml             ← isolated E2E stack: app + PostgreSQL + local AI stub
+└── e2e/                               ← Playwright suite (planned — not implemented; own
+    ├── playwright.config.ts             package.json, never in the app dependency tree)
+    ├── scripts/                       ← run-full.mjs (lifecycle), reset-db.mjs (only reset path)
+    ├── support/                       ← reset.sql, ai-stub/
+    └── tests/                         ← fixtures/e2e-test.ts, journeys/001–004
 ```
 
 `frontend/dist` is never committed and never copied into `backend/src`. It is copied into the
@@ -122,6 +128,24 @@ project and no `storageState` file; `workers: 1`; user-facing locators (role, la
 `data-testid` only as a documented last resort where no meaningful accessible locator exists; no
 CSS/XPath and no `waitForTimeout`; zero real Supabase or Storage calls, and no real AI provider
 call — the local AI stub above is how E2E satisfies that, not a loophole in it.
+
+The canonical layout and per-file ownership are fixed in strategy.md §7.11 — `docker-compose.e2e.yml`
+owns the services, `playwright.config.ts` owns execution config only, `tests/fixtures/e2e-test.ts`
+owns reset-then-authenticate, `support/reset.sql` owns the deterministic SQL alone (never dropping
+migrations or RLS), `scripts/run-full.mjs` owns the stack lifecycle with a guaranteed `down -v`, and
+`tests/journeys/` holds exactly the four approved journeys. Do not invent folders outside it.
+
+**Exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** It validates the target
+(`commitahead-e2e` project, `commitahead_e2e` database) and executes `reset.sql`; it exports
+`resetDatabase()` for the fixture and runs from the CLI as `npm run db:reset`. `run-full.mjs`
+delegates to it. Never add a separate Compose/`psql` reset in a fixture, script, or doc.
+
+Also: ordinary PRs do not execute Playwright, and the E2E stack is started only for explicit E2E
+work. `@playwright/test` is the permanent suite; Playwright's Agent CLI is an optional local
+exploration aid whose output is never committed as generated and never a CI dependency. The
+`/devalente-e2e` skill (`.claude/skills/devalente-e2e/`) is project-specific and version-controlled
+— `.gitignore` has a narrow negation for that one directory while the rest of `.claude/` stays
+ignored — but it **must not be created until the E2E suite is implemented and stable**.
 
 ## CI quality gates (every PR — all blocking)
 

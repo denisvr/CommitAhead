@@ -12,6 +12,44 @@ the journeys, reset data, and read the artifacts when something fails.
 normative contract — journeys, isolation, auth, locators, and the rules about what E2E may and may
 not touch. This file only tells you how to operate it. Where the two disagree, the strategy wins.
 
+**When you need this at all:** the E2E stack is started **only for explicit E2E work** — writing or
+debugging a journey, or a post-merge/manual verification run. Ordinary PRs do not execute
+Playwright, and normal feature development never needs this stack running.
+
+---
+
+## Layout
+
+```
+CommitAhead/
+├── docker-compose.e2e.yml          ← isolated app + PostgreSQL + local AI stub
+└── e2e/
+    ├── package.json                ← Playwright deps, separate from frontend/
+    ├── package-lock.json
+    ├── tsconfig.json
+    ├── playwright.config.ts        ← Playwright execution config only
+    ├── README.md                   ← this file
+    ├── scripts/
+    │   ├── run-full.mjs            ← up → wait for health → test → always down -v
+    │   └── reset-db.mjs            ← the only executable reset path (npm run db:reset)
+    ├── support/
+    │   ├── reset.sql               ← the SQL only; never drops migrations or RLS
+    │   └── ai-stub/                ← deterministic local AI service
+    └── tests/
+        ├── fixtures/
+        │   └── e2e-test.ts         ← reset-before-auth + authenticated fixture
+        └── journeys/
+            ├── 001-authenticated-access.spec.ts
+            ├── 002-study-queue-ranking.spec.ts
+            ├── 003-job-analysis-draft.spec.ts
+            └── 004-cv-presentation-export.spec.ts
+```
+
+Full per-file responsibilities are in `docs/testing/strategy.md` §7.11. In short: the Compose file
+owns the services, `playwright.config.ts` owns execution settings only, `e2e-test.ts` owns
+reset-then-authenticate, `reset.sql` owns the SQL, `reset-db.mjs` owns validating the target and
+executing that SQL, and `run-full.mjs` owns the stack lifecycle.
+
 ---
 
 ## Safeguards — read before your first run
@@ -76,7 +114,22 @@ the cache costs about as much as downloading them.
 
 ---
 
-## Bringing the stack up
+## The usual case: one command
+
+`run-full.mjs` brings the stack up, waits for health, runs Playwright, and **always tears the stack
+down with `down -v` in a `finally`** — including when the run fails or you interrupt it. It exits
+with Playwright's own exit code.
+
+```bash
+cd e2e && node scripts/run-full.mjs
+```
+
+Use this for verification runs and for anything unattended. Use the manual steps below when you are
+iterating on a journey and want the stack to stay up between runs.
+
+---
+
+## Bringing the stack up manually
 
 One command builds the production image, starts PostgreSQL and the app, applies migrations and all
 RLS scripts, and seeds the E2E user:
@@ -168,8 +221,16 @@ npx playwright test --last-failed
 ```
 
 Each journey must pass **on its own and in any order**. The `001`–`004` prefixes are organizational
-only — they keep the files in a readable order and carry no dependency. If a journey only passes as
-part of the full run, that is a defect in the journey, not a way to run the suite.
+only — they keep the files in a readable order and carry no execution-order dependency. If a
+journey only passes as part of the full run, that is a defect in the journey, not a way to run the
+suite.
+
+### Exploratory tooling
+
+Playwright's Agent CLI and similar generative tools are **optional local aids** — useful for poking
+at a stuck selector or exploring a page. Nothing they produce is committed as generated: a journey
+enters the suite only as reviewed `@playwright/test` code meeting the Layer 7 contract.
+`@playwright/test` is the permanent automated suite, and no agent tool is ever a CI dependency.
 
 ---
 
@@ -179,9 +240,17 @@ Every journey starts from a known state, and the suite resets automatically befo
 file. Run it by hand when you have been poking at the app and want a clean slate:
 
 ```bash
-docker compose -f docker-compose.e2e.yml -p commitahead-e2e exec -T db \
-  psql -U postgres -d commitahead_e2e -f /e2e/reset.sql
+cd e2e && npm run db:reset
 ```
+
+That is the **only** reset command. It runs `scripts/reset-db.mjs`, which validates that it is
+pointed at the `commitahead-e2e` Compose project and the `commitahead_e2e` database before
+executing `support/reset.sql` — and refuses to run against anything else. The Playwright fixture
+calls the same module's `resetDatabase()`, and `run-full.mjs` delegates to it too, so operator and
+suite share one code path with one set of guards.
+
+Do **not** hand-roll a `docker compose exec … psql` reset. A second path is a second chance to
+target the wrong database, and it is the one nobody remembers to add the guards to.
 
 The reset **truncates business tables and re-seeds the E2E user**. It does not drop the schema or
 the database — RLS policies and the EF migrations-history table must survive, or later journeys
@@ -272,7 +341,8 @@ to the public internet by design.
 a cause of Chromium running out of memory in containers.
 
 **Port already in use on 8081 or 5435.** Another E2E stack is still up. `down -v` it first — do not
-switch to 8080 or 5434 to get around it.
+switch to 8080 or 5434 to get around it. If this happens after a `run-full.mjs` run, its
+`finally`-block teardown is not working; fix that rather than tearing down by hand each time.
 
 **`docker compose exec` intermittently fails on Windows with `NativeCommandError`.** Known
 PowerShell 5.1 behaviour with Compose's stderr warnings — pass `--env-file` consistently, the same

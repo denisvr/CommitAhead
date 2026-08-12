@@ -214,8 +214,10 @@ justified — see "Sources and project decisions" at the end of this layer.
 ### 7.1 Exactly four journeys
 
 Four journeys, no more. Each maps to a stated MVP completion criterion
-(`docs/product/brief.md`); a proposed fifth journey is a request to change that list, not an
-addition to it.
+(`docs/product/brief.md`). **No new journey is created without an explicit product decision** —
+a fifth journey is a request to change the approved list, recorded here and in
+`docs/roadmap.md` before any spec file is written, never something added in passing because a
+gap looked easy to cover. Coverage below the journey level belongs to Layers 1–6.
 
 The numeric filename prefixes are **organizational only — never load-bearing**. They keep the four
 journeys in a readable order that matches this table; they carry no dependency. Every journey must
@@ -344,6 +346,12 @@ Every journey starts from an identical, known database state.
   configuration a journey needs). It must **not** drop the schema or the database: RLS policies and
   the EF migrations-history table must survive, or subsequent journeys would run against an
   unprotected or unmigrated database and still appear to pass.
+- **There is exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** The Playwright
+  fixture calls its exported `resetDatabase()`, `npm run db:reset` invokes the same module from the
+  command line, and `run-full.mjs` delegates to it rather than reimplementing it. Nobody — operator,
+  fixture, or script — issues their own `docker compose exec … psql` reset. A second reset path is
+  a second target-validation implementation, and the one that gets skipped is the one that
+  eventually points at the wrong database (§7.2).
 - Reset runs before each journey, and **before authentication** — the authenticated fixture (§7.3)
   depends on it, so the E2E user row exists and is freshly seeded before any session is minted
   against it. With `workers: 1` this is safe by construction; under any future parallelism it would
@@ -432,13 +440,23 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
 - **Artifacts:** `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`,
   `video: 'retain-on-failure'`. (`screenshot` has no `retain-on-failure` mode; `only-on-failure` is
   the correct literal.)
-- **Post-merge or manual only** — E2E is not a blocking PR gate. It needs a full container build
-  plus a database bring-up, which would dominate PR feedback time for coverage that Layers 1–6
-  already provide. This matches how the CI table in `CLAUDE.md` already classifies it.
+- **Ordinary PRs do not execute Playwright.** E2E is not a blocking PR gate and must not become
+  one: it needs a full container build plus a database bring-up, which would dominate PR feedback
+  time for coverage Layers 1–6 already provide. This matches the CI table in `CLAUDE.md`. Adding
+  E2E to the PR workflow is a deliberate change to this contract, not a CI tweak.
+- **The E2E stack is started only for explicit E2E work** — writing or debugging a journey, or a
+  post-merge/manual verification run. It is not part of the normal development loop, not started
+  by `npm run dev`, and not left running. `e2e/scripts/run-full.mjs` (§7.11) exists so the usual
+  case is one command that always tears the stack down again.
 - CI installs only what it uses: `npx playwright install --with-deps chromium`. If the run is
   containerised instead, use the official pinned image (`mcr.microsoft.com/playwright:v1.62.0-noble`
   or the then-current version) with `--ipc=host`, whose absence is a documented cause of Chromium
   crashes.
+- **`@playwright/test` is the permanent automated suite.** Playwright's Agent CLI and any similar
+  generative or exploratory tooling are optional local aids for investigating a failure or
+  discovering locators. Nothing they emit is committed as-is: a journey enters the suite only as
+  reviewed `@playwright/test` code that satisfies this contract. No agent-driven tool is ever a CI
+  dependency.
 
 ### 7.8 Restraint in fixtures, helpers, and Page Objects
 
@@ -486,7 +504,60 @@ locale dates, page limit — already run on every PR against the real renderer v
 ("PDF and CV Verification" above). Re-asserting them here would mean adding a second, independent
 PDF-parsing stack in TypeScript whose disagreements with PdfPig would be noise, not signal.
 
-### 7.11 Sources and project decisions
+### 7.11 Canonical project structure and file ownership
+
+One layout, fixed. Implementation places files exactly here; anything that does not fit is a
+design question to raise, not a new folder to invent.
+
+```
+CommitAhead/
+├── docker-compose.e2e.yml          ← the isolated E2E stack (§7.2)
+└── e2e/
+    ├── package.json                ← Playwright deps, separate from frontend/
+    ├── package-lock.json
+    ├── tsconfig.json
+    ├── playwright.config.ts
+    ├── README.md                   ← operational runbook
+    ├── scripts/
+    │   ├── run-full.mjs            ← up → wait → test → guaranteed down -v
+    │   └── reset-db.mjs            ← the one executable reset path (§7.4)
+    ├── support/
+    │   ├── reset.sql
+    │   └── ai-stub/                ← deterministic local AI service (§7.6)
+    └── tests/
+        ├── fixtures/
+        │   └── e2e-test.ts         ← reset-before-auth + authenticated fixture
+        └── journeys/
+            ├── 001-authenticated-access.spec.ts
+            ├── 002-study-queue-ranking.spec.ts
+            ├── 003-job-analysis-draft.spec.ts
+            └── 004-cv-presentation-export.spec.ts
+```
+
+| Path | Owns | Must not own |
+|---|---|---|
+| `docker-compose.e2e.yml` | The isolated app container, its PostgreSQL, and the local AI stub — service definitions, the E2E-only environment (`ASPNETCORE_ENVIRONMENT=E2E`), loopback ports, the internal no-egress network, and the deliberate absence of persistent volumes (§7.2, §7.6) | Test logic, seed data |
+| `e2e/playwright.config.ts` | Playwright **execution configuration only**: `testDir`, `baseURL`, `workers`, `retries`, artifact modes, the Chromium project, timeouts, and the fail-fast guard rejecting a non-E2E `baseURL` | Stack lifecycle (no `webServer`), auth, seeding, reset |
+| `e2e/tests/fixtures/e2e-test.ts` | The single extended `test` every journey imports: the reset step, the test-scoped authenticated fixture that depends on it, and the resulting reset-before-auth ordering (§7.3, §7.4) | Journey assertions, page-specific interaction detail |
+| `e2e/support/reset.sql` | **Only the deterministic SQL transformation** — truncating business tables and re-seeding the E2E user and baseline configuration | Anything executable: no target selection, no connection details, no Compose knowledge. Never drops the schema or database, touches `__EFMigrationsHistory`, or removes RLS policies (§7.4) |
+| `e2e/scripts/reset-db.mjs` | **The single executable reset path**: validating the target (fixed `commitahead-e2e` Compose project and `commitahead_e2e` database, refusing anything else) and executing `reset.sql` against it. Exports `resetDatabase()` for the fixture **and** runs directly from the command line, so `npm run db:reset` is the same code (§7.4) | The SQL itself; stack lifecycle |
+| `e2e/scripts/run-full.mjs` | The one-command run: bring the stack up, wait for health, invoke Playwright, and **always `down -v` in a `finally`** so a crashed or interrupted run never leaves a stack behind. Propagates Playwright's exit code. Delegates any reset to `reset-db.mjs` | Test logic; **reset logic of its own**; being a substitute for `playwright test` during iteration |
+| `e2e/tests/journeys/` | Exactly the four approved journeys of §7.1, one file each | A fifth journey, helper modules, or shared state between files |
+| `e2e/support/ai-stub/` | Deterministic canned responses for the real `AnthropicAIProvider` (§7.6) | Any outbound call; any behaviour that varies between runs |
+
+**Planned but not yet created: the `/devalente-e2e` skill.** `.claude/skills/devalente-e2e/` is a
+project-specific, **version-controlled** Claude Code skill capturing the day-to-day E2E workflow.
+`.gitignore` carries a deliberately narrow negation so that this one skill directory is trackable
+while all other `.claude/` content — settings, local state, any other skill — stays ignored.
+
+It **must not be created until the E2E suite is implemented and stable**. A skill written against
+an unbuilt suite would encode guesses, and one written against a churning suite would go stale
+immediately; in both cases it becomes a confident, wrong instruction source. When it is written, it
+is a workflow shortcut layered on top of these documents, never a replacement: `docs/testing/strategy.md`
+stays normative and `e2e/README.md` stays the runbook, and the skill must not restate rules that
+would then drift from them.
+
+### 7.12 Sources and project decisions
 
 Official Playwright documentation reviewed 2026-08-12 against release `1.62.x`. Each row lists the
 source consulted and what CommitAhead decided in light of it.

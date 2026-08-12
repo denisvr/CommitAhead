@@ -1,4 +1,10 @@
-.claude/
+# Claude Code local state stays untracked, with one deliberate exception: the project-specific
+# /devalente-e2e skill is version-controlled. Git cannot re-include a path inside an excluded
+# directory, so each level is excluded and then re-opened just enough to descend to that one skill.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/devalente-e2e/
 
 # .NET
 bin/

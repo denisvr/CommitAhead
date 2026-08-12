@@ -14,7 +14,7 @@ The Supabase project exists (`Devalente Org` / `CommitAhead`, West EU/Ireland) a
 
 - [x] Create `.slnx` and Domain, Application, Infrastructure, and API projects (`backend/`)
 - [x] Create React 19 + Vite + TypeScript project and a frontend component test (`frontend/`)
-- [ ] *(Pending — not yet started)* Add the E2E (Playwright) project and its four journeys
+- [ ] *(Pending — not yet started)* Add the E2E (Playwright) project and its four journeys, in the canonical `e2e/` layout fixed by `docs/testing/strategy.md` §7.11
 - [x] Configure project references and the API composition root according to ADR-0013
 - [x] Serve the production Vite build from Kestrel on the same origin (copied into the published artifact's `wwwroot` at publish time, not into the backend source tree)
 - [x] Wire EF Core + Npgsql; a minimal `User` identity table (id, supabase_user_id, email, is_enabled, created_at_utc — ADR-0015) has a generated `InitialCreate` migration plus a follow-up migration adding a case-insensitive unique index on email. `commitahead_app` and a separate migration role (`backend/scripts/database/001_roles.sql`, `002_rls_users.sql`) are applied and verified end-to-end against a local Docker Postgres (`backend/docker-compose.yml`), via the reproducible `backend/scripts/setup-local-db.ps1` (roles → migrations → RLS in one command; `002_rls_users.sql` is idempotent)
@@ -151,7 +151,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [ ] Generate SBOM and block deployment on high/critical Trivy findings
 - [ ] Run OWASP ZAP baseline against staging with FakeAIProvider
 - [ ] Configure encrypted backups and complete a restoration test — target policy decided (30-day retention, quarterly restore test) but automated/encrypted implementation deferred to the cloud-deployment stage (needs Supabase Storage + Postgres coverage a local stack can't exercise). In the meantime, `backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local Docker stack a real, tested, lossless manual command — `pg_dump --format=custom` run entirely inside the `db` container and copied out with `docker compose cp` (never through PowerShell's text pipeline, so accented/non-ASCII content round-trips exactly) to a timestamped `backend/backups/*.dump` file; restore runs `pg_restore --clean --if-exists` the same way, preserving ownership (`commitahead_migrator`) and grants (`commitahead_app`) exactly as dumped, stopping and restarting the `app` service around the restore — not an automated system, not encrypted, not scheduled.
-- [ ] Run all four Playwright journeys post-merge
+- [ ] Run all four Playwright journeys post-merge — not implemented; the normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
 - [ ] Add manual live-AI smoke workflow with explicit provider/model/token/cost limits
 - [ ] Complete the pre-internet-deployment security checklist
 
