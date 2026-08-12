@@ -60,6 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReplaceCertificationSelectionsUseCase>();
         services.AddScoped<ReplaceProjectSelectionsUseCase>();
         services.AddScoped<ReplaceProfileLinkSelectionsUseCase>();
+        services.AddScoped<ExportCVPresentationUseCase>();
 
         services.AddScoped<CreateJobAnalysisFromPastedTextUseCase>();
         services.AddScoped<CreateJobAnalysisFromUploadUseCase>();

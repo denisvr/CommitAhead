@@ -25,6 +25,7 @@ public sealed class CVPresentationController : ControllerBase
     private readonly ReplaceProjectSelectionsUseCase _replaceProjectSelectionsUseCase;
     private readonly ReplaceProfileLinkSelectionsUseCase _replaceProfileLinkSelectionsUseCase;
     private readonly AnalyzeCVPresentationUseCase _analyzeUseCase;
+    private readonly ExportCVPresentationUseCase _exportUseCase;
 
     public CVPresentationController(
         GetCVPresentationUseCase getUseCase,
@@ -39,7 +40,8 @@ public sealed class CVPresentationController : ControllerBase
         ReplaceCertificationSelectionsUseCase replaceCertificationSelectionsUseCase,
         ReplaceProjectSelectionsUseCase replaceProjectSelectionsUseCase,
         ReplaceProfileLinkSelectionsUseCase replaceProfileLinkSelectionsUseCase,
-        AnalyzeCVPresentationUseCase analyzeUseCase)
+        AnalyzeCVPresentationUseCase analyzeUseCase,
+        ExportCVPresentationUseCase exportUseCase)
     {
         _getUseCase = getUseCase;
         _getAllUseCase = getAllUseCase;
@@ -53,6 +55,7 @@ public sealed class CVPresentationController : ControllerBase
         _replaceCertificationSelectionsUseCase = replaceCertificationSelectionsUseCase;
         _replaceProjectSelectionsUseCase = replaceProjectSelectionsUseCase;
         _replaceProfileLinkSelectionsUseCase = replaceProfileLinkSelectionsUseCase;
+        _exportUseCase = exportUseCase;
         _analyzeUseCase = analyzeUseCase;
     }
 
@@ -169,6 +172,22 @@ public sealed class CVPresentationController : ControllerBase
             AnalyzeCommandOutcome.AlreadyCompleted => Ok(response),
             AnalyzeCommandOutcome.DailyBudgetExceeded or AnalyzeCommandOutcome.MonthlyBudgetExceeded => AiOutcomeResponses.BudgetExceeded(result.Outcome, Response),
             AnalyzeCommandOutcome.DraftAlreadyPending => AiOutcomeResponses.Conflict(result.Outcome.ToString(), result.AnalysisDraftId),
+            _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
+        };
+    }
+
+    // A plain read plus in-process PDF rendering — never calls the AI provider, so no rate-limit
+    // policy, same as GetById/Apply elsewhere in this codebase.
+    [HttpGet("{id:guid}/export")]
+    [UsesOwnerScopedData]
+    public async Task<IActionResult> Export(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _exportUseCase.ExecuteAsync(id, cancellationToken);
+
+        return result.Outcome switch
+        {
+            ExportCVPresentationOutcome.Exported => File(result.PdfBytes!, "application/pdf", $"{id}.pdf"),
+            ExportCVPresentationOutcome.PresentationNotFound => NotFound(),
             _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
         };
     }

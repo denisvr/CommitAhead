@@ -79,6 +79,7 @@ public static class InfrastructureServiceCollectionExtensions
         });
 
         services.AddScoped<IPdfTextExtractor, PdfPigTextExtractor>();
+        services.AddScoped<IExportRenderer, QuestPdfCVExportRenderer>();
 
         AddAIProvider(services, configuration);
 
