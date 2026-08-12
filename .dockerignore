@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/TestResults/
+**/*.trx
+.git/
+.vs/
+.vscode/
+docs/
+*.md
+backend/artifacts/
+backend/.env
+backend/.env.production

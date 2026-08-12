@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using CommitAhead.Api.Security;
 using CommitAhead.Application.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.DependencyInjection;
@@ -9,11 +10,22 @@ public static class SecurityServiceCollectionExtensions
 {
     private const string DevCorsPolicy = "DevFrontend";
 
-    public static IServiceCollection AddCommitAheadSecurity(this IServiceCollection services, IWebHostEnvironment environment)
+    public static IServiceCollection AddCommitAheadSecurity(this IServiceCollection services, IWebHostEnvironment environment, IConfiguration configuration)
     {
-        // Durable/encrypted key storage for production is a Phase 6 decision (docs/tbd.md) — the
-        // default key ring is enough to seal the session-start timestamp for local/dev use now.
-        services.AddDataProtection();
+        var dataProtectionBuilder = services.AddDataProtection();
+
+        // "DataProtection:KeyRingPath" (env form DataProtection__KeyRingPath) points the key ring
+        // at a directory backed by a named volume in docker-compose.prod.yml, so cookie-encryption
+        // keys survive a container restart instead of invalidating every session (ADR-0021). Left
+        // unset, AddDataProtection() falls back to its own per-environment default (ephemeral for
+        // local `dotnet run`/tests) — encrypting the key ring at rest with a cloud KMS is still the
+        // open decision in docs/tbd.md ("Data Protection key ring storage"), not resolved here.
+        var keyRingPath = configuration["DataProtection:KeyRingPath"];
+        if (!string.IsNullOrWhiteSpace(keyRingPath))
+        {
+            dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
+        }
+
         services.AddSingleton<SessionStartToken>();
 
         services.AddAntiforgery(options =>

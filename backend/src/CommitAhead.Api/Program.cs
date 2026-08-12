@@ -24,7 +24,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddCommitAheadAuthentication(builder.Configuration);
-builder.Services.AddCommitAheadSecurity(builder.Environment);
+builder.Services.AddCommitAheadSecurity(builder.Environment, builder.Configuration);
 
 var app = builder.Build();
 
@@ -32,12 +32,21 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-else
-{
-    app.UseHsts();
-}
 
-app.UseHttpsRedirection();
+// The "Docker" environment (docker-compose.prod.yml, ADR-0021) is a production-like local
+// validation target with no TLS termination of its own — a real deployment puts this behind a
+// TLS-terminating reverse proxy/load balancer instead. Sending HSTS or redirecting to https
+// without any https listener behind it would just break every request, so both are skipped only
+// for this one environment name; every other non-Development environment keeps them.
+if (!app.Environment.IsEnvironment("Docker"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+}
 
 app.UseMiddleware<SecurityHeadersMiddleware>();
 

@@ -21,7 +21,12 @@ backend/**/wwwroot/
 
 # Local secrets
 .env
+.env.production
 !.env.example
+!.env.production.example
+
+# EF Core migration bundle (built on demand, never committed - see backend/scripts/build-migration-bundle.ps1)
+backend/artifacts/
 
 # OS
 .DS_Store

@@ -18,12 +18,19 @@ Decisions that must be made before the affected phase begins. No decision here s
 
 ### Hosting platform for ASP.NET Core API and React frontend
 **Needed for:** Phase 6
+**Status:** explicitly deferred (ADR-0021) — Phase 6 starts with a hosting-neutral local Docker
+deployment (`Dockerfile` + `docker-compose.prod.yml`, repo root) to validate the container and its
+runtime behaviour before choosing a platform. Not resolved by that deployment; this entry stays
+open until a platform is actually chosen.
 **Options:** Azure App Service, Railway, Fly.io, Render, self-hosted VPS, Docker Compose on a VM
 **Constraints:** TLS required; environment variable injection required; container support preferred; single-process deployment; cost proportionate to a small, invite-only user base
 **Affects:** `docs/deployment/strategy.md`, Data Protection key ring configuration, secrets injection method
 
 ### Secrets management in production
 **Needed for:** Phase 6
+**Status:** deferred, depends on the hosting platform decision above. The local Docker deployment
+uses plain environment variables (`backend/.env.production`, gitignored) with no secrets-manager
+integration — a deliberate placeholder, not the production answer.
 **Options:** Azure Key Vault, Doppler, environment variables injected by the hosting platform, mounted secrets (Docker secrets)
 **Depends on:** Hosting platform decision above
 
@@ -76,18 +83,31 @@ free-use eligibility must be reassessed if this project's ownership or commercia
 
 ### Data Protection key ring storage
 **Needed for:** Phase 6
-**Question:** Where are ASP.NET Data Protection keys persisted across deployments?
+**Status:** partially resolved for local Docker only (ADR-0021) — `PersistKeysToFileSystem` against
+a named volume (`docker-compose.prod.yml`, `DataProtection:KeyRingPath`) makes keys survive a
+container restart, proven by `DataProtectionKeyPersistenceTests`. **Not encrypted at rest** — that
+half of the question stays open until a hosting platform (and therefore a KMS or equivalent) is
+chosen.
+**Question:** Where are ASP.NET Data Protection keys encrypted and persisted across *cloud*
+deployments?
 **Options:** Azure Blob Storage, AWS S3, mounted volume, database table
 **Depends on:** Hosting platform decision
 **Affects:** Cookie encryption continuity across deployments; if keys rotate, all sessions are invalidated
 
 ### Backup retention and restore-test cadence
 **Needed for:** Phase 6
-**Question:** How long are encrypted database/Storage backups retained, and how often is a restoration test performed?
+**Status:** target policy decided — 30-day retention, quarterly restore test — but implementation
+deferred to the cloud-deployment stage (needs real Supabase Postgres + Storage coverage a local
+Docker stack can't exercise). Local Docker gets a manual `pg_dump` of the compose volume in the
+meantime, not an automated system.
+**Question:** How are the decided retention/cadence actually implemented once a hosting platform and Supabase plan are chosen?
 **Constraints:** Must cover PostgreSQL and private Storage; restored data must remain access-controlled and test artifacts must be deleted
 **Depends on:** Supabase plan and hosting platform
 
 ### Production log retention
 **Needed for:** Phase 6
-**Question:** How long are metadata-only production logs retained?
+**Status:** target duration decided — 30 days — but implementation deferred to the cloud-deployment
+stage; the local Docker stack uses plain Docker log rotation (`max-size`/`max-file` in
+`docker-compose.prod.yml`), not a centralized logging platform.
+**Question:** Where are metadata-only production logs shipped/retained once a hosting platform is chosen?
 **Constraints:** No user-authored content, request bodies, tokens, cookies, query strings, prompts, responses, or uploaded file content; access restricted to the owner/operator

@@ -1,0 +1,118 @@
+---
+status: accepted
+date: 2026-08-12
+---
+
+# Phase 6 starts with a hosting-neutral local Docker deployment, not a cloud platform
+
+## Context
+
+`docs/tbd.md` blocked Phase 6 ("Production Hardening") on hosting platform, secrets management,
+Data Protection key storage, backup retention, and log retention — all real infrastructure
+decisions with cost and operational consequences. Asked directly, the answer was: defer the cloud
+platform choice entirely for now. The near-term goal is a production-like deployment that can be
+built, run, and used extensively on the developer's own machine via Docker, with no cloud
+provider, secrets manager, or hosting-specific configuration anywhere in it. Cloud hosting (and the
+decisions that depend on it — secrets manager, Data Protection key storage at rest, encrypted
+backups, centralized logging) is decided only after that local deployment has been validated.
+
+This ADR covers only what that local-first slice actually needs to be real (not a stub): a
+production Docker image, Docker Compose for the app plus its own PostgreSQL, Data Protection keys
+that survive a restart, environment-based configuration, and a working migration path — while
+staying strictly portable to whatever hosting platform comes next.
+
+## Decision
+
+**A single multi-stage `Dockerfile`** (repo root, build context the repo root) produces one
+portable image: a Node stage builds the frontend, a pinned .NET SDK stage publishes the backend
+(which copies the frontend build into `wwwroot`, per the existing `CommitAhead.Api.csproj` publish
+target), and a minimal ASP.NET Core runtime stage runs it as a non-root user. No cloud-provider
+base image, SDK, or CLI is installed in any stage.
+
+- The SDK stage is pinned to the *exact* version `backend/global.json` requires
+  (`mcr.microsoft.com/dotnet/sdk:10.0.302`), not the floating `10.0` tag. `global.json`'s default
+  `rollForward` policy (`latestPatch`) only rolls forward within the same feature band — a floating
+  tag that resolves to a later band (e.g. `10.0.4xx`) fails `dotnet publish` inside the image with
+  an SDK-not-found error, discovered by actually building the image, not assumed.
+- The runtime stage exposes `/api/health` (already implemented, `[AllowAnonymous]`) as a Docker
+  `HEALTHCHECK`, reusing the same endpoint rather than adding a second health surface.
+
+**`docker-compose.prod.yml`** (repo root) runs the app plus a dedicated PostgreSQL, both with named
+volumes and `restart: unless-stopped`, sitting alongside `backend/docker-compose.yml` (dev-only
+Postgres) without conflict — different project name, ports (5434 vs 5433), and volumes. All
+configuration is environment variables (`backend/.env.production`, gitignored, templated by
+`backend/.env.production.example`) — no hosting-specific secrets integration yet; that is exactly
+the still-open decision this ADR does not resolve.
+
+**`ASPNETCORE_ENVIRONMENT=Docker`** is a new, distinct environment name for this stack — not
+`Development` (which enables the dev CORS policy and OpenAPI endpoint neither needed here) and not
+a generic `Production` (which would enable `UseHsts()`/`UseHttpsRedirection()`, and this stack has
+no TLS termination of its own — a real deployment behind a TLS-terminating reverse proxy/load
+balancer would use `Production` and keep both). `Program.cs` skips both specifically for this one
+environment name; every other non-Development environment keeps them. Auth/CSRF cookies needed no
+change: they already read `Secure = true` unconditionally, and every modern browser treats
+`http://localhost` as a secure context regardless of scheme, so they are still sent when this stack
+is reached at `http://localhost:8080` — no change was needed there, verified against actual browser
+behavior rather than assumed.
+
+**Data Protection keys persist to a mounted volume**, not the default ephemeral/per-machine store.
+`AddCommitAheadSecurity` now reads an optional `DataProtection:KeyRingPath` configuration value and
+calls `PersistKeysToFileSystem` when set; `docker-compose.prod.yml` sets it to `/keys`, backed by a
+named volume, so cookie-encryption keys — and therefore existing sessions — survive a container
+restart. The keys are **not encrypted at rest** here (that needs a cloud KMS or protected-key
+integration, still the open "Data Protection key ring storage" decision in `docs/tbd.md`) — this
+closes the "restart invalidates every session" problem only, not the encryption-at-rest problem.
+
+**Migrations get a portable, reviewed artifact**: `backend/scripts/build-migration-bundle.ps1` runs
+`dotnet ef migrations bundle --self-contained -r linux-x64`, producing a single executable
+(`backend/artifacts/efbundle`, gitignored) that applies pending migrations without the .NET SDK
+installed on the target — the actual deliverable behind the roadmap's "reviewed EF migration
+bundle" item. For this local stack specifically, `backend/scripts/setup-production-db.ps1` (mirrors
+`setup-local-db.ps1` exactly, targeting `docker-compose.prod.yml`'s db service on port 5434 instead)
+still uses `dotnet ef database update` directly, since the SDK is already on the developer's own
+machine — the bundle is for wherever that assumption stops holding, i.e. a real deployment target.
+
+**The application's own PostgreSQL stays local for now.** The real Supabase Postgres project
+(already provisioned for Auth) is not migrated against yet — that remains the deliberate, documented
+gap in `README.md` ("Setting Up the Real Supabase Project"), now explicitly re-scoped to the
+cloud-deployment stage rather than "Phase 6" in general.
+
+## Why
+
+- **Validate the actual deployment artifact before choosing where it runs.** A production Docker
+  image and Compose stack are the same regardless of the eventual host (Fly.io, Railway, a VPS,
+  anything Docker-compatible) — building and using them now surfaces real problems (SDK pinning,
+  cookie behavior, key persistence, migration sequencing) while they are still cheap to fix, instead
+  of discovering them for the first time against a real cloud bill.
+- **No premature infrastructure lock-in.** Every hosting-specific decision this ADR does not make
+  (secrets manager, encrypted-at-rest key storage, managed backups, centralized log retention) stays
+  genuinely open in `docs/tbd.md` — nothing here assumes or biases toward a particular platform.
+- **A single environment-name gate, not scattered feature flags.** `ASPNETCORE_ENVIRONMENT=Docker`
+  is one flag Program.cs branches on twice (HSTS/redirect); no provider-specific `#if`/config
+  sprawl, and the two other environments (`Development`, everything else) are completely unchanged.
+
+## Consequences
+
+- `docs/tbd.md`'s hosting/secrets/Data-Protection/backup/log-retention entries stay open, annotated
+  with the target policies already decided (30-day log retention; 30-day backup retention with a
+  quarterly restore test) for whenever the cloud-deployment stage implements them — this ADR does
+  not close any of them.
+- A future ADR is needed once a hosting platform is actually chosen, covering at minimum: secrets
+  injection method, encrypted-at-rest Data Protection key storage (or a switch to a managed
+  alternative), automated encrypted backups covering both Postgres and Supabase Storage, and
+  centralized log shipping with the retention policy above.
+- `docker-compose.prod.yml`'s `db` service is not the target for the real Supabase Postgres —
+  whenever that migration happens, `app`'s `ConnectionStrings__CommitAheadDb` points there instead
+  and this stack's own `db` service becomes optional/removable, not a decision this ADR makes now.
+
+## Considered alternatives
+
+- **Pick a hosting platform now and deploy directly** — skips the local validation step entirely;
+  rejected because the explicit ask was to validate the container and its behavior locally first,
+  and because committing to a platform before using the app in a production-like shape risks paying
+  for and configuring the wrong thing.
+- **Terminate TLS locally with a self-signed certificate** instead of gating HSTS/redirect off for
+  one environment name — would let every environment share identical HTTPS-enforcement code, but
+  adds certificate generation/trust and Kestrel HTTPS-endpoint configuration that a real deployment
+  will replace with a reverse proxy anyway; rejected as complexity this local-validation slice does
+  not need.

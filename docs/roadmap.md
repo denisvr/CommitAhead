@@ -142,17 +142,17 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
-**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention.
+**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention — all explicitly deferred (see below); Phase 6 starts instead with a hosting-neutral local Docker deployment (ADR-0021) to validate the container itself before choosing where it runs.
 
-- [ ] Build reviewed EF migration bundle and production container
-- [ ] Configure durable encrypted Data Protection keys and hosting secrets
+- [x] Build reviewed EF migration bundle and production container — `Dockerfile` (repo root) is a multi-stage build (Node frontend build → pinned `.NET SDK 10.0.302` publish → minimal ASP.NET Core runtime as a non-root user), built and verified locally with `docker build`. `docker-compose.prod.yml` runs it alongside a dedicated PostgreSQL, both restart-safe via named volumes. `backend/scripts/build-migration-bundle.ps1` produces the self-contained EF migration bundle (`dotnet ef migrations bundle --self-contained`) as the portable artifact for a target without the .NET SDK; `backend/scripts/setup-production-db.ps1` mirrors `setup-local-db.ps1` (roles → migrations → RLS) against this stack's own Postgres for local validation, using `dotnet ef database update` directly since the SDK is already present on the developer's machine.
+- [x] Configure durable Data Protection keys (local Docker only; hosting secrets remain deferred) — `AddCommitAheadSecurity` persists the key ring to a configurable path (`DataProtection:KeyRingPath`) via `PersistKeysToFileSystem`; `docker-compose.prod.yml` backs it with a named volume, so cookie-encryption keys survive a container restart. Proven with a real test (`DataProtectionKeyPersistenceTests`): a payload protected by one `IServiceProvider` is unprotected by a second one pointed at the same path, the closest in-process stand-in for a restart. Keys are **not** encrypted at rest yet — that needs a cloud KMS, still open in `docs/tbd.md`. `ASPNETCORE_ENVIRONMENT=Docker` is a new environment name (ADR-0021) that skips `UseHsts()`/`UseHttpsRedirection()` only for this one hosting-neutral local stack, which has no TLS termination of its own; every other environment is unchanged. Auth/CSRF cookies needed no code change — they already read `Secure=true` unconditionally, and browsers treat `http://localhost` as a secure context regardless of scheme, so they are still sent to this stack at `http://localhost:8080`.
 - [ ] Configure Dependabot for NuGet, npm, Docker, and GitHub Actions
 - [ ] Pin Actions to SHAs and minimise workflow permissions
 - [ ] Generate SBOM and block deployment on high/critical Trivy findings
 - [ ] Run OWASP ZAP baseline against staging with FakeAIProvider
-- [ ] Configure encrypted backups and complete a restoration test
+- [ ] Configure encrypted backups and complete a restoration test — target policy decided (30-day retention, quarterly restore test) but implementation deferred to the cloud-deployment stage (needs Supabase Storage + Postgres coverage a local stack can't exercise); local Docker gets a simple manual `pg_dump` of the named volume in the meantime, not a full backup system.
 - [ ] Run all four Playwright journeys post-merge
 - [ ] Add manual live-AI smoke workflow with explicit provider/model/token/cost limits
 - [ ] Complete the pre-internet-deployment security checklist
 
-**Exit criteria:** every MVP completion criterion in `docs/product/brief.md` is met and the production deployment passes its security gates.
+**Exit criteria:** every MVP completion criterion in `docs/product/brief.md` is met and the production deployment passes its security gates. The local Docker deployment above is a validation step toward that, not the exit criterion itself — hosting platform, secrets management, encrypted-at-rest Data Protection keys, automated backups, and centralized log retention are all still open (`docs/tbd.md`) and gate the actual internet-facing deployment.

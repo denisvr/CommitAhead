@@ -101,6 +101,49 @@ Also in the Supabase dashboard: Authentication → URL Configuration → add you
 (`http://localhost:5120/auth/callback` for local dev) to the redirect allow-list, and confirm
 Authentication → Sign In / Providers → "Allow new users to sign up" stays off (ADR-0006).
 
+## Production (Local Docker)
+
+Phase 6 (ADR-0021) starts with a hosting-neutral local deployment — a production Docker image and
+Compose stack you can build, run, and use extensively before any cloud platform is chosen.
+Deliberately provider-neutral: no Fly.io/Railway/Azure-specific configuration anywhere in it.
+
+```bash
+cp backend/.env.production.example backend/.env.production   # then edit real values
+backend/scripts/setup-production-db.ps1                      # roles -> migrations -> RLS, own Postgres on :5434
+docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --build
+curl http://localhost:8080/api/health
+```
+
+`Dockerfile` (repo root) is a multi-stage build: a Node stage builds the frontend, a **pinned**
+`.NET SDK 10.0.302` stage publishes the backend (which copies the frontend build into `wwwroot`,
+the same `CommitAhead.Api.csproj` target `dotnet publish` always uses), and a minimal ASP.NET Core
+runtime stage runs it as a non-root user, exposing `/api/health` as a Docker `HEALTHCHECK`. The SDK
+stage must stay pinned to the exact version in `backend/global.json` — the floating `10.0` tag can
+resolve to a later feature band that `global.json`'s default `rollForward` policy refuses to run,
+failing the build with an SDK-not-found error (discovered by actually building the image).
+
+`docker-compose.prod.yml` runs that image alongside a dedicated PostgreSQL, both with named volumes
+and `restart: unless-stopped` — it sits alongside `backend/docker-compose.yml` (the dev-only
+Postgres) without conflict, using different ports (5434 vs 5433) and volumes. `ASPNETCORE_ENVIRONMENT=Docker`
+is this stack's own environment name: it skips `UseHsts()`/`UseHttpsRedirection()` (this stack has
+no TLS termination of its own — a real deployment behind a reverse proxy would use `Production` and
+keep both), and Data Protection keys persist to a named volume (`DataProtection:KeyRingPath`) so
+cookie encryption — and existing sessions — survive a container restart. Neither change affects
+auth/CSRF cookies: they already read `Secure=true` unconditionally, and browsers treat
+`http://localhost` as a secure context regardless of scheme, so they are still sent to this stack at
+`http://localhost:8080`.
+
+Migrations against this stack's own Postgres use `dotnet ef database update` directly (via
+`backend/scripts/setup-production-db.ps1`, mirroring `setup-local-db.ps1`), since the SDK is already
+on the machine running that script. `backend/scripts/build-migration-bundle.ps1` produces a
+self-contained EF migration bundle (`backend/artifacts/efbundle`, gitignored) for wherever that
+assumption stops holding — a real deployment target without the .NET SDK installed.
+
+**Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
+hosting platform, secrets management, Data Protection key encryption at rest, automated encrypted
+backups, and centralized log retention. See `docs/tbd.md` for the target policies already decided
+(30-day log retention; 30-day backup retention with a quarterly restore test) and what's still open.
+
 ## MVP
 
 - Unified StudyItems for Theory, LeetCode, System Design, and Behavioral preparation

@@ -1,0 +1,76 @@
+# Production-like local validation stack (ADR-0021) — the whole app (API + built React SPA) plus
+# its own PostgreSQL, both restart-safe via named volumes. Deliberately hosting-provider-neutral:
+# no Fly.io/Railway/Azure-specific service, secret store, or config. Runs alongside
+# backend/docker-compose.yml (dev-only Postgres) without conflict — distinct project name, ports,
+# and volumes, both driven from this one repo.
+#
+# Usage: see README.md "Production (Local Docker)". In short:
+#   cp backend/.env.production.example backend/.env.production   # then edit real values
+#   backend/scripts/setup-production-db.ps1                      # roles -> migrations -> RLS
+#   docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --build
+
+name: commitahead-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: commitahead
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      COMMITAHEAD_MIGRATOR_PASSWORD: ${COMMITAHEAD_MIGRATOR_PASSWORD}
+      COMMITAHEAD_APP_PASSWORD: ${COMMITAHEAD_APP_PASSWORD}
+    # A different host port from backend/docker-compose.yml's 5433 (dev) — the two stacks can run
+    # side by side without a port clash.
+    ports:
+      - "5434:5432"
+    volumes:
+      - commitahead_prod_db_data:/var/lib/postgresql/data
+      - ./backend/scripts/database/001_roles.sql:/docker-entrypoint-initdb.d/001_roles.sql.template:ro
+      - ./backend/scripts/database/dev-init.sh:/docker-entrypoint-initdb.d/00-dev-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d commitahead"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      # Host "db" resolves via the compose network, not localhost — unlike backend/docker-compose.yml,
+      # which the app never connects to directly (only this stack's own db).
+      ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead;Username=commitahead_app;Password=${COMMITAHEAD_APP_PASSWORD}"
+      Supabase__Url: ${SUPABASE_URL}
+      Supabase__AnonKey: ${SUPABASE_ANON_KEY}
+      AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+      # Mounted onto the dataprotection-keys volume below — survives `docker compose down`/restart,
+      # so existing sessions/cookies stay valid across a redeploy of this stack (ADR-0021). Not
+      # encrypted at rest: that needs a cloud KMS, still an open decision (docs/tbd.md) for whenever
+      # a real hosting platform is chosen.
+      DataProtection__KeyRingPath: /keys
+    volumes:
+      - commitahead_prod_dataprotection_keys:/keys
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  commitahead_prod_db_data:
+  commitahead_prod_dataprotection_keys:
