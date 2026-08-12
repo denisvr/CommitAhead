@@ -126,6 +126,34 @@ describe('CVPresentationForm — template and photo', () => {
     expect(checkbox).not.toBeChecked()
     expect(checkbox).toBeDisabled()
   })
+
+  it('offers a correction action for a legacy unsupported template and saves it once chosen', async () => {
+    let requestBody: Record<string, unknown> | undefined
+    server.use(
+      http.put('/api/cv-presentations/:id', async ({ request }) => {
+        requestBody = (await request.json()) as Record<string, unknown>
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const onSaved = vi.fn()
+
+    render(<CVPresentationForm mode="edit" presentation={{ ...PRESENTATION, templateKey: 'legacy-template' }} onSaved={onSaved} onCancel={vi.fn()} />)
+
+    // The disabled select can't offer a way off the unsupported value — merely rendering the form
+    // must not have changed it already.
+    expect(screen.getByLabelText('Template')).toHaveValue('legacy-template')
+    expect(screen.getByRole('alert')).toHaveTextContent(/legacy-template/)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Use the default template' }))
+
+    expect(screen.getByLabelText('Template')).toHaveValue('modern-one-page')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSaved).toHaveBeenCalled()
+    expect(requestBody?.templateKey).toBe('modern-one-page')
+  })
 })
 
 describe('CVPresentationForm — edit', () => {

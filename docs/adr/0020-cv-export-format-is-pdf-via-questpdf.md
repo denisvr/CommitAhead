@@ -31,7 +31,9 @@ own C# fluent layout API) rather than through an HTML/CSS template rendered by a
 `ExportCVPresentationUseCase` builds the same minimised, rule-applied projection the frontend
 preview already needs (selected entries in their saved order, visibility-filtered contact fields,
 locale-formatted dates, the resolved summary Markdown) and hands it to the renderer; the renderer
-owns only layout and page-limit enforcement, never business rules.
+owns only layout, reporting back the generated PDF's actual page count, and the use case is what
+enforces the configured PageLimit against that count — never a business rule the renderer itself
+applies.
 
 ## Why
 

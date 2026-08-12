@@ -26,3 +26,14 @@
   font-size: var(--text-sm);
   color: var(--text);
 }
+
+.correction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.correction p {
+  margin: 0;
+}

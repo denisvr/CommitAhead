@@ -132,6 +132,21 @@ function CVPresentationFormFields({ values, onChange }: CVPresentationFormFields
         </Field>
       </div>
 
+      {/* Only reachable for a presentation saved before this template restriction, or with a
+          hand-edited TemplateKey — the disabled select above can't offer a way off an unsupported
+          value, so this is the correction path. It only edits local form state; nothing is
+          persisted until the user clicks Save/Create. */}
+      {values.templateKey !== SUPPORTED_TEMPLATE_KEY && (
+        <div className={layout.correction}>
+          <p role="alert" className={fieldStyles.error}>
+            This presentation uses "{values.templateKey}", which export doesn't support.
+          </p>
+          <Button type="button" variant="secondary" onClick={() => onChange({ ...values, templateKey: SUPPORTED_TEMPLATE_KEY })}>
+            Use the default template
+          </Button>
+        </div>
+      )}
+
       <Field label="Summary override" hint="Optional — replaces your profile's summary just for this presentation.">
         {(fieldProps) => (
           <textarea
