@@ -5,6 +5,7 @@ using CommitAhead.Api.Features.CVPresentations;
 using CommitAhead.Api.Features.ProfessionalProfiles;
 using CommitAhead.Api.Tests.StudyItems;
 using CommitAhead.Application.AI;
+using UglyToad.PdfPig;
 
 namespace CommitAhead.Api.Tests.CVPresentations;
 
@@ -193,5 +194,44 @@ public class CVPresentationEndpointTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
         Assert.Equal(AnalyzeCommandOutcome.Created, body!.Outcome);
+    }
+
+    [Fact]
+    public async Task Export_WithoutAnyToken_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/cv-presentations/{Guid.NewGuid()}/export");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_WithNoSuchPresentation_ReturnsNotFound()
+    {
+        var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
+
+        var response = await client.SendGetAsync($"/api/cv-presentations/{Guid.NewGuid()}/export", accessCookie);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_ForAValidPresentation_ReturnsAParseablePdfContainingTheContactNameAndTargetRole()
+    {
+        var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
+        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+
+        var response = await client.SendGetAsync($"/api/cv-presentations/{created!.Id}/export", accessCookie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+
+        var pdfBytes = await response.Content.ReadAsByteArrayAsync();
+        using var pdf = PdfDocument.Open(pdfBytes);
+        var text = string.Join("\n", pdf.GetPages().Select(p => p.Text));
+        Assert.Contains("Ada Lovelace", text);
+        Assert.Contains("Senior Backend Engineer", text);
     }
 }

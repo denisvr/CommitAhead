@@ -71,8 +71,8 @@ internal static class RestrictedMarkdownParser
 
                 break;
 
-            // ThematicBreakBlock, HtmlBlock, and any other block kind are intentionally dropped —
-            // an HtmlBlock in particular is exactly the raw-HTML case the allowlist forbids.
+                // ThematicBreakBlock, HtmlBlock, and any other block kind are intentionally dropped —
+                // an HtmlBlock in particular is exactly the raw-HTML case the allowlist forbids.
         }
     }
 
