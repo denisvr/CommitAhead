@@ -226,7 +226,8 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 | `docs/domain/use-cases.md` | Primary user journeys |
 | `docs/architecture/solution.md` | Layers, dependencies, and key flows |
 | `docs/architecture/persistence.md` | PostgreSQL/EF Core mapping strategy |
-| `docs/testing/strategy.md` | Test layers and CI gates |
+| `docs/testing/strategy.md` | Test layers and CI gates; Layer 7 is the normative Playwright E2E contract |
+| `e2e/README.md` | E2E operational runbook (install, Docker stack, running journeys, artifacts, safeguards) |
 | `docs/security/threat-model.md` | Assets, threats, controls, and security tests |
 | `docs/deployment/strategy.md` | Deployment topology and platform requirements |
 | `docs/design/design-system/readme.md` | Approved Reading Room/Bookmark identity and frontend design contract |

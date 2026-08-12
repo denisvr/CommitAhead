@@ -10,7 +10,7 @@
 | API | xUnit, WebApplicationFactory, shared Testcontainers DB, `FakeAIProvider` |
 | Architecture | NetArchTest |
 | Frontend component | Vitest, React Testing Library, MSW |
-| E2E | Playwright (planned — not implemented; see Layer 7) |
+| E2E | Playwright, Chromium only (planned — not implemented; Layer 7 is the normative contract) |
 | AI adapter | xUnit, stubbed HTTP/SDK responses |
 
 **Absolute rule**: zero real AI calls in any automated test. `FakeAIProvider` in all automated contexts.
@@ -191,14 +191,278 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 
 ## Layer 7: E2E Tests (Playwright — post-merge or manual)
 
-**Not implemented yet** — no Playwright project exists in this repo. Deferred until there is a real deployed environment to point it at (rather than building the test-environment auth scheme and CI bootstrap this layer needs against a purely local target); revisit then. The plan below is the target shape once that work starts, not a description of anything running today.
+**Not implemented yet** — no Playwright project, no `e2e/` code, and no E2E Docker stack exist in
+this repo. Everything below is the **normative contract** that implementation must satisfy, not a
+description of anything running today. `e2e/README.md` is the operational runbook for the same
+contract; this document owns the *rules*, that one owns the *commands*. Both must be read before
+changing E2E code.
 
-Four critical journeys. Environment: production Vite build + real Kestrel + Testcontainers PostgreSQL + `FakeAIProvider` + test-environment auth scheme (also not implemented yet — nothing today lets a real running Kestrel process accept anything but a genuine Supabase session; this needs new, environment-gated auth surface in the API itself, not just test-project wiring). DB reset between journeys. No Supabase, no real AI.
+Research basis: Playwright's official documentation, current release `1.62.x`, reviewed
+2026-08-12. Where this contract departs from official guidance, the deviation is stated and
+justified — see "Sources and project decisions" at the end of this layer.
 
-1. Authenticated access
-2. Create StudyItem → SubmitStudyReview → verify ranking
-3. Complete job-analysis draft flow
-4. Edit CVPresentation + export
+### 7.1 Exactly four journeys
+
+Four journeys, no more. Each maps to a stated MVP completion criterion
+(`docs/product/brief.md`); a proposed fifth journey is a request to change that list, not an
+addition to it. Because the runner is pinned to `workers: 1` (§7.7), Playwright executes spec files
+in alphabetical order, so the numeric filename prefixes below are load-bearing and must be kept.
+
+| # | File | Journey | MVP criterion it proves |
+|---|---|---|---|
+| 1 | `001-authenticated-access.spec.ts` | An unauthenticated visitor gets the login screen and cannot reach protected content; an authenticated session renders the app shell and `GET /api/me`; logout ends the session | Security controls in place |
+| 2 | `002-study-queue-ranking.spec.ts` | Create a StudyItem → submit a StudyReview → the study queue reflects the new ranking | The study queue ranks items correctly |
+| 3 | `003-job-analysis-draft.spec.ts` | Create a pasted-text JobAnalysis → Analyze → review the draft → accept some proposals and reject others → Apply → the accepted effects are visible on the source | AI commands produce valid AnalysisDrafts and apply accepted proposals |
+| 4 | `004-cv-presentation-export.spec.ts` | Edit a CVPresentation's selections → export → a PDF is downloaded | At least one CVPresentation can be edited and exported |
+
+Journey 3 uses a **pasted-text** JobAnalysis, never a PDF upload. Upload goes through Supabase
+Storage, which §7.6 forbids; the upload path is already covered end-to-end by Layer 3/4 tests
+against the real extractor and a stubbed Storage client.
+
+### 7.2 The E2E environment is a separate, disposable stack
+
+E2E runs against a real production-shaped stack: the production container image (built React SPA
+served by real Kestrel) plus a real PostgreSQL with real EF migrations and all real RLS scripts
+applied. Not `WebApplicationFactory`, not Testcontainers, not `vite dev`.
+
+That stack is **completely isolated** from both existing stacks. Every axis must differ — this is
+the primary safeguard against an E2E run touching real data:
+
+| Axis | Dev (`backend/docker-compose.yml`) | Local production-like (`docker-compose.prod.yml`) | **E2E (`docker-compose.e2e.yml`)** |
+|---|---|---|---|
+| Compose project | (default, directory-derived) | `commitahead-prod` | **`commitahead-e2e`** |
+| Database name | `commitahead` | `commitahead` | **`commitahead_e2e`** |
+| DB host port | `5433` | `127.0.0.1:5434` | **`127.0.0.1:5435`** |
+| App host port | n/a | `127.0.0.1:8080` | **`127.0.0.1:8081`** |
+| DB volume | named, persistent | named, persistent | **none — anonymous/`tmpfs`, destroyed with the container** |
+| Data Protection keys | n/a | named volume | **ephemeral** |
+| `ASPNETCORE_ENVIRONMENT` | `Development` | `Docker` | **`E2E`** |
+
+Rules:
+
+- **The E2E database must never be persistent.** No named volume. A stack that cannot outlive
+  `docker compose down` cannot accumulate real data and cannot be mistaken for a real one.
+- **A distinct database name (`commitahead_e2e`) is mandatory**, so that even a misconfigured
+  connection string cannot silently land on the `commitahead` database of either other stack.
+- All E2E ports bind to `127.0.0.1` only, consistent with ADR-0021.
+- Anything that resets or seeds data must address the stack explicitly by both
+  `-f docker-compose.e2e.yml` and `-p commitahead-e2e`. A reset helper that relies on ambient
+  Docker context is a defect.
+- `baseURL` is `http://localhost:8081`. The Playwright config must **fail fast** if `baseURL`
+  resolves to `8080`, or if any DB-facing helper resolves to port `5433`/`5434` or database
+  `commitahead` — a wrong-target run must be impossible, not merely discouraged.
+
+Playwright's `webServer` option is deliberately **not** used to bring the stack up. The stack's
+lifecycle is owned by explicit scripts because (a) the reset fixture must talk to the same Compose
+project, and (b) `webServer` tears its process down by killing the process group, which would leave
+Compose resources behind rather than running `down`. Startup readiness is the container's own
+health check plus `GET /api/health`.
+
+### 7.3 E2E-only authentication that cannot exist anywhere else
+
+Real login is a Supabase magic link — externally delivered, non-deterministic, and a real Supabase
+call, so §7.6 forbids it. Playwright's normal advice (sign in through the UI once in a `setup`
+project, save `storageState`) therefore cannot be followed literally.
+
+The contract:
+
+- Authentication is obtained through an **E2E-only session hook in the API**, gated on
+  `ASPNETCORE_ENVIRONMENT=E2E` **and** an explicit signing-key configuration value. It mints a
+  locally-signed JWT for the seeded E2E user and writes the same auth cookies the real callback
+  writes, so everything downstream of login is exercised unchanged. This mirrors the existing
+  `AuthTestWebApplicationFactory` precedent, which already points JWT validation at a fixed local
+  key instead of Supabase's JWKS — but as configuration, since a real container cannot be
+  reconfigured in-process.
+- **Fail closed at startup.** If the E2E signing key is configured while the environment is
+  anything other than `E2E`, the application must throw during startup rather than start with the
+  hook inert. "Inert unless enabled" is not sufficient; the presence of the key in a non-E2E
+  environment is itself a misconfiguration and must be loud.
+- The hook must be covered by an API test asserting it is unreachable under `Development`,
+  `Docker`, and `Production`.
+- The E2E signing key is a test-fixture value with no production meaning. It must never be reused
+  as, or derived from, any real secret.
+
+**`storageState` handling** — Playwright's docs are explicit that a saved browser-state file holds
+cookies that can impersonate the account, and must be gitignored, never committed. For CommitAhead
+that file holds a genuine (if E2E-only) session cookie, so:
+
+- Saved state lives under `e2e/.auth/` and **must be gitignored before the first run**.
+- Prefer writing it under the project's `outputDir`, which Playwright clears before every run.
+
+**A CommitAhead-specific expiry constraint** the official pattern does not anticipate:
+`AuthenticationServiceCollectionExtensions` enforces a 15-minute effective access-token lifetime
+server-side against the token's `iat` claim, independently of cookie lifetime. A single
+`storageState` minted once by one global `setup` project therefore **goes stale part-way through a
+suite** and would produce spurious 401s in whichever journey happens to run last. The session must
+be re-minted per journey file rather than once per run. This is a deliberate deviation from the
+single-setup-project model, forced by our own session hardening.
+
+Journey 1's unauthenticated half uses the documented empty-state form
+(`test.use({ storageState: { cookies: [], origins: [] } })`) rather than a separate browser launch.
+
+### 7.4 Database reset between journeys
+
+Every journey starts from an identical, known database state.
+
+- Reset **truncates business tables** and re-seeds the single E2E user (plus any baseline
+  configuration a journey needs). It must **not** drop the schema or the database: RLS policies and
+  the EF migrations-history table must survive, or subsequent journeys would run against an
+  unprotected or unmigrated database and still appear to pass.
+- Reset runs before each journey file. With `workers: 1` this is safe by construction; under any
+  future parallelism it would not be (§7.7).
+- Respawn — used at Layer 3 — is deliberately not used here: it is a .NET library with no reach
+  from the Playwright process. The reset is SQL executed against the E2E stack's own container.
+- Migrations and all RLS scripts are applied once at stack bring-up, not per journey.
+
+Playwright's own preference is start-from-scratch isolation over cleanup-between-tests. A per-test
+fresh *database* is too slow for a container-backed stack, so this is a considered compromise:
+scratch-equivalent state via truncate-and-reseed, with the persistence layer's own isolation
+(RLS + `OwnerUserId`) proven separately at Layer 3.
+
+### 7.5 Determinism, locators, and assertions
+
+- **User-facing locators only**, in Playwright's documented priority order: `getByRole`,
+  `getByLabel`, `getByText`, then the remaining user-facing queries. This continues an existing
+  convention rather than introducing one — the frontend currently contains **zero** `data-testid`
+  attributes, and the Vitest suites already query exclusively by role and label.
+- **`data-testid` is not permitted.** If an element cannot be addressed by role, accessible name,
+  or label, the defect is the component's accessibility, and the fix belongs in the component —
+  which the design-system contract in `CLAUDE.md` already requires. Playwright's docs present test
+  IDs as a legitimate option; declining them is a CommitAhead decision, justified by that existing
+  accessibility requirement.
+- CSS and XPath selectors are not permitted, per Playwright's own guidance that they couple tests
+  to DOM structure.
+- **Web-first, auto-retrying assertions only** (`toBeVisible`, `toHaveText`, `toHaveValue`, …),
+  always awaited. A non-retrying assertion over a value read from the page is a defect. Use
+  `expect.poll`/`expect.toPass` where a condition genuinely needs polling.
+- **`waitForTimeout` is banned outright** in committed tests. Playwright's auto-waiting and
+  retrying assertions make fixed sleeps unnecessary; a sleep that appears to fix a test is hiding a
+  real race. (Playwright documents `waitForTimeout` as a debugging aid; the outright ban here is a
+  CommitAhead rule, not a quotation of the official docs.)
+- **The SPA has no URL routing.** `App.tsx` navigates through `useState<View>`, so there are no
+  per-page URLs. Journeys must `page.goto('/')` once and then navigate by interacting with the UI.
+  Deep-linking, `toHaveURL` assertions on view changes, and "go straight to the detail page" setup
+  shortcuts are all unavailable — a constraint to design around, not to work around.
+
+### 7.6 Zero real external calls
+
+No E2E run may make a real call to Supabase Auth, Supabase Storage, or any AI provider. This is the
+same absolute rule as the rest of the suite, applied to a stack that — unlike
+`WebApplicationFactory` — has real network access.
+
+- **AI.** Two facts constrain the design: `FakeAIProvider` exists only in test assemblies and is
+  not reachable from the production image, and `AnthropicAIProvider`'s base address is currently
+  **hardcoded** to `https://api.anthropic.com/`. The preferred resolution is to make that base
+  address configurable and run a deterministic stub AI service inside the E2E Compose stack: it
+  keeps every test double out of the production assembly, satisfies architecture rule 5, and
+  exercises the real adapter's request construction and deserialisation. The alternative — an
+  E2E-gated `IAIProvider` registration swapped in at the composition root — is acceptable only if
+  it carries the same fail-closed startup guard as §7.3. Whichever is chosen, the requirement is
+  the same: deterministic AI responses, and no egress to a real provider.
+- **Enforce it, don't assert it.** The app container must have no route to the public internet in
+  the E2E stack (internal Compose network, external egress limited to the stub). "We didn't
+  configure a real key" is not evidence; an unroutable network is.
+- **Supabase Auth** is never called: §7.3 replaces login entirely, and JWT validation uses the E2E
+  key rather than Supabase's JWKS.
+- **Supabase Storage** is never called: journey 3 uses pasted text (§7.1).
+
+### 7.7 Execution, parallelism, and CI
+
+- **`workers: 1`, serial, from the start.** Playwright's CI guidance already recommends a single
+  worker for stability; here it is also a correctness requirement, because all four journeys share
+  one database, one seeded owner, and one truncate-based reset. Note that Playwright's docs
+  discourage `test.describe.serial` in favour of isolated tests — that guidance concerns
+  interdependent tests within a file, and does not conflict with running independent journey files
+  one at a time; each journey must still be independently runnable in isolation.
+- **The path to parallelism, when it is wanted:** provision one owner account per worker keyed on
+  `parallelIndex` (stable across worker restarts, unlike `workerIndex`), give each its own
+  `storageState`, and replace the global truncate with per-owner cleanup. Until that exists,
+  raising `workers` above 1 will produce cross-journey interference that looks like flakiness.
+  Sharding is out of scope: it is a fix for suites far larger than four journeys.
+- **Chromium only for the MVP** (`devices['Desktop Chrome']`). Cross-browser rendering risk is
+  covered by the design-system component tests; this is a single-user, invite-only application, and
+  a browser matrix would multiply E2E runtime for a risk this project does not carry. Revisit only
+  if a real cross-browser defect appears.
+- **Retries: 0 locally, 1 in CI.** Local retries hide races from the person who just wrote them;
+  one CI retry absorbs genuine infrastructure noise while still surfacing the result as *flaky*
+  rather than *passed*. A test that only passes on retry is treated as failing.
+- **Artifacts:** `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`,
+  `video: 'retain-on-failure'`. (`screenshot` has no `retain-on-failure` mode; `only-on-failure` is
+  the correct literal.)
+- **Post-merge or manual only** — E2E is not a blocking PR gate. It needs a full container build
+  plus a database bring-up, which would dominate PR feedback time for coverage that Layers 1–6
+  already provide. This matches how the CI table in `CLAUDE.md` already classifies it.
+- CI installs only what it uses: `npx playwright install --with-deps chromium`. If the run is
+  containerised instead, use the official pinned image (`mcr.microsoft.com/playwright:v1.62.0-noble`
+  or the then-current version) with `--ipc=host`, whose absence is a documented cause of Chromium
+  crashes.
+
+### 7.8 Restraint in fixtures, helpers, and Page Objects
+
+Four journeys do not justify a framework.
+
+- Start with **no Page Objects**. Introduce one only when the same interaction is duplicated across
+  at least two journeys and the duplication is actually causing churn. Playwright's docs describe
+  POM as *one* way to structure a suite, not a requirement, and explicitly tolerate some
+  duplication when it keeps tests readable — for a suite this small, an abstraction layer costs
+  more than it saves. (This restraint is a CommitAhead decision; the official POM page takes no
+  position against over-abstraction.)
+- Where shared setup *is* needed, prefer a **fixture** over `beforeEach` plus module-level state —
+  fixtures are what Playwright's docs recommend for setup/teardown pairs and shared helpers, and
+  module-level mutable state is exactly what breaks when execution order changes.
+- Any Page Object introduced later must be wired through a fixture, per the official composition,
+  and must hold locators and interactions only — never assertions about business rules that belong
+  in the journey.
+
+### 7.9 API-assisted setup
+
+`APIRequestContext` is used **only to prepare state that is not the behaviour under test**.
+Preparing the very thing a journey exists to prove makes the journey vacuous — journey 2 must
+create its StudyItem through the UI, journey 4 must edit selections through the UI.
+
+Legitimate: seeding a ProfessionalProfile with canonical entries so journey 4 has something to
+select; creating prerequisite records a journey depends on but does not exercise.
+
+Two CommitAhead specifics any setup helper must respect:
+
+- **CSRF.** Every state-changing request needs a token from `GET /auth/csrf` sent back as the
+  `X-CSRF-TOKEN` header, exactly as the frontend client does. Setup that skips this will get 400s
+  that look like application bugs.
+- **Cookie sharing.** `page.request` shares the browser context's cookie jar, so it inherits the
+  journey's session; a context created via `apiRequest.newContext()` does not. Use `page.request`
+  for setup that should act as the signed-in user.
+
+### 7.10 PDF verification scope
+
+Journey 4 asserts that the export **reaches the user**: a download event fires, the suggested
+filename is a `.pdf`, and the downloaded bytes are non-empty and begin with the `%PDF-` magic
+number.
+
+It deliberately stops there. Parsed-content assertions — required text, entry ordering, exclusions,
+locale dates, page limit — already run on every PR against the real renderer via PdfPig
+("PDF and CV Verification" above). Re-asserting them here would mean adding a second, independent
+PDF-parsing stack in TypeScript whose disagreements with PdfPig would be noise, not signal.
+
+### 7.11 Sources and project decisions
+
+Official Playwright documentation reviewed 2026-08-12 against release `1.62.x`. Each row lists the
+source consulted and what CommitAhead decided in light of it.
+
+| Official source | CommitAhead decision |
+|---|---|
+| [Isolation / browser contexts](https://playwright.dev/docs/browser-contexts) | Per-test context isolation is accepted as-is; it does not cover our shared database, so §7.4 adds truncate-and-reseed between journeys |
+| [Best practices](https://playwright.dev/docs/best-practices) | Adopted: user-facing locators, no CSS/XPath, controlled test data, don't test third parties (§7.5, §7.6) |
+| [Authentication](https://playwright.dev/docs/auth) | `storageState` mechanism adopted; UI-based sign-in **rejected** (magic link is external and would be a real Supabase call). Deviation: session re-minted per journey, because our 15-minute `iat` cap staleness-expires a once-per-run state (§7.3) |
+| [Locators](https://playwright.dev/docs/locators) | Priority order adopted verbatim; `getByTestId` **declined** — the frontend has zero `data-testid` and accessible names are already a design-system requirement (§7.5) |
+| [Assertions](https://playwright.dev/docs/test-assertions) · [Actionability](https://playwright.dev/docs/actionability) | Web-first auto-retrying assertions mandatory; fixed sleeps banned outright, which is stricter than the docs' own framing (§7.5) |
+| [Test retries](https://playwright.dev/docs/test-retries) · [Trace viewer](https://playwright.dev/docs/trace-viewer) · [Videos](https://playwright.dev/docs/videos) · [Screenshots](https://playwright.dev/docs/screenshots) | `retries` 0 local / 1 CI (fewer than the generated config's 2); `on-first-retry` trace, `only-on-failure` screenshot, `retain-on-failure` video (§7.7) |
+| [Parallelism](https://playwright.dev/docs/test-parallel) · [CI](https://playwright.dev/docs/ci) | `workers: 1` adopted — recommended for CI stability, and required here by shared-database state. Per-worker account isolation documented as the prerequisite for ever raising it (§7.7) |
+| [Test projects / dependencies](https://playwright.dev/docs/test-projects#dependencies) | Setup-project dependency model used for auth wiring, subject to the per-journey re-mint in §7.3 |
+| [Fixtures](https://playwright.dev/docs/test-fixtures) · [Page object models](https://playwright.dev/docs/pom) | Fixtures preferred over hooks; POMs deferred until duplication justifies them — a project restraint, not an official position (§7.8) |
+| [API testing](https://playwright.dev/docs/api-testing) · [APIRequestContext](https://playwright.dev/docs/api/class-apirequestcontext) | Used for out-of-scope state only; CSRF token and `page.request` cookie-sharing behaviour called out as CommitAhead specifics (§7.9) |
+| [Downloads](https://playwright.dev/docs/downloads) | Download event + `suggestedFilename()` + magic-byte check only; deep PDF assertions stay with PdfPig (§7.10) |
+| [Docker](https://playwright.dev/docs/docker) · [Browsers](https://playwright.dev/docs/browsers) | Chromium-only install; pinned official image with `--ipc=host` if containerised (§7.7) |
+| [webServer](https://playwright.dev/docs/test-webserver) | **Not used** — Compose lifecycle is owned by explicit scripts so reset can address the same project and teardown actually runs (§7.2) |
 
 ---
 

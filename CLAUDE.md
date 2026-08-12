@@ -103,6 +103,17 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
   EffectiveScore, Demand and Mastery, are rendered from API responses and never recomputed in
   React.
 
+## E2E testing contract
+
+Before creating or changing anything under `e2e/`, the Playwright config, or the E2E Docker stack,
+read **`docs/testing/strategy.md` Layer 7** (the normative contract — journeys, environment
+isolation, E2E-only auth, locators, external-call rules) and **`e2e/README.md`** (the operational
+runbook). Layer 7 wins if the two ever disagree. Its non-negotiables: exactly four journeys, a
+fully isolated and non-persistent E2E stack that never touches the dev or local-production
+database, E2E-only authentication that fails closed outside the `E2E` environment, `workers: 1`,
+user-facing locators with no `data-testid`, no `waitForTimeout`, and zero real Supabase, Storage,
+or AI calls.
+
 ## CI quality gates (every PR — all blocking)
 
 **Build & static analysis:**
