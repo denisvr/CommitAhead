@@ -7,7 +7,7 @@
 # chosen later.
 
 # ---- Stage 1: build the frontend (frontend/dist is a build input the backend publish target requires) ----
-FROM node:24-alpine AS frontend-build
+FROM node:26-alpine AS frontend-build
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
