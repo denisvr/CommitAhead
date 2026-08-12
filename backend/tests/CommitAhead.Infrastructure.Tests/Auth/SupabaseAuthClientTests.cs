@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using CommitAhead.Infrastructure.Auth;
+using Microsoft.Extensions.Options;
 
 namespace CommitAhead.Infrastructure.Tests.Auth;
 
@@ -23,6 +24,7 @@ public class SupabaseAuthClientTests
         Assert.Contains("\"create_user\":false", handler.LastRequestBody);
         Assert.Contains("\"code_challenge\":\"challenge-value\"", handler.LastRequestBody);
         Assert.Contains("\"code_challenge_method\":\"s256\"", handler.LastRequestBody);
+        Assert.Contains("\"redirect_to\":\"https://configured.example/auth/callback\"", handler.LastRequestBody);
     }
 
     [Fact]
@@ -89,7 +91,8 @@ public class SupabaseAuthClientTests
     {
         var httpClient = new HttpClient(handler) { BaseAddress = BaseAddress };
         httpClient.DefaultRequestHeaders.Add("apikey", "test-anon-key");
-        return new SupabaseAuthClient(httpClient);
+        var authOptions = Options.Create(new AuthOptions { CallbackUrl = "https://configured.example/auth/callback" });
+        return new SupabaseAuthClient(httpClient, authOptions);
     }
 
     private static HttpResponseMessage JsonResponse(string json)

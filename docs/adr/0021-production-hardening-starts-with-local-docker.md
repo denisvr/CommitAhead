@@ -116,3 +116,43 @@ cloud-deployment stage rather than "Phase 6" in general.
   adds certificate generation/trust and Kestrel HTTPS-endpoint configuration that a real deployment
   will replace with a reverse proxy anyway; rejected as complexity this local-validation slice does
   not need.
+
+## Amendment: making the local stack genuinely usable
+
+The first version of this stack built and started, but could not actually be *used*: nobody could
+sign in (no `redirect_to` was ever sent to Supabase, and no `User` row existed after a fresh
+migration for closed login — ADR-0015 — to accept), the ports were reachable from the whole LAN
+rather than just this machine, "container limits are the backstop" was aspirational text rather
+than a real limit, and the roadmap's own claim of a manual backup command didn't correspond to an
+actual script. Fixed, still within this ADR's own hosting-neutral scope:
+
+- **Configurable, per-environment Supabase callback.** `AuthOptions.CallbackUrl` (new, bound from
+  the "Auth" configuration section) is sent as `redirect_to` on the magic-link `/auth/v1/otp`
+  request (`SupabaseAuthClient.InitiateMagicLinkAsync`) — trusted backend configuration only, never
+  derived from a request's Origin/Referer. Local `dotnet run` uses
+  `http://localhost:5120/auth/callback` (`appsettings.Development.json`); the Docker stack uses
+  `http://localhost:8080/auth/callback` (`docker-compose.prod.yml`'s `Auth__CallbackUrl`). Both must
+  be present in the Supabase project's own redirect allow-list (README.md now documents both, not
+  just the dev one).
+- **Idempotent local user bootstrap.** `backend/scripts/bootstrap-production-user.ps1`
+  inserts/updates exactly one row in the local PostgreSQL `users` table after migrations, reading
+  `INITIAL_USER_ID`/`INITIAL_USER_EMAIL` from `backend/.env.production` (or explicit parameters). It
+  never creates a Supabase account, never enables public signup, and never hardcodes a specific
+  person — the Supabase Auth user with that id must already exist in the real project. Without
+  this, closed login has nothing to ever match against on a fresh database.
+- **Loopback-only ports.** `127.0.0.1:8080:8080` and `127.0.0.1:5434:5432`, not `0.0.0.0` — this
+  stack is for local use on the machine running it, not for being reachable from the rest of the
+  network.
+- **Real container resource limits.** `app`'s `deploy.resources.limits` (1 CPU / 1 GiB) makes the
+  threat model's own claim — "container memory/CPU limits are the real backstop" against a runaway,
+  uncancellable PDF parse — actually true for this stack, not just asserted in prose.
+- **A working manual backup command, not a promise of one.** `backend/scripts/backup-production-db.ps1`
+  / `restore-production-db.ps1` (plain-text `pg_dump --format=plain --clean --if-exists`, restorable
+  with `psql`) replace what had been an unfulfilled reference to "a simple manual `pg_dump`" in
+  `docs/roadmap.md`/`docs/tbd.md` — corrected wording, or a real command, never both drifting apart.
+- **Reject placeholder credentials.** `setup-production-db.ps1` now refuses to bootstrap a
+  "production-like" database still holding `.env.production.example`'s own `change_me` values for
+  any required credential.
+
+None of this changes the ADR's own boundary: still no hosting provider, no TLS infrastructure, no
+centralized logging, no cloud secrets management, no automated cloud backups.

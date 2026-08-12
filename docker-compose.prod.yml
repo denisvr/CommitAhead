@@ -21,9 +21,10 @@ services:
       COMMITAHEAD_MIGRATOR_PASSWORD: ${COMMITAHEAD_MIGRATOR_PASSWORD}
       COMMITAHEAD_APP_PASSWORD: ${COMMITAHEAD_APP_PASSWORD}
     # A different host port from backend/docker-compose.yml's 5433 (dev) — the two stacks can run
-    # side by side without a port clash.
+    # side by side without a port clash. Bound to loopback only (127.0.0.1) — this is a local
+    # validation stack, not something meant to be reachable from the rest of the LAN/network.
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - commitahead_prod_db_data:/var/lib/postgresql/data
       - ./backend/scripts/database/001_roles.sql:/docker-entrypoint-initdb.d/001_roles.sql.template:ro
@@ -54,6 +55,10 @@ services:
       ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead;Username=commitahead_app;Password=${COMMITAHEAD_APP_PASSWORD}"
       Supabase__Url: ${SUPABASE_URL}
       Supabase__AnonKey: ${SUPABASE_ANON_KEY}
+      # Trusted backend configuration only (never derived from a request) — must also be present
+      # in the Supabase project's own redirect allow-list alongside the dev callback URL, see
+      # README.md "Production (Local Docker)".
+      Auth__CallbackUrl: http://localhost:8080/auth/callback
       AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
       # Mounted onto the dataprotection-keys volume below — survives `docker compose down`/restart,
       # so existing sessions/cookies stay valid across a redeploy of this stack (ADR-0021). Not
@@ -62,8 +67,18 @@ services:
       DataProtection__KeyRingPath: /keys
     volumes:
       - commitahead_prod_dataprotection_keys:/keys
+    # Loopback-only, same reasoning as db above.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    # The real backstop against a runaway/uncancellable PDF parse is the container's own resource
+    # ceiling, not anything in-process (docs/security/threat-model.md, "PDF Upload" — PdfPig has no
+    # cancellable API). 1 CPU / 1 GiB is comfortably above this app's own steady-state footprint for
+    # a single-user local stack while still bounding a genuinely runaway parse or request.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
     restart: unless-stopped
     logging:
       driver: json-file

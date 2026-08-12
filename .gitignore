@@ -28,6 +28,9 @@ backend/**/wwwroot/
 # EF Core migration bundle (built on demand, never committed - see backend/scripts/build-migration-bundle.ps1)
 backend/artifacts/
 
+# Manual local-Docker DB backups (see backend/scripts/backup-production-db.ps1) - may contain real data
+backend/backups/
+
 # OS
 .DS_Store
 Thumbs.db

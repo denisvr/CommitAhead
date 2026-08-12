@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using CommitAhead.Application.Auth;
+using Microsoft.Extensions.Options;
 
 namespace CommitAhead.Infrastructure.Auth;
 
@@ -12,17 +13,19 @@ namespace CommitAhead.Infrastructure.Auth;
 public sealed class SupabaseAuthClient : ISupabaseAuthClient
 {
     private readonly HttpClient _httpClient;
+    private readonly string _callbackUrl;
 
-    public SupabaseAuthClient(HttpClient httpClient)
+    public SupabaseAuthClient(HttpClient httpClient, IOptions<AuthOptions> authOptions)
     {
         _httpClient = httpClient;
+        _callbackUrl = authOptions.Value.CallbackUrl;
     }
 
     public async Task InitiateMagicLinkAsync(string email, string codeChallenge, CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "auth/v1/otp")
         {
-            Content = JsonContent.Create(new OtpRequest(email, false, codeChallenge, "s256")),
+            Content = JsonContent.Create(new OtpRequest(email, false, codeChallenge, "s256", _callbackUrl)),
         };
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -79,7 +82,8 @@ public sealed class SupabaseAuthClient : ISupabaseAuthClient
         [property: JsonPropertyName("email")] string Email,
         [property: JsonPropertyName("create_user")] bool CreateUser,
         [property: JsonPropertyName("code_challenge")] string CodeChallenge,
-        [property: JsonPropertyName("code_challenge_method")] string CodeChallengeMethod);
+        [property: JsonPropertyName("code_challenge_method")] string CodeChallengeMethod,
+        [property: JsonPropertyName("redirect_to")] string RedirectTo);
 
     private sealed record PkceTokenRequest(
         [property: JsonPropertyName("auth_code")] string AuthCode,

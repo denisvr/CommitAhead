@@ -60,6 +60,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddOptions<SupabaseAuthOptions>()
             .Bind(configuration.GetSection(SupabaseAuthOptions.SectionName));
 
+        // Same lazy-failure posture as SupabaseAuthOptions above, same reason: no .ValidateOnStart().
+        services.AddOptions<AuthOptions>()
+            .Bind(configuration.GetSection(AuthOptions.SectionName));
+
         services.AddHttpClient<ISupabaseAuthClient, SupabaseAuthClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<SupabaseAuthOptions>>().Value;

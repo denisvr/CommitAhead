@@ -97,9 +97,14 @@ dotnet user-secrets set "ConnectionStrings:CommitAheadDb" \
 #    migration to have run first.
 ```
 
-Also in the Supabase dashboard: Authentication → URL Configuration → add your callback URL
-(`http://localhost:5120/auth/callback` for local dev) to the redirect allow-list, and confirm
-Authentication → Sign In / Providers → "Allow new users to sign up" stays off (ADR-0006).
+Also in the Supabase dashboard: Authentication → URL Configuration → add **both** callback URLs
+this project actually uses — `http://localhost:5120/auth/callback` (local `dotnet run`) and
+`http://localhost:8080/auth/callback` (the local Docker stack below, ADR-0021) — to the redirect
+allow-list, and confirm Authentication → Sign In / Providers → "Allow new users to sign up" stays
+off (ADR-0006). Each backend environment sends its own URL as `redirect_to` on the magic-link
+request (`Auth:CallbackUrl` configuration — `appsettings.Development.json` for local dev,
+`Auth__CallbackUrl` in `docker-compose.prod.yml` for Docker); it is trusted backend configuration
+only, never derived from a request's Origin/Referer.
 
 ## Production (Local Docker)
 
@@ -108,8 +113,9 @@ Compose stack you can build, run, and use extensively before any cloud platform 
 Deliberately provider-neutral: no Fly.io/Railway/Azure-specific configuration anywhere in it.
 
 ```bash
-cp backend/.env.production.example backend/.env.production   # then edit real values
-backend/scripts/setup-production-db.ps1                      # roles -> migrations -> RLS, own Postgres on :5434
+cp backend/.env.production.example backend/.env.production   # then edit real values — see below, "change_me" is rejected
+backend/scripts/setup-production-db.ps1                      # roles -> migrations -> RLS, own Postgres on 127.0.0.1:5434
+backend/scripts/bootstrap-production-user.ps1                # seeds the one enabled User row closed login needs
 docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --build
 curl http://localhost:8080/api/health
 ```
@@ -124,14 +130,28 @@ failing the build with an SDK-not-found error (discovered by actually building t
 
 `docker-compose.prod.yml` runs that image alongside a dedicated PostgreSQL, both with named volumes
 and `restart: unless-stopped` — it sits alongside `backend/docker-compose.yml` (the dev-only
-Postgres) without conflict, using different ports (5434 vs 5433) and volumes. `ASPNETCORE_ENVIRONMENT=Docker`
-is this stack's own environment name: it skips `UseHsts()`/`UseHttpsRedirection()` (this stack has
-no TLS termination of its own — a real deployment behind a reverse proxy would use `Production` and
-keep both), and Data Protection keys persist to a named volume (`DataProtection:KeyRingPath`) so
-cookie encryption — and existing sessions — survive a container restart. Neither change affects
-auth/CSRF cookies: they already read `Secure=true` unconditionally, and browsers treat
-`http://localhost` as a secure context regardless of scheme, so they are still sent to this stack at
-`http://localhost:8080`.
+Postgres) without conflict, using different ports (5434 vs 5433) and volumes. Both the app's `8080`
+and the db's `5434` are bound to `127.0.0.1` only, not `0.0.0.0` — this stack is for local use, not
+for being reachable from the rest of the LAN. The `app` service also carries a `deploy.resources.limits`
+(1 CPU / 1 GiB) — the real backstop against a runaway, uncancellable PDF parse
+(`docs/security/threat-model.md`, "PDF Upload") is the container's own resource ceiling, not
+anything in-process, so this makes that claim actually true for this stack rather than aspirational.
+`ASPNETCORE_ENVIRONMENT=Docker` is this stack's own environment name: it skips
+`UseHsts()`/`UseHttpsRedirection()` (this stack has no TLS termination of its own — a real
+deployment behind a reverse proxy would use `Production` and keep both), and Data Protection keys
+persist to a named volume (`DataProtection:KeyRingPath`) so cookie encryption — and existing
+sessions — survive a container restart. Neither change affects auth/CSRF cookies: they already read
+`Secure=true` unconditionally, and browsers treat `http://localhost` as a secure context regardless
+of scheme, so they are still sent to this stack at `http://localhost:8080`.
+
+A freshly-migrated database has no `User` row at all, and closed login (ADR-0015) rejects every
+email until one exists — `backend/scripts/bootstrap-production-user.ps1` inserts/updates exactly
+one row in the local PostgreSQL `users` table (never a Supabase account, never public signup),
+reading `INITIAL_USER_ID`/`INITIAL_USER_EMAIL` from `backend/.env.production` (or `-UserId`/`-Email`
+parameters); the Supabase Auth user with that id must already exist in the real project (see
+"Setting Up the Real Supabase Project" above). `setup-production-db.ps1` also now rejects the
+`change_me` placeholder `.env.production.example` ships for every credential, rather than silently
+bootstrapping a "production-like" database on values nobody actually set.
 
 Migrations against this stack's own Postgres use `dotnet ef database update` directly (via
 `backend/scripts/setup-production-db.ps1`, mirroring `setup-local-db.ps1`), since the SDK is already
@@ -139,10 +159,17 @@ on the machine running that script. `backend/scripts/build-migration-bundle.ps1`
 self-contained EF migration bundle (`backend/artifacts/efbundle`, gitignored) for wherever that
 assumption stops holding — a real deployment target without the .NET SDK installed.
 
+Since this stack is meant to be used extensively, `backend/scripts/backup-production-db.ps1` /
+`restore-production-db.ps1` give it a real, working manual backup command now — a plain-text
+`pg_dump --format=plain --clean --if-exists` to a timestamped `backend/backups/*.sql` file
+(gitignored), restorable with a plain `psql` invocation. Not automated, not encrypted, not on any
+retention schedule — that's still the deferred cloud-deployment work below.
+
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
-hosting platform, secrets management, Data Protection key encryption at rest, automated encrypted
-backups, and centralized log retention. See `docs/tbd.md` for the target policies already decided
-(30-day log retention; 30-day backup retention with a quarterly restore test) and what's still open.
+hosting platform, secrets management, Data Protection key encryption at rest, automated/encrypted
+backups on a retention schedule, and centralized log retention. See `docs/tbd.md` for the target
+policies already decided (30-day log retention; 30-day backup retention with a quarterly restore
+test) and what's still open.
 
 ## MVP
 

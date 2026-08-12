@@ -40,6 +40,14 @@ try {
         exit 1
     }
 
+    # .env.production.example ships "change_me" for every credential - refuse to bootstrap a
+    # "production-like" database that's actually still using the example's own placeholder values.
+    $placeholderVars = $requiredVars | Where-Object { $envValues[$_] -eq "change_me" }
+    if ($placeholderVars.Count -gt 0) {
+        Write-Error "backend/.env.production still has the placeholder value 'change_me' for: $($placeholderVars -join ', ') - set real local passwords first."
+        exit 1
+    }
+
     $composeFile = Join-Path $repoRootDir "docker-compose.prod.yml"
 
     Write-Host "Starting the production-like Postgres (docker compose up -d db)..."
@@ -51,7 +59,7 @@ try {
     while ($true) {
         $status = $null
         try {
-            $psOutput = docker compose -f $composeFile ps db --format json
+            $psOutput = docker compose -f $composeFile --env-file $envFile ps db --format json
             if ($psOutput) {
                 $status = $psOutput | ConvertFrom-Json
             }
@@ -74,7 +82,7 @@ try {
     $rolesSql = Get-Content "scripts/database/001_roles.sql" -Raw
     $rolesSql = $rolesSql.Replace('${COMMITAHEAD_MIGRATOR_PASSWORD}', $envValues["COMMITAHEAD_MIGRATOR_PASSWORD"])
     $rolesSql = $rolesSql.Replace('${COMMITAHEAD_APP_PASSWORD}', $envValues["COMMITAHEAD_APP_PASSWORD"])
-    $rolesSql | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    $rolesSql | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying EF Core migrations (tables - authoritative source)..."
@@ -83,26 +91,27 @@ try {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying RLS (scripts/database/002_rls_users.sql - authoritative source for roles/RLS)..."
-    Get-Content "scripts/database/002_rls_users.sql" -Raw | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    Get-Content "scripts/database/002_rls_users.sql" -Raw | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying Phase 1 grants/RLS (scripts/database/003_rls_phase1.sql)..."
-    Get-Content "scripts/database/003_rls_phase1.sql" -Raw | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    Get-Content "scripts/database/003_rls_phase1.sql" -Raw | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying Phase 2 grants/RLS (scripts/database/004_rls_phase2.sql)..."
-    Get-Content "scripts/database/004_rls_phase2.sql" -Raw | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    Get-Content "scripts/database/004_rls_phase2.sql" -Raw | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying Phase 3 grants/RLS (scripts/database/005_rls_phase3.sql)..."
-    Get-Content "scripts/database/005_rls_phase3.sql" -Raw | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    Get-Content "scripts/database/005_rls_phase3.sql" -Raw | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Applying Phase 4 grants/RLS (scripts/database/007_rls_phase4.sql)..."
-    Get-Content "scripts/database/007_rls_phase4.sql" -Raw | docker compose -f $composeFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
+    Get-Content "scripts/database/007_rls_phase4.sql" -Raw | docker compose -f $composeFile --env-file $envFile exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d commitahead
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Production-like DB ready: roles + migrations + RLS applied. Now run:"
+    Write-Host "  backend/scripts/bootstrap-production-user.ps1   # seeds the one enabled User row closed login needs"
     Write-Host "  docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --build"
 }
 finally {
