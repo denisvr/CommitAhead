@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../design-system/components/Button'
 import { Field } from '../../design-system/components/Field'
+import fieldStyles from '../../design-system/components/Field.module.css'
 import inputStyles from '../../design-system/components/Input.module.css'
 import { fetchProfessionalProfile, toNumber as toProfileNumber } from '../professional-profile/api'
 import { createCVPresentation, toNumber, updateCVPresentation, type CVPresentationResponse, type UpdateCVPresentationRequest } from './api'
@@ -8,12 +9,17 @@ import layout from './FormLayout.module.css'
 
 type FormValues = UpdateCVPresentationRequest
 
+// The only template the backend export renderer actually renders (ExportCVPresentationUseCase's
+// own SupportedTemplateKey) — export rejects any other value explicitly rather than silently
+// rendering this one template anyway, so the form must not offer a value export can't honour.
+const SUPPORTED_TEMPLATE_KEY = 'modern-one-page'
+
 const DEFAULT_VALUES: FormValues = {
   label: '',
   targetMarket: '',
   targetRole: null,
   locale: 'en-GB',
-  templateKey: 'modern-one-page',
+  templateKey: SUPPORTED_TEMPLATE_KEY,
   summaryOverrideMarkdown: null,
   includePhoto: false,
   includeEmail: true,
@@ -92,16 +98,11 @@ function CVPresentationFormFields({ values, onChange }: CVPresentationFormFields
       </div>
 
       <div className={layout.row}>
-        <Field label="Template">
+        <Field label="Template" hint="Only one template is available for now.">
           {(fieldProps) => (
-            <input
-              {...fieldProps}
-              type="text"
-              required
-              className={inputStyles.input}
-              value={values.templateKey}
-              onChange={(event) => onChange({ ...values, templateKey: event.target.value })}
-            />
+            <select {...fieldProps} className={inputStyles.input} value={values.templateKey} disabled>
+              <option value={values.templateKey}>{values.templateKey === SUPPORTED_TEMPLATE_KEY ? 'Modern — One Page' : values.templateKey}</option>
+            </select>
           )}
         </Field>
         <Field label="Date format" hint="Free-text hint for now — the preview always shows a locale-aware month and year.">
@@ -144,7 +145,15 @@ function CVPresentationFormFields({ values, onChange }: CVPresentationFormFields
 
       <div className={layout.checkboxRow}>
         <label className={layout.checkbox}>
-          <input type="checkbox" checked={values.includePhoto} onChange={(event) => onChange({ ...values, includePhoto: event.target.checked })} />
+          {/* Photo export isn't implemented (no upload/storage path exists yet) — the box can only be
+              unchecked here, never checked, so a new presentation can never enable it; export itself
+              also rejects IncludePhoto=true explicitly as a second line of defence. */}
+          <input
+            type="checkbox"
+            checked={values.includePhoto}
+            disabled={!values.includePhoto}
+            onChange={(event) => onChange({ ...values, includePhoto: event.target.checked })}
+          />
           Include photo
         </label>
         <label className={layout.checkbox}>
@@ -160,6 +169,11 @@ function CVPresentationFormFields({ values, onChange }: CVPresentationFormFields
           Include address
         </label>
       </div>
+      {values.includePhoto ? (
+        <p className={fieldStyles.hint}>Photo export isn't supported yet — exporting with this enabled will be rejected. You can uncheck it here.</p>
+      ) : (
+        <p className={fieldStyles.hint}>Photo export isn't supported yet, so this can't be enabled.</p>
+      )}
     </div>
   )
 }

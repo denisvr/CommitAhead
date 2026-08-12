@@ -2,7 +2,6 @@ using CommitAhead.Application.Identity;
 using CommitAhead.Application.ProfessionalProfiles;
 using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.ProfessionalProfiles;
-using UglyToad.PdfPig;
 
 namespace CommitAhead.Application.CVPresentations;
 
@@ -11,6 +10,8 @@ public enum ExportCVPresentationOutcome
     Exported,
     PresentationNotFound,
     PageLimitExceeded,
+    UnsupportedTemplate,
+    UnsupportedPhoto,
 }
 
 public sealed record ExportCVPresentationResult(ExportCVPresentationOutcome Outcome, byte[]? PdfBytes, int? PageCount);
@@ -19,11 +20,19 @@ public sealed record ExportCVPresentationResult(ExportCVPresentationOutcome Outc
 /// Resolves a CVPresentation into the renderer-ready <see cref="CVExportDocument"/> projection —
 /// selected canonical entries in selection order, visibility flags applied, dates locale-formatted,
 /// Markdown sanitised — and renders it via <see cref="IExportRenderer"/> (ADR-0020). PageLimit is a
-/// hard cap: the rendered PDF is read back with PdfPig to count its actual pages, since QuestPDF's
-/// own layout has no page-count constraint to enforce mid-render.
+/// hard cap enforced by this use case, against the actual page count the renderer reports back
+/// (Infrastructure counts pages internally, e.g. via PdfPig; Application never reads PDF bytes).
 /// </summary>
 public sealed class ExportCVPresentationUseCase
 {
+    /// <summary>
+    /// The only template the Infrastructure-layer renderer actually renders — matches the
+    /// frontend form's own default. A CVPresentation may carry any TemplateKey the
+    /// domain accepts (multi-template support is a future decision, not yet made), so export must
+    /// reject any other value explicitly rather than silently rendering the one template anyway.
+    /// </summary>
+    public const string SupportedTemplateKey = "modern-one-page";
+
     private readonly ICVPresentationRepository _cvPresentationRepository;
     private readonly IProfessionalProfileRepository _profileRepository;
     private readonly IExportRenderer _renderer;
@@ -47,24 +56,30 @@ public sealed class ExportCVPresentationUseCase
             return new ExportCVPresentationResult(ExportCVPresentationOutcome.PresentationNotFound, null, null);
         }
 
+        if (presentation.TemplateKey != SupportedTemplateKey)
+        {
+            return new ExportCVPresentationResult(ExportCVPresentationOutcome.UnsupportedTemplate, null, null);
+        }
+
+        // No photo upload/storage path exists anywhere in this codebase yet — rendering must never
+        // silently ignore IncludePhoto=true and produce a PDF that looks like it honoured it.
+        if (presentation.IncludePhoto)
+        {
+            return new ExportCVPresentationResult(ExportCVPresentationOutcome.UnsupportedPhoto, null, null);
+        }
+
         var profile = await _profileRepository.GetByOwnerUserIdAsync(ownerUserId, cancellationToken)
             ?? throw new InvalidOperationException("A CVPresentation must have a ProfessionalProfile.");
 
         var document = BuildDocument(presentation, profile);
-        var pdfBytes = _renderer.Render(document);
+        var rendered = _renderer.Render(document);
 
-        int pageCount;
-        using (var pdf = PdfDocument.Open(pdfBytes))
+        if (rendered.PageCount > presentation.PageLimit)
         {
-            pageCount = pdf.NumberOfPages;
+            return new ExportCVPresentationResult(ExportCVPresentationOutcome.PageLimitExceeded, null, rendered.PageCount);
         }
 
-        if (pageCount > presentation.PageLimit)
-        {
-            return new ExportCVPresentationResult(ExportCVPresentationOutcome.PageLimitExceeded, null, pageCount);
-        }
-
-        return new ExportCVPresentationResult(ExportCVPresentationOutcome.Exported, pdfBytes, pageCount);
+        return new ExportCVPresentationResult(ExportCVPresentationOutcome.Exported, rendered.PdfBytes, rendered.PageCount);
     }
 
     private static CVExportDocument BuildDocument(CVPresentation presentation, ProfessionalProfile profile)

@@ -23,11 +23,10 @@ deterministically in CI.
 
 ## Decision
 
-**Format:** PDF. **Engine:** QuestPDF (MIT-based Community license, free for this project's
-single-operator/single-user-today posture per its own revenue threshold — ADR-0015), called
-directly from a new `IExportRenderer`/renderer implementation in Infrastructure, composed
-declaratively (QuestPDF's own C# fluent layout API) rather than through an HTML/CSS template
-rendered by a browser engine.
+**Format:** PDF. **Engine:** QuestPDF, under its own Community License (source-available, not
+MIT/OSI-approved — see "Why"/"Consequences" below for the actual terms), called directly from a
+new `IExportRenderer`/renderer implementation in Infrastructure, composed declaratively (QuestPDF's
+own C# fluent layout API) rather than through an HTML/CSS template rendered by a browser engine.
 
 `ExportCVPresentationUseCase` builds the same minimised, rule-applied projection the frontend
 preview already needs (selected entries in their saved order, visibility-filtered contact fields,
@@ -36,31 +35,38 @@ owns only layout and page-limit enforcement, never business rules.
 
 ## Why
 
-- **No new runtime dependency beyond a NuGet package.** QuestPDF is a managed .NET library with no
-  external process, browser binary, or native dependency to provision, build, or patch — it runs
-  identically in local dev, CI, and whatever Phase 6 eventually hosts on, with no extra attack
-  surface (ADR-0009's CI posture already assumes a plain .NET test run, no headless-browser step).
+- **No external process or browser binary to provision.** QuestPDF is installed as a NuGet package
+  and does not launch a browser or a second process to render — it runs the same way in local dev,
+  CI, and whatever Phase 6 eventually hosts on (ADR-0009's CI posture already assumes a plain .NET
+  test run, no headless-browser step). This project has not independently verified QuestPDF's own
+  native/unmanaged dependency footprint (e.g. its use of SkiaSharp for text shaping); "no browser
+  binary" is the claim actually being made here, not "no native components at all."
 - **Deterministic and directly parseable in tests**, matching the roadmap's own exit criterion
-  ("parsed output proves required text, exclusions, ordering, locale, and page limit") — QuestPDF's
-  own text-extraction/inspection API (or a small `PdfPig`-based read-back, already a dependency per
-  ADR-0010) lets Api.Tests assert on the actual rendered content without a browser round-trip or a
-  golden-file screenshot diff for every PR (visual-regression fixtures stay a deliberately separate,
-  post-merge-only gate per the roadmap).
+  ("parsed output proves required text, exclusions, ordering, locale, and page limit") — a
+  `PdfPig`-based read-back of the rendered bytes (already a dependency per ADR-0010) lets Api.Tests
+  assert on the actual rendered content without a browser round-trip or a golden-file screenshot
+  diff for every PR (visual-regression fixtures stay a deliberately separate, post-merge-only gate
+  per the roadmap).
 - **Matches this project's existing PDF posture.** `PdfPig` (ADR-0010) already reads PDFs
   server-side for job-posting uploads; QuestPDF writing them keeps every PDF touchpoint in managed
   .NET code, no second toolchain to reason about.
-- **Page-limit enforcement is a first-class concern**, and QuestPDF's layout engine reports overflow
-  explicitly (a document that doesn't fit throws rather than silently clipping or reflowing
-  unpredictably) — closer to the domain's own hard page-limit rule than a browser's print engine,
-  which has no comparable API.
+- **Page-limit enforcement is a first-class concern**, and this project's own use case
+  (`ExportCVPresentationUseCase`) enforces it as a hard cap: it renders, asks the renderer for the
+  actual page count (the renderer counts pages itself, via `PdfPig`, after generating the PDF —
+  QuestPDF's own layout engine has no page-count constraint or overflow signal to enforce
+  mid-render), and rejects the export if that count exceeds `PageLimit`. QuestPDF does not throw or
+  otherwise flag overflow on its own; enforcement is entirely this application's responsibility.
 
 ## Consequences
 
 - `docs/tbd.md`'s "CV export format" entry is resolved.
-- QuestPDF's Community license requires attribution (a small notice, per its own terms) and caps
-  free use by the *company's* prior-year gross revenue, not the app's; this project's own posture
-  (ADR-0015: "today there is exactly one real user", not a commercial product) stays comfortably
-  under that threshold — revisit only if that changes.
+- QuestPDF's Community License is source-available, not MIT or any other OSI-approved license, and
+  free use under it is conditional on the licensee's own eligibility criteria (per QuestPDF's actual
+  published license terms, not reproduced here) — not an unconditional grant. This project's current
+  posture (ADR-0015: "today there is exactly one real user", not a commercial product) is the basis
+  for treating it as eligible today; this must be reassessed against QuestPDF's current terms if the
+  project's ownership, revenue, or commercial use ever changes, before relying on the Community
+  License further.
 - Every visual layout choice (fonts, spacing, per-template structure) lives in C# code, not
   HTML/CSS — a frontend contributor comfortable with CSS Modules (ADR-0016) will find QuestPDF's own
   fluent API unfamiliar; this is an accepted trade-off for the determinism/dependency benefits above.

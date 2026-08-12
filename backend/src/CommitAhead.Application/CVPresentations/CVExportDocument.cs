@@ -64,11 +64,18 @@ public sealed record CVExportProject(
 public sealed record CVExportLink(string Label, string Url);
 
 /// <summary>
+/// The renderer's own PDF bytes plus the actual page count it produced. Counting pages is a
+/// PDF-library concern (Infrastructure, via PdfPig internally) — keeping it out of this record's
+/// producer contract is what lets Application stay free of any PDF-reading dependency.
+/// </summary>
+public sealed record RenderedCVExport(byte[] PdfBytes, int PageCount);
+
+/// <summary>
 /// Layout-only port (ADR-0020) — the real implementation (Infrastructure: QuestPdfCVExportRenderer)
-/// has no business logic of its own, only page composition. Returns raw PDF bytes; the use case
-/// reads them back with PdfPig to enforce the page-limit hard cap.
+/// has no business logic of its own, only page composition. The use case compares PageCount
+/// against PageLimit itself; it never reads PDF bytes.
 /// </summary>
 public interface IExportRenderer
 {
-    byte[] Render(CVExportDocument document);
+    RenderedCVExport Render(CVExportDocument document);
 }

@@ -63,9 +63,12 @@ Application-layer slice is built does not require reopening this decision.
 Resolved (ADR-0020): PDF, generated in-process with QuestPDF (no headless browser, no DOCX) —
 `ExportCVPresentationUseCase` builds the same rule-applied projection the frontend preview needs
 (selected/ordered entries, visibility-filtered contact fields, locale dates, resolved summary
-Markdown) and hands it to a QuestPDF-based renderer that owns layout and page-limit enforcement
-only, never business rules. One template per target market/style; QuestPDF's Community license
-covers this project's current single-operator/single-user posture (ADR-0015).
+Markdown) and hands it to a QuestPDF-based renderer that owns layout only, never business rules —
+the renderer counts its own rendered pages (via PdfPig) and the use case compares that count against
+`PageLimit`. Export is limited to one supported `TemplateKey` for now, checked explicitly rather than
+assumed; `IncludePhoto` is rejected explicitly since no photo rendering path exists. See ADR-0020 for
+QuestPDF's actual Community License terms — it is source-available, not MIT/OSI-approved, and its
+free-use eligibility must be reassessed if this project's ownership or commercial use changes.
 
 ---
 

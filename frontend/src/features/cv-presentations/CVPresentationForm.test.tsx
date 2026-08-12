@@ -100,6 +100,34 @@ describe('CVPresentationForm — create', () => {
   })
 })
 
+describe('CVPresentationForm — template and photo', () => {
+  it('shows the template as a disabled, single-option control and disables Include photo until it is already checked', async () => {
+    server.use(http.get('/api/professional-profile', () => HttpResponse.json(PROFILE)))
+
+    render(<CVPresentationForm mode="create" onCreated={vi.fn()} onCancel={vi.fn()} onGoToProfile={vi.fn()} />)
+    await screen.findByLabelText('Label')
+
+    expect(screen.getByLabelText('Template')).toBeDisabled()
+    expect(screen.getByLabelText('Template')).toHaveValue('modern-one-page')
+    expect(screen.getByRole('checkbox', { name: 'Include photo' })).toBeDisabled()
+  })
+
+  it('lets an already-enabled Include photo be unchecked, but not re-checked once off', async () => {
+    server.use(http.put('/api/cv-presentations/:id', () => new HttpResponse(null, { status: 204 })))
+
+    render(<CVPresentationForm mode="edit" presentation={{ ...PRESENTATION, includePhoto: true }} onSaved={vi.fn()} onCancel={vi.fn()} />)
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Include photo' })
+    expect(checkbox).toBeChecked()
+    expect(checkbox).not.toBeDisabled()
+
+    await userEvent.click(checkbox)
+
+    expect(checkbox).not.toBeChecked()
+    expect(checkbox).toBeDisabled()
+  })
+})
+
 describe('CVPresentationForm — edit', () => {
   it('pre-fills from the existing presentation and saves changes', async () => {
     let requestBody: Record<string, unknown> | undefined

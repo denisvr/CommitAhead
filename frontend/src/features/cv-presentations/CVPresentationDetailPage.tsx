@@ -161,6 +161,16 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
         return
       }
 
+      if (result.kind === 'unsupportedTemplate') {
+        setExportError('This presentation uses a template that export does not support yet. Edit it and use the default template, then try again.')
+        return
+      }
+
+      if (result.kind === 'unsupportedPhoto') {
+        setExportError('Photo export isn\'t supported yet. Turn off "Include photo" in the Edit tab, then try again.')
+        return
+      }
+
       // Synthetic anchor click is the standard browser-side pattern for saving a Blob the fetch
       // API already downloaded — there is no dedicated "save this blob" browser API.
       const url = URL.createObjectURL(result.blob)

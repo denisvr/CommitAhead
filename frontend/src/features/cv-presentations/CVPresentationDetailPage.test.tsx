@@ -227,6 +227,34 @@ describe('CVPresentationDetailPage export', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/page limit/i)
   })
 
+  it('shows an inline message when the presentation uses an unsupported template', async () => {
+    mockLoadHandlers()
+    server.use(
+      http.get('/api/cv-presentations/:id/export', () => HttpResponse.json({ title: 'Conflict', status: 409, outcomeCode: 'UnsupportedTemplate' }, { status: 409 })),
+    )
+
+    render(<CVPresentationDetailPage presentationId="presentation-1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'UK — Senior Backend Engineer' })
+
+    await userEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/template/i)
+  })
+
+  it('shows an inline message when the presentation has photo inclusion enabled', async () => {
+    mockLoadHandlers()
+    server.use(
+      http.get('/api/cv-presentations/:id/export', () => HttpResponse.json({ title: 'Conflict', status: 409, outcomeCode: 'UnsupportedPhoto' }, { status: 409 })),
+    )
+
+    render(<CVPresentationDetailPage presentationId="presentation-1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'UK — Senior Backend Engineer' })
+
+    await userEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/photo/i)
+  })
+
   it('shows a generic error message when the export request fails outright', async () => {
     mockLoadHandlers()
     server.use(http.get('/api/cv-presentations/:id/export', () => HttpResponse.error()))

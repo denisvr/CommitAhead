@@ -3,19 +3,11 @@ using CommitAhead.Application.Tests.Identity;
 using CommitAhead.Application.Tests.ProfessionalProfiles;
 using CommitAhead.Domain.CVPresentations;
 using CommitAhead.Domain.ProfessionalProfiles;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
 
 namespace CommitAhead.Application.Tests.CVPresentations;
 
 public class ExportCVPresentationUseCaseTests
 {
-    static ExportCVPresentationUseCaseTests()
-    {
-        QuestPDF.Settings.License = LicenseType.Community;
-    }
-
     private static ExportCVPresentationUseCase CreateUseCase(
         FakeCVPresentationRepository presentationRepository, FakeProfessionalProfileRepository profileRepository, FakeExportRenderer renderer, Guid ownerUserId) =>
         new(presentationRepository, profileRepository, renderer, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
@@ -43,11 +35,12 @@ public class ExportCVPresentationUseCaseTests
 
     private static CVPresentation CreatePresentation(
         Guid ownerUserId, Guid professionalProfileId, IEnumerable<Guid> experienceIds, IEnumerable<Guid> skillIds, int pageLimit = 5,
-        bool includeEmail = true, bool includePhone = true, bool includeAddress = true)
+        bool includeEmail = true, bool includePhone = true, bool includeAddress = true,
+        string templateKey = ExportCVPresentationUseCase.SupportedTemplateKey, bool includePhoto = false)
     {
         var presentation = new CVPresentation(
-            Guid.NewGuid(), ownerUserId, professionalProfileId, "US Resume", "United States", "Backend Engineer", "en-US", "default",
-            null, false, includeEmail, includePhone, includeAddress, "MMM yyyy", pageLimit, DateTime.UtcNow);
+            Guid.NewGuid(), ownerUserId, professionalProfileId, "US Resume", "United States", "Backend Engineer", "en-US", templateKey,
+            null, includePhoto, includeEmail, includePhone, includeAddress, "MMM yyyy", pageLimit, DateTime.UtcNow);
 
         presentation.ReplaceExperienceSelections(experienceIds, DateTime.UtcNow);
         presentation.ReplaceSkillSelections(skillIds, DateTime.UtcNow);
@@ -190,27 +183,59 @@ public class ExportCVPresentationUseCaseTests
         Assert.Equal(2, result.PageCount);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ForAPresentationWithAnUnsupportedTemplateKey_ReturnsUnsupportedTemplateWithoutRendering()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var profile = CreateProfile(ownerUserId, out var experienceId, out _, out var skillId);
+        var profileRepository = new FakeProfessionalProfileRepository();
+        await profileRepository.AddAsync(profile, CancellationToken.None);
+
+        var presentationRepository = new FakeCVPresentationRepository();
+        var presentation = CreatePresentation(ownerUserId, profile.Id, [experienceId], [skillId], templateKey: "some-other-template");
+        await presentationRepository.AddAsync(presentation, CancellationToken.None);
+
+        var renderer = new FakeExportRenderer();
+        var useCase = CreateUseCase(presentationRepository, profileRepository, renderer, ownerUserId);
+
+        var result = await useCase.ExecuteAsync(presentation.Id, CancellationToken.None);
+
+        Assert.Equal(ExportCVPresentationOutcome.UnsupportedTemplate, result.Outcome);
+        Assert.Null(result.PdfBytes);
+        Assert.Null(renderer.LastDocument);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForAPresentationWithIncludePhotoTrue_ReturnsUnsupportedPhotoWithoutRendering()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var profile = CreateProfile(ownerUserId, out var experienceId, out _, out var skillId);
+        var profileRepository = new FakeProfessionalProfileRepository();
+        await profileRepository.AddAsync(profile, CancellationToken.None);
+
+        var presentationRepository = new FakeCVPresentationRepository();
+        var presentation = CreatePresentation(ownerUserId, profile.Id, [experienceId], [skillId], includePhoto: true);
+        await presentationRepository.AddAsync(presentation, CancellationToken.None);
+
+        var renderer = new FakeExportRenderer();
+        var useCase = CreateUseCase(presentationRepository, profileRepository, renderer, ownerUserId);
+
+        var result = await useCase.ExecuteAsync(presentation.Id, CancellationToken.None);
+
+        Assert.Equal(ExportCVPresentationOutcome.UnsupportedPhoto, result.Outcome);
+        Assert.Null(result.PdfBytes);
+        Assert.Null(renderer.LastDocument);
+    }
+
     private sealed class FakeExportRenderer : IExportRenderer
     {
         public int PagesToGenerate { get; set; } = 1;
         public CVExportDocument? LastDocument { get; private set; }
 
-        public byte[] Render(CVExportDocument document)
+        public RenderedCVExport Render(CVExportDocument document)
         {
             LastDocument = document;
-            var pageCount = PagesToGenerate;
-
-            return Document.Create(container =>
-            {
-                for (var i = 0; i < pageCount; i++)
-                {
-                    container.Page(page =>
-                    {
-                        page.Size(PageSizes.A4);
-                        page.Content().Text($"page {i + 1}");
-                    });
-                }
-            }).GeneratePdf();
+            return new RenderedCVExport([1, 2, 3], PagesToGenerate);
         }
     }
 }

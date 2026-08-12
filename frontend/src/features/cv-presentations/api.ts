@@ -141,20 +141,36 @@ export async function replaceProfileLinkSelections(id: string, entryIds: string[
   }
 }
 
-export type ExportCVPresentationOutcome = { kind: 'exported'; blob: Blob } | { kind: 'notFound' } | { kind: 'pageLimitExceeded' }
+export type ExportCVPresentationOutcome =
+  | { kind: 'exported'; blob: Blob }
+  | { kind: 'notFound' }
+  | { kind: 'pageLimitExceeded' }
+  | { kind: 'unsupportedTemplate' }
+  | { kind: 'unsupportedPhoto' }
 
 // `parseAs: 'blob'` only applies to the success path (openapi-fetch always reads a non-ok
-// response as text and tries to JSON-parse it, regardless of parseAs) — describeError's own
-// `response.clone().json()` would throw on this already-consumed response, so a non-ok response
-// is handled here directly from the outcome/status instead of routed through describeError.
+// response as text and tries to JSON-parse it, regardless of parseAs, exposing it as `error`) —
+// describeError's own `response.clone().json()` would throw on this already-consumed response, so
+// a non-ok response is handled here directly from `error`/status instead of routed through
+// describeError. `error.outcomeCode` is the same root-level ProblemDetails.Extensions field every
+// other AI-outcome Conflict response carries (see AiOutcomeResponses.Conflict on the backend).
 export async function exportCVPresentation(id: string): Promise<ExportCVPresentationOutcome> {
-  const { data, response } = await apiClient.GET('/api/cv-presentations/{id}/export', { params: { path: { id } }, parseAs: 'blob' })
+  const { data, error, response } = await apiClient.GET('/api/cv-presentations/{id}/export', { params: { path: { id } }, parseAs: 'blob' })
 
   if (response.status === 404) {
     return { kind: 'notFound' }
   }
 
   if (response.status === 409) {
+    const outcomeCode = (error as { outcomeCode?: string } | undefined)?.outcomeCode
+    if (outcomeCode === 'UnsupportedTemplate') {
+      return { kind: 'unsupportedTemplate' }
+    }
+
+    if (outcomeCode === 'UnsupportedPhoto') {
+      return { kind: 'unsupportedPhoto' }
+    }
+
     return { kind: 'pageLimitExceeded' }
   }
 

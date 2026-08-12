@@ -2,6 +2,7 @@ using CommitAhead.Application.CVPresentations;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using UglyToad.PdfPig;
 
 namespace CommitAhead.Infrastructure.CVPresentations;
 
@@ -14,13 +15,27 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
 {
     static QuestPdfCVExportRenderer()
     {
-        // Community license: free under this project's own revenue posture (ADR-0020) — must be
-        // set once before any Document.Create call, so a static constructor (run exactly once per
-        // process, before the first Render) is the natural place, not a per-call assignment.
+        // Community License — see ADR-0020 for its actual eligibility terms and when to
+        // reassess them. Must be set once before any Document.Create call, so a static
+        // constructor (run exactly once per process, before the first Render) is the natural
+        // place, not a per-call assignment.
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public byte[] Render(CVExportDocument document)
+    public RenderedCVExport Render(CVExportDocument document)
+    {
+        var pdfBytes = RenderPdfBytes(document);
+
+        int pageCount;
+        using (var opened = PdfDocument.Open(pdfBytes))
+        {
+            pageCount = opened.NumberOfPages;
+        }
+
+        return new RenderedCVExport(pdfBytes, pageCount);
+    }
+
+    private static byte[] RenderPdfBytes(CVExportDocument document)
     {
         var pdf = Document.Create(container =>
         {
@@ -149,6 +164,11 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
                         entryColumn.Item().Text(meta).FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
                     }
 
+                    if (entry.Client is { Length: > 0 } client)
+                    {
+                        entryColumn.Item().Text($"Client: {client}").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
+                    }
+
                     if (entry.Summary.Count > 0)
                     {
                         entryColumn.Item().Element(c => RenderMarkdownBlocks(c, entry.Summary));
@@ -209,7 +229,9 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
         container.Column(column =>
         {
             RenderSectionHeading(column, "Languages");
-            var text = string.Join("  ·  ", languages.Select(l => $"{l.Language} ({l.Proficiency})"));
+            var text = string.Join("  ·  ", languages.Select(l => l.Certification is { Length: > 0 } certification
+                ? $"{l.Language} ({l.Proficiency}, {certification})"
+                : $"{l.Language} ({l.Proficiency})"));
             column.Item().Text(text).FontSize(9);
         });
     }
@@ -223,12 +245,34 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
 
             foreach (var certification in certifications)
             {
-                column.Item().Row(row =>
+                column.Item().Column(entryColumn =>
                 {
-                    row.RelativeItem().Text($"{certification.Name} — {certification.IssuingOrganisation}").FontSize(9.5f);
-                    if (certification.IssuedAt is { Length: > 0 } issuedAt)
+                    entryColumn.Item().Row(row =>
                     {
-                        row.ConstantItem(80).AlignRight().Text(issuedAt).FontSize(9).FontColor(Colors.Grey.Darken1);
+                        row.RelativeItem().Text($"{certification.Name} — {certification.IssuingOrganisation}").FontSize(9.5f);
+
+                        var dateRange = (certification.IssuedAt, certification.ExpiresAt) switch
+                        {
+                            (null, null) => null,
+                            (var issued, null) => issued,
+                            (null, var expires) => $"– {expires}",
+                            (var issued, var expires) => $"{issued} – {expires}",
+                        };
+
+                        if (dateRange is { Length: > 0 })
+                        {
+                            row.ConstantItem(100).AlignRight().Text(dateRange).FontSize(9).FontColor(Colors.Grey.Darken1);
+                        }
+                    });
+
+                    if (certification.CredentialId is { Length: > 0 } credentialId)
+                    {
+                        entryColumn.Item().Text($"Credential ID: {credentialId}").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
+                    }
+
+                    if (certification.Url is { Length: > 0 } url)
+                    {
+                        entryColumn.Item().Text(t => t.Hyperlink(url, url).FontSize(8.5f).Underline());
                     }
                 });
             }
@@ -256,6 +300,11 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
                     if (project.Description.Count > 0)
                     {
                         entryColumn.Item().Element(c => RenderMarkdownBlocks(c, project.Description));
+                    }
+
+                    if (project.Url is { Length: > 0 } url)
+                    {
+                        entryColumn.Item().Text(t => t.Hyperlink(url, url).FontSize(8.5f).Underline());
                     }
                 });
             }
@@ -298,7 +347,7 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
                         column.Item().Element(c => RenderRuns(c, paragraph.Runs));
                         break;
                     case MarkdownBulletList bulletList:
-                        RenderBulletList(container, bulletList.Items);
+                        column.Item().Element(c => RenderBulletList(c, bulletList.Items));
                         break;
                 }
             }
