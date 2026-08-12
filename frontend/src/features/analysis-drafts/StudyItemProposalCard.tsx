@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '../../design-system/components/Button'
 import { Field } from '../../design-system/components/Field'
 import { RatingScale } from '../../design-system/components/RatingScale'
@@ -32,6 +33,10 @@ export function StudyItemProposalCard({ proposal, decision, onChange }: StudyIte
   // Recomputed from the immutable proposal, not `decision.detailsFields` (the mutable in-progress
   // edit of the accepted payload) — same reasoning as SuggestionProposalCard.
   const proposedDetailsFields = parseStudyItemDetailsFields(proposal.proposedCategory, proposal.proposedDetailsJson)
+  // Separate from ProposedFieldsList's own reveal state below (the read-only proposed block) —
+  // revealing the proposed reference solution must not also unlock editing it, and vice versa.
+  // Transient, never persisted (model.md).
+  const [revealedFieldKeys, setRevealedFieldKeys] = useState<ReadonlySet<string>>(new Set())
 
   return (
     <li className={styles.card}>
@@ -64,6 +69,14 @@ export function StudyItemProposalCard({ proposal, decision, onChange }: StudyIte
               {(fieldProps) => {
                 const value = decision.detailsFields[spec.key] ?? ''
                 const setValue = (next: string) => onChange({ ...decision, detailsFields: { ...decision.detailsFields, [spec.key]: next } })
+
+                if (spec.revealLabel && !revealedFieldKeys.has(spec.key)) {
+                  return (
+                    <Button type="button" variant="secondary" onClick={() => setRevealedFieldKeys((prev) => new Set(prev).add(spec.key))}>
+                      {spec.revealLabel}
+                    </Button>
+                  )
+                }
 
                 if (spec.input === 'select') {
                   return (

@@ -2360,6 +2360,7 @@ export interface components {
             /** Format: double */
             acceptedWeight: null | number | string;
             acceptedRationale: null | string;
+            targetStudyItemTitle: null | string;
         };
         LoginRequest: {
             email: string;
@@ -2626,6 +2627,7 @@ export interface components {
             proposedAdvisoryMarkdown: null | string;
             acceptedCommandType: null | components["schemas"]["StructuredSuggestionCommandType"];
             acceptedPayloadJson: null | string;
+            targetRequirementText: null | string;
         };
         UpdateCVPresentationRequest: {
             label: string;

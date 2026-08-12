@@ -40,6 +40,9 @@ export function SuggestionProposalCard({ proposal, decision, onChange }: Suggest
         ) : (
           <>
             <p className={styles.commandLabel}>{proposal.proposedCommandType}</p>
+            {proposal.proposedCommandType === 'AddJobGap' && (
+              <p>Targets requirement: {proposal.targetRequirementText ?? '(no longer exists)'}</p>
+            )}
             <ProposedFieldsList fields={proposedFields} specs={SUGGESTION_FIELD_SPECS[proposal.proposedCommandType!]} />
           </>
         )}

@@ -75,6 +75,69 @@ const APPLIED_DRAFT = {
   studyItemProposals: [],
 }
 
+const LINK_TARGET_DRAFT = {
+  ...EMPTY_DRAFT,
+  id: 'draft-link',
+  linkProposals: [
+    {
+      id: 'l1',
+      status: 'Pending',
+      targetStudyItemId: 'item-1',
+      proposedWeight: 3,
+      proposedRationale: 'Directly demonstrates this skill.',
+      acceptedWeight: null,
+      acceptedRationale: null,
+      targetStudyItemTitle: 'Postgres Fundamentals',
+    },
+  ],
+}
+
+const ADD_JOB_GAP_DRAFT = {
+  ...EMPTY_DRAFT,
+  id: 'draft-gap',
+  suggestionProposals: [
+    {
+      id: 's1',
+      status: 'Pending',
+      proposedCommandType: 'AddJobGap',
+      proposedPayloadJson: JSON.stringify({ RequirementId: 'r1', MatchLevel: 'Missing', Severity: 'High', Rationale: 'No experience found.' }),
+      proposedAdvisoryMarkdown: null,
+      acceptedCommandType: null,
+      acceptedPayloadJson: null,
+      targetRequirementText: '5+ years with PostgreSQL',
+    },
+  ],
+}
+
+const SYSTEM_DESIGN_DRAFT = {
+  ...EMPTY_DRAFT,
+  id: 'draft-system-design',
+  studyItemProposals: [
+    {
+      id: 'si1',
+      status: 'Pending',
+      proposedTitle: 'Design a URL shortener',
+      proposedCategory: 'SystemDesign',
+      proposedDetailsJson: JSON.stringify({
+        PromptMarkdown: 'Design a URL shortener.',
+        ClarifyingQuestions: [],
+        FunctionalRequirements: [],
+        NonFunctionalRequirements: [],
+        EvaluationChecklist: [],
+        ReferenceSolutionMarkdown: 'Use a hash-based encoding scheme with a distributed key generator.',
+      }),
+      proposedTags: [],
+      proposedImportance: 3,
+      acceptedTitle: null,
+      acceptedCategory: null,
+      acceptedDetailsJson: null,
+      acceptedTags: null,
+      acceptedImportance: null,
+      acceptedInitialMastery: null,
+    },
+  ],
+}
+
 describe('AnalysisDraftReviewPage', () => {
   it('shows a not-found message for a missing draft', async () => {
     server.use(http.get('/api/analysis-drafts/:id', () => new HttpResponse(null, { status: 404 })))
@@ -197,5 +260,53 @@ describe('AnalysisDraftReviewPage', () => {
     expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument()
+  })
+
+  it('shows the target StudyItem title for a LinkProposal, not just its bare id', async () => {
+    server.use(http.get('/api/analysis-drafts/:id', () => HttpResponse.json(LINK_TARGET_DRAFT)))
+
+    render(<AnalysisDraftReviewPage draftId="draft-link" onApplied={vi.fn()} onBack={vi.fn()} />)
+
+    expect(await screen.findByText('Link to Postgres Fundamentals')).toBeInTheDocument()
+    expect(screen.queryByText(/Link to StudyItem item-1/)).not.toBeInTheDocument()
+  })
+
+  it('shows the targeted JobRequirement text for an AddJobGap proposal, not just its bare id', async () => {
+    server.use(http.get('/api/analysis-drafts/:id', () => HttpResponse.json(ADD_JOB_GAP_DRAFT)))
+
+    render(<AnalysisDraftReviewPage draftId="draft-gap" onApplied={vi.fn()} onBack={vi.fn()} />)
+
+    expect(await screen.findByText('Targets requirement: 5+ years with PostgreSQL')).toBeInTheDocument()
+  })
+
+  it('keeps a SystemDesign reference solution hidden until explicitly revealed, in the proposed block', async () => {
+    server.use(http.get('/api/analysis-drafts/:id', () => HttpResponse.json(SYSTEM_DESIGN_DRAFT)))
+
+    render(<AnalysisDraftReviewPage draftId="draft-system-design" onApplied={vi.fn()} onBack={vi.fn()} />)
+    await screen.findByText('Design a URL shortener.')
+
+    expect(screen.queryByText(/hash-based encoding scheme/)).not.toBeInTheDocument()
+    const revealButton = screen.getByRole('button', { name: 'Reveal reference solution' })
+
+    await userEvent.click(revealButton)
+
+    expect(screen.getByText(/hash-based encoding scheme/)).toBeInTheDocument()
+  })
+
+  it('keeps the accepted reference solution hidden until explicitly revealed, in the editable payload', async () => {
+    server.use(http.get('/api/analysis-drafts/:id', () => HttpResponse.json(SYSTEM_DESIGN_DRAFT)))
+
+    render(<AnalysisDraftReviewPage draftId="draft-system-design" onApplied={vi.fn()} onBack={vi.fn()} />)
+    await screen.findByText('Design a URL shortener.')
+    await userEvent.click(screen.getByRole('button', { name: 'Accept' }))
+
+    // Two reveal buttons now exist: the read-only proposed block's, and the editable form's own.
+    const revealButtons = screen.getAllByRole('button', { name: 'Reveal reference solution' })
+    expect(revealButtons).toHaveLength(2)
+    expect(screen.queryByRole('textbox', { name: 'Reference solution' })).not.toBeInTheDocument()
+
+    await userEvent.click(revealButtons[1])
+
+    expect(screen.getByRole('textbox', { name: 'Reference solution' })).toBeInTheDocument()
   })
 })

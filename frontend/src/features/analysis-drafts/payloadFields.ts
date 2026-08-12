@@ -41,7 +41,11 @@ export function buildSuggestionPayloadJson(commandType: StructuredSuggestionComm
   }
 }
 
-export type FieldSpec = { key: string; label: string; multiline?: boolean }
+// revealLabel marks a field that must stay hidden until the user explicitly reveals it
+// (page-patterns.md "SystemDesign reference solutions are hidden with transient component state
+// until the user reveals them" — model.md invariant: revealing is transient UI state, never
+// persisted). The label is the reveal button's own text.
+export type FieldSpec = { key: string; label: string; multiline?: boolean; revealLabel?: string }
 
 /** Labels the flat fields parseSuggestionFields produces, for the always-visible read-only "Proposed" block. */
 export const SUGGESTION_FIELD_SPECS: Record<StructuredSuggestionCommandType, FieldSpec[]> = {
@@ -102,7 +106,7 @@ export function parseStudyItemDetailsFields(category: StudyItemCategory, details
   return fields
 }
 
-export type StudyItemDetailFieldSpec = { key: string; label: string; input: 'text' | 'textarea' | 'multiline' | 'select'; options?: string[] }
+export type StudyItemDetailFieldSpec = { key: string; label: string; input: 'text' | 'textarea' | 'multiline' | 'select'; options?: string[]; revealLabel?: string }
 
 export const STUDY_ITEM_DETAIL_FIELD_SPECS: Record<StudyItemCategory, StudyItemDetailFieldSpec[]> = {
   Theory: [
@@ -127,7 +131,7 @@ export const STUDY_ITEM_DETAIL_FIELD_SPECS: Record<StudyItemCategory, StudyItemD
     { key: 'FunctionalRequirements', label: 'Functional requirements (one per line)', input: 'multiline' },
     { key: 'NonFunctionalRequirements', label: 'Non-functional requirements (one per line)', input: 'multiline' },
     { key: 'EvaluationChecklist', label: 'Evaluation checklist (one per line)', input: 'multiline' },
-    { key: 'ReferenceSolutionMarkdown', label: 'Reference solution', input: 'textarea' },
+    { key: 'ReferenceSolutionMarkdown', label: 'Reference solution', input: 'textarea', revealLabel: 'Reveal reference solution' },
   ],
   Behavioral: [
     { key: 'Competencies', label: 'Competencies (one per line)', input: 'multiline' },
@@ -142,7 +146,7 @@ export const STUDY_ITEM_DETAIL_FIELD_SPECS: Record<StudyItemCategory, StudyItemD
 
 /** Same field set as STUDY_ITEM_DETAIL_FIELD_SPECS, shaped for the read-only ProposedFieldsList. */
 export function studyItemProposedFieldSpecs(category: StudyItemCategory): FieldSpec[] {
-  return STUDY_ITEM_DETAIL_FIELD_SPECS[category].map((spec) => ({ key: spec.key, label: spec.label, multiline: spec.input === 'multiline' }))
+  return STUDY_ITEM_DETAIL_FIELD_SPECS[category].map((spec) => ({ key: spec.key, label: spec.label, multiline: spec.input === 'multiline', revealLabel: spec.revealLabel }))
 }
 
 export function buildStudyItemDetailsJson(category: StudyItemCategory, fields: StudyItemDetailsFields): string {

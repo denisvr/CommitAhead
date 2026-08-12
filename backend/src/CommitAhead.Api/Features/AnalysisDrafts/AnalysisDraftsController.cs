@@ -98,11 +98,13 @@ public sealed record SuggestionProposalResponse(
     string? ProposedPayloadJson,
     string? ProposedAdvisoryMarkdown,
     StructuredSuggestionCommandType? AcceptedCommandType,
-    string? AcceptedPayloadJson)
+    string? AcceptedPayloadJson,
+    /// <summary>Only set for AddJobGap — the text of the JobRequirement it targets, so the review UI never asks the user to decide from a bare RequirementId.</summary>
+    string? TargetRequirementText)
 {
     public static SuggestionProposalResponse FromResult(SuggestionProposalResult result) => new(
         result.Id, result.Status, result.ProposedCommandType, result.ProposedPayloadJson, result.ProposedAdvisoryMarkdown,
-        result.AcceptedCommandType, result.AcceptedPayloadJson);
+        result.AcceptedCommandType, result.AcceptedPayloadJson, result.TargetRequirementText);
 }
 
 public sealed record LinkProposalResponse(
@@ -112,10 +114,13 @@ public sealed record LinkProposalResponse(
     decimal ProposedWeight,
     string ProposedRationale,
     decimal? AcceptedWeight,
-    string? AcceptedRationale)
+    string? AcceptedRationale,
+    /// <summary>The target StudyItem's current title, so the review UI never asks the user to decide from a bare Id.</summary>
+    string? TargetStudyItemTitle)
 {
     public static LinkProposalResponse FromResult(LinkProposalResult result) => new(
-        result.Id, result.Status, result.TargetStudyItemId, result.ProposedWeight, result.ProposedRationale, result.AcceptedWeight, result.AcceptedRationale);
+        result.Id, result.Status, result.TargetStudyItemId, result.ProposedWeight, result.ProposedRationale, result.AcceptedWeight, result.AcceptedRationale,
+        result.TargetStudyItemTitle);
 }
 
 public sealed record StudyItemProposalResponse(

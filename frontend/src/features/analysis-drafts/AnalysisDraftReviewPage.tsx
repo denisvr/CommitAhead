@@ -84,6 +84,9 @@ function SuggestionAudit({ proposal }: { proposal: SuggestionProposalResponse })
         ) : (
           <>
             <p className={cardStyles.commandLabel}>{proposal.proposedCommandType}</p>
+            {proposal.proposedCommandType === 'AddJobGap' && (
+              <p>Targets requirement: {proposal.targetRequirementText ?? '(no longer exists)'}</p>
+            )}
             <ProposedFieldsList fields={proposedFields} specs={SUGGESTION_FIELD_SPECS[proposal.proposedCommandType!]} />
           </>
         )}
@@ -103,7 +106,7 @@ function LinkAudit({ proposal }: { proposal: LinkProposalResponse }) {
     <li className={cardStyles.card}>
       <div className={cardStyles.proposed}>
         <Chip>{proposal.status}</Chip>
-        <p className={cardStyles.commandLabel}>Link to StudyItem {proposal.targetStudyItemId}</p>
+        <p className={cardStyles.commandLabel}>Link to {proposal.targetStudyItemTitle ?? `StudyItem ${proposal.targetStudyItemId}`}</p>
         <p>
           Proposed weight: {proposal.proposedWeight} — {proposal.proposedRationale}
         </p>
@@ -371,7 +374,7 @@ export function AnalysisDraftReviewPage({ draftId, onApplied, onBack }: Analysis
           </Button>
           {confirmingDiscard ? (
             <span className={styles.confirmRow}>
-              <span>Discard this draft? Every proposal will be rejected.</span>
+              <span>Discard this draft? No proposal will be applied.</span>
               <Button variant="danger" onClick={handleDiscard} isLoading={isDiscarding}>
                 Yes, discard
               </Button>

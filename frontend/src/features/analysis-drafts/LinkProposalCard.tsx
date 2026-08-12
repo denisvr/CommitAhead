@@ -16,7 +16,7 @@ export function LinkProposalCard({ proposal, decision, onChange }: LinkProposalC
   return (
     <li className={styles.card}>
       <div className={styles.proposed}>
-        <p className={styles.commandLabel}>Link to StudyItem {proposal.targetStudyItemId}</p>
+        <p className={styles.commandLabel}>Link to {proposal.targetStudyItemTitle ?? `StudyItem ${proposal.targetStudyItemId}`}</p>
         <p>Proposed weight: {proposal.proposedWeight} — {proposal.proposedRationale}</p>
       </div>
 

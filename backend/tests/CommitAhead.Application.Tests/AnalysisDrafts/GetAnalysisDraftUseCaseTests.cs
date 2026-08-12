@@ -2,16 +2,20 @@ using CommitAhead.Application.AnalysisDrafts;
 using CommitAhead.Application.StudyItems;
 using CommitAhead.Application.Tests.AI;
 using CommitAhead.Application.Tests.Identity;
+using CommitAhead.Application.Tests.JobAnalyses;
+using CommitAhead.Application.Tests.StudyItems;
 using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.EvidenceLinks;
+using CommitAhead.Domain.JobAnalyses;
 using CommitAhead.Domain.StudyItems;
 
 namespace CommitAhead.Application.Tests.AnalysisDrafts;
 
 public class GetAnalysisDraftUseCaseTests
 {
-    private static GetAnalysisDraftUseCase CreateUseCase(FakeAnalysisDraftRepository repository, Guid ownerUserId) =>
-        new(repository, new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
+    private static GetAnalysisDraftUseCase CreateUseCase(
+        FakeAnalysisDraftRepository repository, Guid ownerUserId, FakeStudyItemRepository? studyItemRepository = null, FakeJobAnalysisRepository? jobAnalysisRepository = null) =>
+        new(repository, studyItemRepository ?? new FakeStudyItemRepository(), jobAnalysisRepository ?? new FakeJobAnalysisRepository(), new StubCurrentUser { UserId = ownerUserId, Email = "owner@example.com" });
 
     private static StudyItemDetails CreateDetails(StudyItemCategory category) => category switch
     {
@@ -114,6 +118,100 @@ public class GetAnalysisDraftUseCaseTests
         var linkResult = result.LinkProposals.Single();
         Assert.Equal(4, linkResult.AcceptedWeight);
         Assert.Equal("Finalised rationale.", linkResult.AcceptedRationale);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForALinkProposal_ResolvesTheTargetStudyItemsTitle()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var repository = new FakeAnalysisDraftRepository();
+        var studyItemRepository = new FakeStudyItemRepository();
+        var targetStudyItem = new StudyItem(Guid.NewGuid(), ownerUserId, "PostgreSQL Indexing", StudyItemCategory.Theory, 3, 2, [], new TheoryDetails("s", [], [], []), DateTime.UtcNow);
+        await studyItemRepository.AddAsync(targetStudyItem, CancellationToken.None);
+
+        var linkProposal = new LinkProposal(Guid.NewGuid(), targetStudyItem.Id, 3, "Directly demonstrates this skill.");
+        var draft = new AnalysisDraft(Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), [], [linkProposal], [], DateTime.UtcNow);
+        await repository.AddAsync(draft, CancellationToken.None);
+
+        var useCase = CreateUseCase(repository, ownerUserId, studyItemRepository);
+
+        var result = await useCase.ExecuteAsync(draft.Id, CancellationToken.None);
+
+        Assert.Equal("PostgreSQL Indexing", result!.LinkProposals.Single().TargetStudyItemTitle);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForALinkProposal_WhenTheTargetStudyItemNoLongerExists_LeavesTheTitleNull()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var repository = new FakeAnalysisDraftRepository();
+        var linkProposal = new LinkProposal(Guid.NewGuid(), Guid.NewGuid(), 3, "Directly demonstrates this skill.");
+        var draft = new AnalysisDraft(Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), [], [linkProposal], [], DateTime.UtcNow);
+        await repository.AddAsync(draft, CancellationToken.None);
+
+        var useCase = CreateUseCase(repository, ownerUserId);
+
+        var result = await useCase.ExecuteAsync(draft.Id, CancellationToken.None);
+
+        Assert.Null(result!.LinkProposals.Single().TargetStudyItemTitle);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForAnAddJobGapProposal_ResolvesAnExistingRequirementsText()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var repository = new FakeAnalysisDraftRepository();
+        var jobAnalysisRepository = new FakeJobAnalysisRepository();
+
+        var sourceId = Guid.NewGuid();
+        var jobAnalysis = new JobAnalysis(sourceId, ownerUserId, "Title", new PastedText("Job posting text."), null, DateTime.UtcNow);
+        var requirement = new JobRequirement(Guid.NewGuid(), "5+ years with PostgreSQL", JobRequirementKind.Technical, JobRequirementPriority.Required, "excerpt");
+        jobAnalysis.AddRequirement(requirement, DateTime.UtcNow);
+        await jobAnalysisRepository.AddAsync(jobAnalysis, CancellationToken.None);
+
+        var gapProposal = new SuggestionProposal(
+            Guid.NewGuid(),
+            new StructuredSuggestion(StructuredSuggestionCommandType.AddJobGap, $$"""{"RequirementId":"{{requirement.Id}}","MatchLevel":"Missing","Severity":"High","Rationale":"No PostgreSQL experience found."}"""));
+        var draft = new AnalysisDraft(Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, sourceId, [gapProposal], [], [], DateTime.UtcNow);
+        await repository.AddAsync(draft, CancellationToken.None);
+
+        var useCase = CreateUseCase(repository, ownerUserId, jobAnalysisRepository: jobAnalysisRepository);
+
+        var result = await useCase.ExecuteAsync(draft.Id, CancellationToken.None);
+
+        Assert.Equal("5+ years with PostgreSQL", result!.SuggestionProposals.Single().TargetRequirementText);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForAnAddJobGapProposal_ResolvesARequirementProposedInTheSameDraft()
+    {
+        // AddJobGap can reference a sibling AddJobRequirement's AssignedRequirementId — the
+        // proposed requirement doesn't exist in the database yet (AiStructuredSuggestionValidator's
+        // same-response reference mechanism), so this must resolve from the draft itself, not a
+        // repository lookup.
+        var ownerUserId = Guid.NewGuid();
+        var repository = new FakeAnalysisDraftRepository();
+
+        var assignedRequirementId = Guid.NewGuid();
+        var requirementProposal = new SuggestionProposal(
+            Guid.NewGuid(),
+            new StructuredSuggestion(
+                StructuredSuggestionCommandType.AddJobRequirement,
+                $$"""{"AssignedRequirementId":"{{assignedRequirementId}}","Text":"Experience with distributed systems","Kind":"Technical","Priority":"Required","SourceExcerpt":"excerpt"}"""));
+        var gapProposal = new SuggestionProposal(
+            Guid.NewGuid(),
+            new StructuredSuggestion(
+                StructuredSuggestionCommandType.AddJobGap,
+                $$"""{"RequirementId":"{{assignedRequirementId}}","MatchLevel":"Missing","Severity":"High","Rationale":"No distributed-systems experience found."}"""));
+        var draft = new AnalysisDraft(Guid.NewGuid(), ownerUserId, EvidenceSourceType.JobAnalysis, Guid.NewGuid(), [requirementProposal, gapProposal], [], [], DateTime.UtcNow);
+        await repository.AddAsync(draft, CancellationToken.None);
+
+        var useCase = CreateUseCase(repository, ownerUserId);
+
+        var result = await useCase.ExecuteAsync(draft.Id, CancellationToken.None);
+
+        var gapResult = result!.SuggestionProposals.Single(p => p.ProposedCommandType == StructuredSuggestionCommandType.AddJobGap);
+        Assert.Equal("Experience with distributed systems", gapResult.TargetRequirementText);
     }
 
     [Fact]
