@@ -23,6 +23,12 @@
   font-weight: var(--weight-semibold);
 }
 
+.actions {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
 .confirmRow {
   display: flex;
   align-items: center;

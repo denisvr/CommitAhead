@@ -140,3 +140,27 @@ export async function replaceProfileLinkSelections(id: string, entryIds: string[
     throw new Error(await describeError(response, `Could not save the profile-link selection (status ${response.status}).`))
   }
 }
+
+export type ExportCVPresentationOutcome = { kind: 'exported'; blob: Blob } | { kind: 'notFound' } | { kind: 'pageLimitExceeded' }
+
+// `parseAs: 'blob'` only applies to the success path (openapi-fetch always reads a non-ok
+// response as text and tries to JSON-parse it, regardless of parseAs) — describeError's own
+// `response.clone().json()` would throw on this already-consumed response, so a non-ok response
+// is handled here directly from the outcome/status instead of routed through describeError.
+export async function exportCVPresentation(id: string): Promise<ExportCVPresentationOutcome> {
+  const { data, response } = await apiClient.GET('/api/cv-presentations/{id}/export', { params: { path: { id } }, parseAs: 'blob' })
+
+  if (response.status === 404) {
+    return { kind: 'notFound' }
+  }
+
+  if (response.status === 409) {
+    return { kind: 'pageLimitExceeded' }
+  }
+
+  if (!response.ok || !data) {
+    throw new Error(`Could not export this CV presentation (status ${response.status}).`)
+  }
+
+  return { kind: 'exported', blob: data }
+}

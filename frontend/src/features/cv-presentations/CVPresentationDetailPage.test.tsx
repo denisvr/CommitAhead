@@ -180,6 +180,66 @@ describe('CVPresentationDetailPage load states', () => {
   })
 })
 
+describe('CVPresentationDetailPage export', () => {
+  it('downloads the exported PDF by clicking a synthetic anchor pointing at the returned blob', async () => {
+    mockLoadHandlers()
+    server.use(http.get('/api/cv-presentations/:id/export', () => new HttpResponse(new Blob(['%PDF-1.7']), { headers: { 'Content-Type': 'application/pdf' } })))
+
+    // Patch only the two static methods jsdom doesn't implement — replacing the whole `URL`
+    // global (e.g. via vi.stubGlobal) would also break `new URL(...)`, which the app's own fetch
+    // middleware relies on for every request, and pollute every other test in this file.
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+    const createObjectURL = vi.fn(() => 'blob:mock-url')
+    const revokeObjectURL = vi.fn()
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = revokeObjectURL
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    try {
+      render(<CVPresentationDetailPage presentationId="presentation-1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+      await screen.findByRole('heading', { name: 'UK — Senior Backend Engineer' })
+
+      await userEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+
+      await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+      expect(createObjectURL).toHaveBeenCalled()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    } finally {
+      clickSpy.mockRestore()
+      URL.createObjectURL = originalCreateObjectURL
+      URL.revokeObjectURL = originalRevokeObjectURL
+    }
+  })
+
+  it('shows an inline message when the selected content exceeds the page limit', async () => {
+    mockLoadHandlers()
+    server.use(
+      http.get('/api/cv-presentations/:id/export', () => HttpResponse.json({ title: 'Conflict', status: 409, outcomeCode: 'PageLimitExceeded' }, { status: 409 })),
+    )
+
+    render(<CVPresentationDetailPage presentationId="presentation-1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'UK — Senior Backend Engineer' })
+
+    await userEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/page limit/i)
+  })
+
+  it('shows a generic error message when the export request fails outright', async () => {
+    mockLoadHandlers()
+    server.use(http.get('/api/cv-presentations/:id/export', () => HttpResponse.error()))
+
+    render(<CVPresentationDetailPage presentationId="presentation-1" onBack={vi.fn()} onDeleted={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'UK — Senior Backend Engineer' })
+
+    await userEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+  })
+})
+
 describe('CVPresentationDetailPage delete', () => {
   it('asks for confirmation, then deletes and calls onDeleted', async () => {
     mockLoadHandlers()

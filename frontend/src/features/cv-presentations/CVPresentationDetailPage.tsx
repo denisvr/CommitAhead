@@ -6,6 +6,7 @@ import { Tabs } from '../../design-system/components/Tabs'
 import { fetchProfessionalProfile, type ProfessionalProfileResponse } from '../professional-profile/api'
 import {
   deleteCVPresentation,
+  exportCVPresentation,
   fetchCVPresentation,
   replaceCertificationSelections,
   replaceEducationSelections,
@@ -104,6 +105,8 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -142,6 +145,38 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
         setLoadState('error')
       })
   }, [presentationId])
+
+  const handleExport = async (label: string) => {
+    setIsExporting(true)
+    setExportError(null)
+    try {
+      const result = await exportCVPresentation(presentationId)
+      if (result.kind === 'notFound') {
+        setExportError('This CV presentation could not be found.')
+        return
+      }
+
+      if (result.kind === 'pageLimitExceeded') {
+        setExportError('The selected content does not fit within the page limit — trim content or raise the page limit and try again.')
+        return
+      }
+
+      // Synthetic anchor click is the standard browser-side pattern for saving a Blob the fetch
+      // API already downloaded — there is no dedicated "save this blob" browser API.
+      const url = URL.createObjectURL(result.blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${label.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (caught) {
+      setExportError(describeError(caught, 'Something went wrong exporting this CV presentation.'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -200,23 +235,29 @@ export function CVPresentationDetailPage({ presentationId, onBack, onDeleted }: 
 
       <header className={styles.header}>
         <h1 className={styles.title}>{data.label}</h1>
-        {confirmingDelete ? (
-          <span className={styles.confirmRow}>
-            <span>Delete this CV presentation permanently?</span>
-            <Button variant="danger" onClick={() => void handleDelete()} isLoading={isDeleting}>
-              Yes, delete
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
-              Cancel
-            </Button>
-          </span>
-        ) : (
-          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
-            <Icon name="trash-2" /> Delete
+        <div className={styles.actions}>
+          <Button variant="secondary" onClick={() => void handleExport(data.label)} isLoading={isExporting}>
+            <Icon name="download" /> Download PDF
           </Button>
-        )}
+          {confirmingDelete ? (
+            <span className={styles.confirmRow}>
+              <span>Delete this CV presentation permanently?</span>
+              <Button variant="danger" onClick={() => void handleDelete()} isLoading={isDeleting}>
+                Yes, delete
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                Cancel
+              </Button>
+            </span>
+          ) : (
+            <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+              <Icon name="trash-2" /> Delete
+            </Button>
+          )}
+        </div>
       </header>
 
+      {exportError && <p role="alert">{exportError}</p>}
       {deleteError && <p role="alert">{deleteError}</p>}
 
       <Tabs tabs={[{ key: 'edit', label: 'Edit' }, { key: 'preview', label: 'Preview' }]} activeTab={activeTab} onChange={setActiveTab} aria-label="Edit or preview" />
