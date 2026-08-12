@@ -59,11 +59,13 @@ Application-layer slice is built does not require reopening this decision.
 
 ## Frontend
 
-### CV export format
-**Needed for:** Phase 5
-**Options:** PDF (via headless Chrome/Puppeteer, or a .NET PDF library), DOCX, HTML (rendered in browser for printing)
-**Constraints:** Markdown must be sanitised before HTML generation; locale formatting applied; page limit enforced
-**Affects:** `docs/product/brief.md` MVP scope, export use case, visual regression fixture strategy
+### ~~CV export format~~ — decided
+Resolved (ADR-0020): PDF, generated in-process with QuestPDF (no headless browser, no DOCX) —
+`ExportCVPresentationUseCase` builds the same rule-applied projection the frontend preview needs
+(selected/ordered entries, visibility-filtered contact fields, locale dates, resolved summary
+Markdown) and hands it to a QuestPDF-based renderer that owns layout and page-limit enforcement
+only, never business rules. One template per target market/style; QuestPDF's Community license
+covers this project's current single-operator/single-user posture (ADR-0015).
 
 ---
 

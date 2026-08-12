@@ -125,7 +125,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 **Outcome:** At least one regional CV template produces a verified downloadable document.
 
-**Decide first:** export format/engine.
+**Decide first:** ~~export format/engine~~ — decided (ADR-0020: PDF via QuestPDF, docs/tbd.md).
 
 - [ ] Implement export renderer abstraction and one template
 - [ ] Apply restricted Markdown rendering with a runtime-appropriate allowlist sanitizer
