@@ -1,0 +1,12 @@
+[extend]
+useDefault = true
+
+# Fixed, non-secret HMAC signing-key sentinels used only in test fixtures (JWT test-token
+# factories for the auth test suite and the E2E-only session endpoint's tests). These values
+# are hardcoded, committed, and never used outside a test/E2E process — genuine secrets are
+# never checked into this repo.
+[allowlist]
+regexes = [
+  '''test-only-signing-key-at-least-32-bytes-long''',
+  '''e2e-test-signing-key-at-least-32-bytes-long''',
+]
