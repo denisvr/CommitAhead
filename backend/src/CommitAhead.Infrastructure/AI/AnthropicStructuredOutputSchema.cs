@@ -18,6 +18,20 @@ namespace CommitAhead.Infrastructure.AI;
 /// e.g. category:"Theory" can never validate alongside LeetCode-only fields. This schema is
 /// descriptive scaffolding for the provider only; every existing Application-layer validator
 /// remains the authoritative check on the resulting data.
+///
+/// Two deliberately different casing conventions, not an inconsistency: the outer envelope
+/// (suggestionProposals/commandType/payload/advisoryMarkdown, linkProposals/targetStudyItemId/
+/// weight/rationale, studyItemProposals/title/category/details/tags/importance) is camelCase,
+/// matching AnthropicAIProvider's own [JsonPropertyName]-annotated wire DTOs for those exact
+/// fields. Everything *inside* a payload/details object is PascalCase, matching the opaque
+/// PayloadJson/DetailsJson contract every other producer and consumer already uses uncontested —
+/// AiStructuredSuggestionValidator/AiSimpleSuggestionValidator/StudyItemDetailsJsonParser (all
+/// via plain, unannotated StrictJsonOptions.Strict, which is case-sensitive and matches C#
+/// property names exactly), the frontend's payloadFields.ts, and normal (non-AI) StudyItem
+/// create/edit. This schema previously declared camelCase inside payload/details too — a real,
+/// previously-undetected defect (Layer 7 is the only place the real provider round-trips a
+/// schema-conformant response through those validators) — corrected here, not in any of the
+/// already-consistent consumers.
 /// </summary>
 internal static class AnthropicStructuredOutputSchema
 {
@@ -51,21 +65,21 @@ internal static class AnthropicStructuredOutputSchema
     private static JsonObject PayloadSchemaFor(StructuredSuggestionCommandType commandType) => commandType switch
     {
         StructuredSuggestionCommandType.AddJobRequirement => StrictObject(
-            ("proposalKey", StringSchema()),
-            ("text", StringSchema()),
-            ("kind", EnumSchema(Enum.GetNames<JobRequirementKind>())),
-            ("priority", EnumSchema(Enum.GetNames<JobRequirementPriority>())),
-            ("sourceExcerpt", StringSchema())),
+            ("ProposalKey", StringSchema()),
+            ("Text", StringSchema()),
+            ("Kind", EnumSchema(Enum.GetNames<JobRequirementKind>())),
+            ("Priority", EnumSchema(Enum.GetNames<JobRequirementPriority>())),
+            ("SourceExcerpt", StringSchema())),
         StructuredSuggestionCommandType.AddJobGap => StrictObject(
-            ("existingRequirementId", Nullable(StringSchema())),
-            ("proposedRequirementKey", Nullable(StringSchema())),
-            ("matchLevel", EnumSchema(Enum.GetNames<JobGapMatchLevel>())),
-            ("severity", EnumSchema(Enum.GetNames<JobGapSeverity>())),
-            ("rationale", StringSchema())),
+            ("ExistingRequirementId", Nullable(StringSchema())),
+            ("ProposedRequirementKey", Nullable(StringSchema())),
+            ("MatchLevel", EnumSchema(Enum.GetNames<JobGapMatchLevel>())),
+            ("Severity", EnumSchema(Enum.GetNames<JobGapSeverity>())),
+            ("Rationale", StringSchema())),
         StructuredSuggestionCommandType.UpdateCVPresentationSummary => StrictObject(
-            ("summaryMarkdown", Nullable(StringSchema()))),
+            ("SummaryMarkdown", Nullable(StringSchema()))),
         StructuredSuggestionCommandType.AddInterviewGap or StructuredSuggestionCommandType.AddInterviewLesson => StrictObject(
-            ("text", StringSchema())),
+            ("Text", StringSchema())),
         _ => throw new InvalidOperationException($"No structured-output payload schema defined for '{commandType}'."),
     };
 
@@ -88,37 +102,37 @@ internal static class AnthropicStructuredOutputSchema
         ("importance", IntegerSchema()));
 
     private static JsonObject TheoryDetailsSchema() => StrictObject(
-        ("summaryMarkdown", StringSchema()),
-        ("keyPoints", ArrayOf(StringSchema())),
-        ("interviewQuestions", ArrayOf(StringSchema())),
-        ("references", ArrayOf(StringSchema())));
+        ("SummaryMarkdown", StringSchema()),
+        ("KeyPoints", ArrayOf(StringSchema())),
+        ("InterviewQuestions", ArrayOf(StringSchema())),
+        ("References", ArrayOf(StringSchema())));
 
     private static JsonObject LeetCodeDetailsSchema() => StrictObject(
-        ("problemNumber", Nullable(IntegerSchema())),
-        ("url", Nullable(StringSchema())),
-        ("difficulty", EnumSchema(Enum.GetNames<Difficulty>())),
-        ("patterns", ArrayOf(StringSchema())),
-        ("expectedTimeComplexity", StringSchema()),
-        ("expectedSpaceComplexity", StringSchema()),
-        ("approachMarkdown", StringSchema()),
-        ("csharpSolution", Nullable(StringSchema())));
+        ("ProblemNumber", Nullable(IntegerSchema())),
+        ("Url", Nullable(StringSchema())),
+        ("Difficulty", EnumSchema(Enum.GetNames<Difficulty>())),
+        ("Patterns", ArrayOf(StringSchema())),
+        ("ExpectedTimeComplexity", StringSchema()),
+        ("ExpectedSpaceComplexity", StringSchema()),
+        ("ApproachMarkdown", StringSchema()),
+        ("CSharpSolution", Nullable(StringSchema())));
 
     private static JsonObject SystemDesignDetailsSchema() => StrictObject(
-        ("promptMarkdown", StringSchema()),
-        ("clarifyingQuestions", ArrayOf(StringSchema())),
-        ("functionalRequirements", ArrayOf(StringSchema())),
-        ("nonFunctionalRequirements", ArrayOf(StringSchema())),
-        ("evaluationChecklist", ArrayOf(StringSchema())),
-        ("referenceSolutionMarkdown", StringSchema()));
+        ("PromptMarkdown", StringSchema()),
+        ("ClarifyingQuestions", ArrayOf(StringSchema())),
+        ("FunctionalRequirements", ArrayOf(StringSchema())),
+        ("NonFunctionalRequirements", ArrayOf(StringSchema())),
+        ("EvaluationChecklist", ArrayOf(StringSchema())),
+        ("ReferenceSolutionMarkdown", StringSchema()));
 
     private static JsonObject BehavioralDetailsSchema() => StrictObject(
-        ("competencies", ArrayOf(StringSchema())),
-        ("questionVariants", ArrayOf(StringSchema())),
-        ("situation", StringSchema()),
-        ("task", StringSchema()),
-        ("action", StringSchema()),
-        ("result", StringSchema()),
-        ("reflection", Nullable(StringSchema())));
+        ("Competencies", ArrayOf(StringSchema())),
+        ("QuestionVariants", ArrayOf(StringSchema())),
+        ("Situation", StringSchema()),
+        ("Task", StringSchema()),
+        ("Action", StringSchema()),
+        ("Result", StringSchema()),
+        ("Reflection", Nullable(StringSchema())));
 
     private static JsonObject StrictObject(params (string Name, JsonNode Schema)[] properties)
     {

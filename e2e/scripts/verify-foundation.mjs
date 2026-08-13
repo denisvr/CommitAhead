@@ -16,6 +16,9 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 const composeFile = path.join(repoRoot, 'docker-compose.e2e.yml');
 const COMPOSE_PROJECT = 'commitahead-e2e';
 const BASE_URL = 'http://localhost:8081';
+// Fixed, non-secret E2E-only sentinel — docker-compose.e2e.yml's ANTHROPIC_API_KEY_SENTINEL/
+// AI__Providers__Anthropic__ApiKey and E2EConfigurationGuard.AnthropicApiKeySentinel.
+const ANTHROPIC_API_KEY_SENTINEL = 'e2e-stub-key';
 
 function composeArgs(...args) {
   return ['compose', '-f', composeFile, '-p', COMPOSE_PROJECT, ...args];
@@ -146,6 +149,76 @@ async function main() {
     );
     assert(policyCheck.code === 0, `psql failed: ${policyCheck.stderr}`);
     assert(Number(policyCheck.stdout.trim()) > 0, 'RLS policy on study_items is missing after reset');
+  });
+
+  await check('external-stub returns the AddJobRequirement/AddJobGap pair response for an AnalyzeJobAnalysis-shaped request', async () => {
+    const jobAnalysisSchemaBody = JSON.stringify({
+      output_config: {
+        format: {
+          schema: {
+            properties: {
+              suggestionProposals: {
+                items: {
+                  anyOf: [
+                    { properties: { commandType: { enum: ['AddJobRequirement'] } } },
+                    { properties: { commandType: { enum: ['AddJobGap'] } } },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const { code, stdout, stderr } = await execInService(
+      'app', 'curl', '-s', '-X', 'POST',
+      '-H', `x-api-key: ${ANTHROPIC_API_KEY_SENTINEL}`, '-H', 'Content-Type: application/json',
+      '-d', jobAnalysisSchemaBody, 'http://external-stub:8080/v1/messages',
+    );
+    assert(code === 0, `curl failed: ${stderr}`);
+
+    const envelope = JSON.parse(stdout);
+    const result = JSON.parse(envelope.content[0].text);
+    assert(result.suggestionProposals.length === 4, `expected 4 suggestionProposals, got ${result.suggestionProposals.length}`);
+    assert(result.linkProposals.length === 0 && result.studyItemProposals.length === 0, 'expected empty link/studyItem proposals');
+
+    const proposalKeys = result.suggestionProposals
+      .filter((p) => p.commandType === 'AddJobRequirement')
+      .map((p) => p.payload.ProposalKey);
+    assert(
+      proposalKeys.includes('req-cache-invalidation') && proposalKeys.includes('req-graphql-api'),
+      `expected both known proposalKeys, got ${JSON.stringify(proposalKeys)}`,
+    );
+  });
+
+  await check('external-stub falls back to the empty-output response for a non-JobAnalysis schema', async () => {
+    const cvPresentationSchemaBody = JSON.stringify({
+      output_config: {
+        format: {
+          schema: {
+            properties: {
+              suggestionProposals: {
+                items: {
+                  anyOf: [{ properties: { commandType: { enum: ['UpdateCVPresentationSummary'] } } }],
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const { code, stdout, stderr } = await execInService(
+      'app', 'curl', '-s', '-X', 'POST',
+      '-H', `x-api-key: ${ANTHROPIC_API_KEY_SENTINEL}`, '-H', 'Content-Type: application/json',
+      '-d', cvPresentationSchemaBody, 'http://external-stub:8080/v1/messages',
+    );
+    assert(code === 0, `curl failed: ${stderr}`);
+
+    const envelope = JSON.parse(stdout);
+    const result = JSON.parse(envelope.content[0].text);
+    assert(result.suggestionProposals.length === 0, `expected the unchanged EmptyOutput fallback, got ${result.suggestionProposals.length} proposals`);
   });
 
   await check('the external stub recorded zero unexpected requests', async () => {

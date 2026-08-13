@@ -401,6 +401,62 @@ public class AnalyzeJobAnalysisUseCaseTests
         await Assert.ThrowsAsync<AiResponseValidationException>(() => useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None));
     }
 
+    /// <summary>
+    /// Regression coverage for the AnthropicStructuredOutputSchema casing defect (Layer 7, Journey 3):
+    /// the schema previously declared these payload fields in camelCase, which a real
+    /// schema-conformant provider response would use — and which this validator has always
+    /// rejected, since StrictJsonOptions.Strict matches C# property names (PascalCase) exactly,
+    /// with no case-insensitive fallback. Proves the fix is genuinely case-sensitive in both
+    /// directions, not merely permissive.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WithACamelCasePayload_ThrowsAiResponseValidationException()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var jobAnalysisRepository = new FakeJobAnalysisRepository();
+        var jobAnalysis = CreateJobAnalysis(ownerUserId);
+        await jobAnalysisRepository.AddAsync(jobAnalysis, CancellationToken.None);
+        const string camelCasePayload =
+            """{"proposalKey":"req-1","text":"5+ years of C#","kind":"Technical","priority":"Required","sourceExcerpt":"..."}""";
+        var provider = new ScriptedAIProvider
+        {
+            Result = new AiAnalysisResult(
+                SuggestionProposals: [new AiSuggestionProposal(StructuredSuggestionCommandType.AddJobRequirement, camelCasePayload, null)],
+                LinkProposals: [],
+                StudyItemProposals: [],
+                InputTokens: 10,
+                OutputTokens: 10,
+                ActualCost: 0m),
+        };
+        var useCase = CreateUseCase(jobAnalysisRepository, new FakeAnalysisDraftRepository(), new FakeAIUsageRecordRepository(), provider, ownerUserId);
+
+        await Assert.ThrowsAsync<AiResponseValidationException>(() => useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithANumericEnumValue_ThrowsAiResponseValidationException()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var jobAnalysisRepository = new FakeJobAnalysisRepository();
+        var jobAnalysis = CreateJobAnalysis(ownerUserId);
+        await jobAnalysisRepository.AddAsync(jobAnalysis, CancellationToken.None);
+        const string payloadWithNumericEnum =
+            """{"ProposalKey":"req-1","Text":"5+ years of C#","Kind":1,"Priority":"Required","SourceExcerpt":"..."}""";
+        var provider = new ScriptedAIProvider
+        {
+            Result = new AiAnalysisResult(
+                SuggestionProposals: [new AiSuggestionProposal(StructuredSuggestionCommandType.AddJobRequirement, payloadWithNumericEnum, null)],
+                LinkProposals: [],
+                StudyItemProposals: [],
+                InputTokens: 10,
+                OutputTokens: 10,
+                ActualCost: 0m),
+        };
+        var useCase = CreateUseCase(jobAnalysisRepository, new FakeAnalysisDraftRepository(), new FakeAIUsageRecordRepository(), provider, ownerUserId);
+
+        await Assert.ThrowsAsync<AiResponseValidationException>(() => useCase.ExecuteAsync(jobAnalysis.Id, "key-1", CancellationToken.None));
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithANullSuggestionProposalEntry_ThrowsAiResponseValidationException()
     {

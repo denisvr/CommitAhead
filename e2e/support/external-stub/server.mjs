@@ -8,6 +8,13 @@
 // Anything else responds 501 and is recorded, so verify-foundation.mjs can assert the count is
 // exactly zero for a real run — an unsupported request is a defect to surface, not to guess at.
 // Never logs request bodies, cookies, tokens, or any header value — only the method and path.
+//
+// POST /v1/messages is the one exception to "never inspected": it parses its own body to pick
+// between exactly two fixed, deterministic responses — the AnalyzeJobAnalysis
+// AddJobRequirement/AddJobGap pair-response Journey 3 needs, or the original empty-output
+// fallback for everything else (including malformed JSON) — by structurally classifying the
+// request's own Structured Outputs schema (which StructuredSuggestionCommandType variants it
+// declares), never by matching request text. The body is still never logged.
 
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -33,6 +40,106 @@ for (const [name, value] of Object.entries({
 }
 
 const unexpectedRequests = [];
+
+// The two fixed /v1/messages outputs (E2E Foundation Plan / Journey 3) — nothing else. Not a
+// scenario engine: exactly one structural classifier below picks between exactly these two.
+const EMPTY_OUTPUT_RESULT = { suggestionProposals: [], linkProposals: [], studyItemProposals: [] };
+
+// Mirrors AnthropicStructuredOutputSchema's AddJobRequirement/AddJobGap shapes exactly — one pair
+// the journey accepts, one pair it rejects, so JobAnalysisDetailPage's Requirements/Gaps sections
+// after Apply prove both halves of "accept some, reject others." Two casing conventions, on
+// purpose, matching the schema itself (see AnthropicStructuredOutputSchema's own doc comment): the
+// envelope fields (commandType/payload/advisoryMarkdown) are camelCase; everything *inside* each
+// payload is the canonical PascalCase every real consumer (AiStructuredSuggestionValidator, the
+// frontend's payloadFields.ts) already expects — this is not a typo.
+const ANALYZE_JOB_ANALYSIS_RESULT = {
+  suggestionProposals: [
+    {
+      commandType: 'AddJobRequirement',
+      payload: {
+        ProposalKey: 'req-cache-invalidation',
+        Text: 'Design and implement cache invalidation strategies for distributed systems',
+        Kind: 'Technical',
+        Priority: 'Required',
+        SourceExcerpt: 'Must have hands-on experience designing and implementing cache invalidation strategies at scale.',
+      },
+      advisoryMarkdown: null,
+    },
+    {
+      commandType: 'AddJobGap',
+      payload: {
+        ExistingRequirementId: null,
+        ProposedRequirementKey: 'req-cache-invalidation',
+        MatchLevel: 'Missing',
+        Severity: 'High',
+        Rationale: "No cache invalidation work is documented in the candidate's profile or study catalogue.",
+      },
+      advisoryMarkdown: null,
+    },
+    {
+      commandType: 'AddJobRequirement',
+      payload: {
+        ProposalKey: 'req-graphql-api',
+        Text: 'Familiarity with GraphQL API design',
+        Kind: 'Technical',
+        Priority: 'Preferred',
+        SourceExcerpt: 'Experience with GraphQL is a plus but not required.',
+      },
+      advisoryMarkdown: null,
+    },
+    {
+      commandType: 'AddJobGap',
+      payload: {
+        ExistingRequirementId: null,
+        ProposedRequirementKey: 'req-graphql-api',
+        MatchLevel: 'Partial',
+        Severity: 'Low',
+        Rationale: 'Some API design experience exists but no direct GraphQL exposure.',
+      },
+      advisoryMarkdown: null,
+    },
+  ],
+  linkProposals: [],
+  studyItemProposals: [],
+};
+
+// Structural classifier — reads the request's own Structured Outputs schema (which
+// StructuredSuggestionCommandType variants AnthropicStructuredOutputSchema declared for this
+// call), never the free-text prompt. Array.isArray() guards every collection before iterating —
+// optional chaining alone stops at `undefined`/`null` but not at a malformed non-array value.
+function suggestionProposalCommandTypes(parsedBody) {
+  const variants = parsedBody?.output_config?.format?.schema?.properties?.suggestionProposals?.items?.anyOf;
+  const commandTypes = new Set();
+  if (!Array.isArray(variants)) {
+    return commandTypes;
+  }
+
+  for (const variant of variants) {
+    const enumValues = variant?.properties?.commandType?.enum;
+    if (!Array.isArray(enumValues)) {
+      continue;
+    }
+
+    for (const value of enumValues) {
+      commandTypes.add(value);
+    }
+  }
+
+  return commandTypes;
+}
+
+function isAnalyzeJobAnalysisRequest(parsedBody) {
+  const commandTypes = suggestionProposalCommandTypes(parsedBody);
+  return commandTypes.size === 2 && commandTypes.has('AddJobRequirement') && commandTypes.has('AddJobGap');
+}
+
+function buildMessagesResponse(result) {
+  return {
+    content: [{ type: 'text', text: JSON.stringify(result) }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 42, output_tokens: 8 },
+  };
+}
 
 function base64url(input) {
   return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -81,7 +188,9 @@ const server = http.createServer(async (req, res) => {
   const path = url.pathname;
   const method = req.method;
 
-  await readBody(req); // drain the request body — never inspected or logged
+  // Every request body is drained here; only the /v1/messages branch below ever parses these
+  // bytes (structurally, to classify the request — see the module comment), and never logs them.
+  const bodyBuffer = await readBody(req);
 
   console.log(`external-stub: ${method} ${path}`);
 
@@ -102,16 +211,24 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } });
     }
 
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(bodyBuffer.toString('utf8'));
+    } catch {
+      // Malformed JSON never crashes the stub — falls back to the same safe empty-output shape
+      // as an unrecognised schema below.
+      return sendJson(res, 200, buildMessagesResponse(EMPTY_OUTPUT_RESULT));
+    }
+
+    if (isAnalyzeJobAnalysisRequest(parsedBody)) {
+      return sendJson(res, 200, buildMessagesResponse(ANALYZE_JOB_ANALYSIS_RESULT));
+    }
+
     // Deterministic, structurally valid, empty-output response (mirrors the FakeAIProvider
-    // "EmptyOutput" scenario) — enough for foundation-level verification that the real adapter's
-    // request/response wiring works end to end. Full Structured Outputs fidelity for a specific
-    // AnalyzeX command is a journey-3 concern, not a foundation one — see the E2E Foundation
-    // Plan's pending-items list.
-    return sendJson(res, 200, {
-      content: [{ type: 'text', text: JSON.stringify({ suggestionProposals: [], linkProposals: [], studyItemProposals: [] }) }],
-      stop_reason: 'end_turn',
-      usage: { input_tokens: 42, output_tokens: 8 },
-    });
+    // "EmptyOutput" scenario) for every other real or hypothetical AnalyzeX command — enough for
+    // foundation-level verification that the real adapter's request/response wiring works end to
+    // end without needing a fixture per command.
+    return sendJson(res, 200, buildMessagesResponse(EMPTY_OUTPUT_RESULT));
   }
 
   if (method === 'POST' && path === '/auth/v1/token' && url.searchParams.get('grant_type') === 'refresh_token') {

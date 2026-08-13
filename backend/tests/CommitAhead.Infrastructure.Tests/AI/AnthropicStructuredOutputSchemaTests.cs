@@ -36,9 +36,9 @@ public sealed class AnthropicStructuredOutputSchemaTests
         var addJobGapPayloadProperties = PropertyNames((JsonObject)addJobGapVariant["properties"]!["payload"]!);
         var addJobRequirementPayloadProperties = PropertyNames((JsonObject)addJobRequirementVariant["properties"]!["payload"]!);
 
-        Assert.Equal(new HashSet<string> { "existingRequirementId", "proposedRequirementKey", "matchLevel", "severity", "rationale" }, addJobGapPayloadProperties);
-        Assert.DoesNotContain("proposalKey", addJobGapPayloadProperties);
-        Assert.DoesNotContain("kind", addJobGapPayloadProperties);
+        Assert.Equal(new HashSet<string> { "ExistingRequirementId", "ProposedRequirementKey", "MatchLevel", "Severity", "Rationale" }, addJobGapPayloadProperties);
+        Assert.DoesNotContain("ProposalKey", addJobGapPayloadProperties);
+        Assert.DoesNotContain("Kind", addJobGapPayloadProperties);
 
         // Sanity check the sibling variant is genuinely different, proving the two are not accidentally identical.
         Assert.NotEqual(addJobGapPayloadProperties, addJobRequirementPayloadProperties);
@@ -65,9 +65,9 @@ public sealed class AnthropicStructuredOutputSchemaTests
         var theoryVariant = studyItemVariants.Single(v => VariantEnumValue(v, "category") == "Theory");
         var theoryDetailsProperties = PropertyNames((JsonObject)theoryVariant["properties"]!["details"]!);
 
-        Assert.Equal(new HashSet<string> { "summaryMarkdown", "keyPoints", "interviewQuestions", "references" }, theoryDetailsProperties);
-        Assert.DoesNotContain("problemNumber", theoryDetailsProperties);
-        Assert.DoesNotContain("difficulty", theoryDetailsProperties);
+        Assert.Equal(new HashSet<string> { "SummaryMarkdown", "KeyPoints", "InterviewQuestions", "References" }, theoryDetailsProperties);
+        Assert.DoesNotContain("ProblemNumber", theoryDetailsProperties);
+        Assert.DoesNotContain("Difficulty", theoryDetailsProperties);
     }
 
     [Fact]
@@ -78,10 +78,10 @@ public sealed class AnthropicStructuredOutputSchemaTests
 
         var expectedDetailsPropertiesByCategory = new Dictionary<string, HashSet<string>>
         {
-            ["Theory"] = new() { "summaryMarkdown", "keyPoints", "interviewQuestions", "references" },
-            ["LeetCode"] = new() { "problemNumber", "url", "difficulty", "patterns", "expectedTimeComplexity", "expectedSpaceComplexity", "approachMarkdown", "csharpSolution" },
-            ["SystemDesign"] = new() { "promptMarkdown", "clarifyingQuestions", "functionalRequirements", "nonFunctionalRequirements", "evaluationChecklist", "referenceSolutionMarkdown" },
-            ["Behavioral"] = new() { "competencies", "questionVariants", "situation", "task", "action", "result", "reflection" },
+            ["Theory"] = new() { "SummaryMarkdown", "KeyPoints", "InterviewQuestions", "References" },
+            ["LeetCode"] = new() { "ProblemNumber", "Url", "Difficulty", "Patterns", "ExpectedTimeComplexity", "ExpectedSpaceComplexity", "ApproachMarkdown", "CSharpSolution" },
+            ["SystemDesign"] = new() { "PromptMarkdown", "ClarifyingQuestions", "FunctionalRequirements", "NonFunctionalRequirements", "EvaluationChecklist", "ReferenceSolutionMarkdown" },
+            ["Behavioral"] = new() { "Competencies", "QuestionVariants", "Situation", "Task", "Action", "Result", "Reflection" },
         };
 
         Assert.Equal(Enum.GetNames<StudyItemCategory>().Length, studyItemVariants.Count);
@@ -105,6 +105,68 @@ public sealed class AnthropicStructuredOutputSchemaTests
                 Assert.Empty(detailsProperties.Intersect(exclusiveToOther));
             }
         }
+    }
+
+    /// <summary>
+    /// Regression coverage for the Journey 3 casing defect: the outer envelope every
+    /// AnthropicAIProvider wire DTO already expects (commandType/payload/advisoryMarkdown,
+    /// targetStudyItemId/weight/rationale, title/category/details/tags/importance) is camelCase,
+    /// but everything *inside* a payload/details object must be the same canonical PascalCase
+    /// every existing consumer (AiStructuredSuggestionValidator, AiSimpleSuggestionValidator,
+    /// StudyItemDetailsJsonParser, the frontend's payloadFields.ts) already uses — never the other
+    /// way around, and never uniformly one casing throughout.
+    /// </summary>
+    [Theory]
+    [InlineData(StructuredSuggestionCommandType.AddJobRequirement, "ProposalKey")]
+    [InlineData(StructuredSuggestionCommandType.AddJobGap, "MatchLevel")]
+    [InlineData(StructuredSuggestionCommandType.UpdateCVPresentationSummary, "SummaryMarkdown")]
+    [InlineData(StructuredSuggestionCommandType.AddInterviewGap, "Text")]
+    [InlineData(StructuredSuggestionCommandType.AddInterviewLesson, "Text")]
+    public void BuildResponseSchema_EveryAllowedCommand_HasACamelCaseEnvelopeButPascalCasePayload(StructuredSuggestionCommandType commandType, string expectedPayloadProperty)
+    {
+        var schema = AnthropicStructuredOutputSchema.BuildResponseSchema([commandType]);
+
+        // Envelope: unaffected by this fix, still camelCase — matches AnthropicAIProvider's
+        // [JsonPropertyName]-annotated wire DTOs exactly.
+        var suggestionProposalsSchema = (JsonObject)schema["properties"]!;
+        Assert.True(suggestionProposalsSchema.ContainsKey("suggestionProposals"));
+        Assert.True(suggestionProposalsSchema.ContainsKey("linkProposals"));
+        Assert.True(suggestionProposalsSchema.ContainsKey("studyItemProposals"));
+
+        var variants = GetItemAnyOfVariants(schema, "suggestionProposals");
+        var variant = variants.Single(v => VariantEnumValue(v, "commandType") == commandType.ToString());
+        var variantProperties = (JsonObject)variant["properties"]!;
+        Assert.True(variantProperties.ContainsKey("commandType"));
+        Assert.True(variantProperties.ContainsKey("payload"));
+        Assert.True(variantProperties.ContainsKey("advisoryMarkdown"));
+
+        // Payload contents: the fix — canonical PascalCase, never the envelope's camelCase.
+        var payloadProperties = PropertyNames((JsonObject)variantProperties["payload"]!);
+        Assert.Contains(expectedPayloadProperty, payloadProperties);
+        Assert.DoesNotContain(char.ToLowerInvariant(expectedPayloadProperty[0]) + expectedPayloadProperty[1..], payloadProperties);
+    }
+
+    [Theory]
+    [InlineData("Theory", "SummaryMarkdown")]
+    [InlineData("LeetCode", "ProblemNumber")]
+    [InlineData("SystemDesign", "PromptMarkdown")]
+    [InlineData("Behavioral", "Situation")]
+    public void BuildResponseSchema_EveryStudyItemCategory_HasACamelCaseEnvelopeButPascalCaseDetails(string category, string expectedDetailsProperty)
+    {
+        var schema = AnthropicStructuredOutputSchema.BuildResponseSchema([StructuredSuggestionCommandType.AddJobRequirement]);
+
+        var variants = GetItemAnyOfVariants(schema, "studyItemProposals");
+        var variant = variants.Single(v => VariantEnumValue(v, "category") == category);
+        var variantProperties = (JsonObject)variant["properties"]!;
+        Assert.True(variantProperties.ContainsKey("title"));
+        Assert.True(variantProperties.ContainsKey("category"));
+        Assert.True(variantProperties.ContainsKey("details"));
+        Assert.True(variantProperties.ContainsKey("tags"));
+        Assert.True(variantProperties.ContainsKey("importance"));
+
+        var detailsProperties = PropertyNames((JsonObject)variantProperties["details"]!);
+        Assert.Contains(expectedDetailsProperty, detailsProperties);
+        Assert.DoesNotContain(char.ToLowerInvariant(expectedDetailsProperty[0]) + expectedDetailsProperty[1..], detailsProperties);
     }
 
     private static List<JsonObject> GetItemAnyOfVariants(JsonObject schema, string arrayPropertyName)
