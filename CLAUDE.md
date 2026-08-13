@@ -152,7 +152,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - Parsed PDF/CV assertions
 
 **Post-merge / manual only:**
-- Playwright E2E (4 journeys) — still deferred; adding the project and writing the journeys is tracked as its own item in `docs/roadmap.md`, not assumed done
+- Playwright E2E — foundation implemented (see "E2E testing contract" above); the four journeys themselves are still pending, tracked in `docs/roadmap.md` Phase 6b
 - Visual regression fixtures (per CV template)
 - SBOM generation + Trivy container scan (high/critical blocks deployment)
 - OWASP ZAP baseline (FakeAIProvider, fail on confirmed high-severity)

@@ -180,7 +180,9 @@ production-like runtime, never started automatically and never part of ordinary 
 - [ ] Run all four Playwright journeys — the E2E foundation is implemented and verified (see Phase 0 above); the four journey specs are not written yet. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
 
 **Exit criteria:** all four journeys pass, run explicitly and in isolation from both Phase 6a's
-local runtime and any internet deployment. Not required for, and not part of, Phase 6c below.
+local runtime and Phase 6c's hosting/deployment implementation — 6b is not part of that
+implementation work, but it **is** a prerequisite for internet release readiness: Phase 6c must
+not go live before all four journeys pass here.
 
 ### Phase 6c — Internet Production Deployment *(explicitly deferred — not started)*
 
