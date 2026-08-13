@@ -1,0 +1,136 @@
+# CommitAhead E2E stack (E2E Foundation Plan; docs/testing/strategy.md Layer 7) — the real
+# production image, a real ephemeral PostgreSQL, and a deterministic local stub for the two
+# external services (Anthropic, Supabase Auth). Completely isolated from both the dev stack
+# (backend/docker-compose.yml) and the local-production stack (docker-compose.prod.yml): distinct
+# Compose project name, distinct database name, no shared ports, no shared volumes.
+#
+# Only `proxy` is host-facing. `app`, `db`, `db-init`, and `external-stub` are attached ONLY to
+# `e2e_internal`, an `internal: true` network — verified empirically (not merely configured) that
+# such a service has no route off that network and, separately, that `ports:` on an internal-only
+# service is silently ignored (no `docker port` mapping at all). `proxy` is the one service
+# straddling both networks, so it can publish to the host while forwarding only to `app` inside
+# the isolated network.
+#
+# No PostgreSQL host port (db is internal-only — a real Postgres client from the host cannot
+# reach it directly; use `docker compose exec db psql` instead). No persistent volumes anywhere —
+# db's data directory is tmpfs, capped at 512m, so nothing here can outlive `docker compose down`.
+#
+# Usage: see e2e/README.md. In short:
+#   docker compose -f docker-compose.e2e.yml -p commitahead-e2e up -d --build
+#   docker compose -f docker-compose.e2e.yml -p commitahead-e2e down -v
+#
+# Credentials below are fixed, non-secret sentinel values, not real passwords — this stack has no
+# persistent data and no external reachability, so there is nothing for a real secret to protect.
+
+name: commitahead-e2e
+
+networks:
+  # No connection to the host's network interfaces or any other Docker network — the isolation
+  # boundary this entire stack depends on.
+  e2e_internal:
+    internal: true
+  # Ordinary bridge network; only `proxy` is attached to it.
+  e2e_edge: {}
+
+services:
+  proxy:
+    image: nginx:alpine
+    networks:
+      - e2e_edge
+      - e2e_internal
+    volumes:
+      - ./e2e/support/proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:8081:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: "no"
+
+  db:
+    image: postgres:17-alpine
+    networks:
+      - e2e_internal
+    environment:
+      POSTGRES_DB: commitahead_e2e
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: e2e-postgres-password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # tmpfs, not a named/anonymous volume: the data directory dies with the container, so there is
+    # nothing for `down -v` (or a crash) to leave behind. 512m comfortably covers this schema
+    # (23 tables) through initialization and repeated resets — confirmed during foundation
+    # verification, not assumed.
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d commitahead_e2e"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    restart: "no"
+
+  db-init:
+    build:
+      context: .
+      dockerfile: e2e/support/db-init/Dockerfile
+    networks:
+      - e2e_internal
+    environment:
+      PGHOST: db
+      PGDATABASE: commitahead_e2e
+      POSTGRES_PASSWORD: e2e-postgres-password
+      COMMITAHEAD_MIGRATOR_PASSWORD: e2e-migrator-password
+      COMMITAHEAD_APP_PASSWORD: e2e-app-password
+    depends_on:
+      db:
+        condition: service_healthy
+    # A one-shot job, not a long-running service — never restarted. `app`'s own
+    # `depends_on: service_completed_successfully` is what makes this container's exit code
+    # load-bearing: a non-zero exit here means `app` never starts.
+    restart: "no"
+
+  external-stub:
+    build:
+      context: ./e2e/support/external-stub
+    networks:
+      - e2e_internal
+    environment:
+      E2E_SIGNING_KEY: e2e-signing-key-for-local-stack-only-not-a-real-secret
+      E2E_ISSUER: https://e2e.commitahead.local/auth/v1
+      E2E_SUPABASE_USER_ID: e2e-user
+      ANTHROPIC_API_KEY_SENTINEL: e2e-stub-key
+      SUPABASE_ANON_KEY_SENTINEL: e2e-anon-key
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - e2e_internal
+    environment:
+      ASPNETCORE_ENVIRONMENT: E2E
+      ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead_e2e;Username=commitahead_app;Password=e2e-app-password"
+      # Every value below must match E2EConfigurationGuard's exact sentinels — a real host, a real
+      # key, or a typo here fails the app's own startup guard rather than silently "working".
+      Supabase__Url: http://external-stub:8080/
+      Supabase__AnonKey: e2e-anon-key
+      Auth__CallbackUrl: http://localhost:8081/auth/callback
+      AI__Provider: Anthropic
+      AI__Providers__Anthropic__Model: claude-haiku-4-5-20251001
+      AI__Providers__Anthropic__BaseUrl: http://external-stub:8080/
+      AI__Providers__Anthropic__ApiKey: e2e-stub-key
+      E2E__SigningKey: e2e-signing-key-for-local-stack-only-not-a-real-secret
+      E2E__Issuer: https://e2e.commitahead.local/auth/v1
+      E2E__SupabaseUserId: e2e-user
+      # No DataProtection__KeyRingPath — keys stay ephemeral, same reasoning as the absence of any
+      # persistent volume above.
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      external-stub:
+        condition: service_started
+    # No `ports:` and no `healthcheck:` override here — an internal-only service's `ports:` entry
+    # is silently ignored anyway (verified), and the root Dockerfile already bakes in a
+    # HEALTHCHECK against /api/health that `depends_on: service_healthy` (proxy, above) relies on.
+    restart: "no"

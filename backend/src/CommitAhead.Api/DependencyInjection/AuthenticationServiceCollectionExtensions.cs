@@ -1,8 +1,10 @@
+using System.Text;
 using CommitAhead.Api.Identity;
 using CommitAhead.Api.Security;
 using CommitAhead.Application.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CommitAhead.Api.DependencyInjection;
 
@@ -15,18 +17,40 @@ public static class AuthenticationServiceCollectionExtensions
     private static readonly TimeSpan AccessTokenEffectiveLifetime = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan ClockSkewTolerance = TimeSpan.FromMinutes(1);
 
-    public static IServiceCollection AddCommitAheadAuthentication(this IServiceCollection services, IConfiguration configuration)
+    private const string E2EEnvironmentName = "E2E";
+
+    public static IServiceCollection AddCommitAheadAuthentication(this IServiceCollection services, IConfiguration configuration, string environmentName)
     {
         // Read lazily rather than throwing here: this method runs whenever Program's entry point
         // runs, including build-time OpenAPI document generation, which never loads user-secrets.
         // An unconfigured Supabase:Url simply means every request fails JWT validation (401) —
         // discoverable at runtime, not a build break.
         var supabaseUrl = configuration["Supabase:Url"];
+        var isE2E = string.Equals(environmentName, E2EEnvironmentName, StringComparison.Ordinal);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                if (!string.IsNullOrWhiteSpace(supabaseUrl))
+                // The E2E stack can never reach Supabase's real JWKS (no route off its internal
+                // network — docs/testing/strategy.md §7.6), so JWT validation is pointed at a
+                // fixed local signing key instead of an Authority, mirroring the existing
+                // AuthTestWebApplicationFactory precedent but as real configuration rather than a
+                // WebApplicationFactory override. E2EConfigurationGuard has already verified
+                // E2E:SigningKey/Issuer are present whenever isE2E is true.
+                if (isE2E)
+                {
+                    var e2eSigningKey = configuration["E2E:SigningKey"]!;
+                    var e2eIssuer = configuration["E2E:Issuer"]!;
+
+                    options.TokenValidationParameters.ValidateIssuer = true;
+                    options.TokenValidationParameters.ValidIssuer = e2eIssuer;
+                    options.TokenValidationParameters.ValidateAudience = true;
+                    options.TokenValidationParameters.ValidAudience = "authenticated";
+                    options.TokenValidationParameters.ValidateLifetime = true;
+                    options.TokenValidationParameters.RequireExpirationTime = true;
+                    options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(e2eSigningKey));
+                }
+                else if (!string.IsNullOrWhiteSpace(supabaseUrl))
                 {
                     options.Authority = $"{supabaseUrl}/auth/v1";
                     options.Audience = "authenticated";
@@ -65,6 +89,13 @@ public static class AuthenticationServiceCollectionExtensions
             });
 
         services.AddHttpContextAccessor();
+
+        // No .ValidateOnStart(): same lazy-failure posture as every other options type in this
+        // codebase (build-time OpenAPI generation runs the host without user-secrets). Presence
+        // and correctness of these values is instead enforced eagerly by
+        // E2EConfigurationGuard.Validate, called directly from Program.cs before the pipeline is
+        // built — a real fail-closed startup guard, not merely deferred to first use.
+        services.AddOptions<E2EOptions>().Bind(configuration.GetSection(E2EOptions.SectionName));
 
         services.AddAuthorization(options =>
         {

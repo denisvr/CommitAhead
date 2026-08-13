@@ -80,11 +80,12 @@ CommitAhead/
 │   ├── package.json                     Clean Architecture layer; builds to frontend/dist
 │   ├── src/
 │   └── tests (colocated with src, e.g. src/App.test.tsx)
-├── docker-compose.e2e.yml             ← isolated E2E stack: app + PostgreSQL + local AI stub
-└── e2e/                               ← Playwright suite (planned — not implemented; own
-    ├── playwright.config.ts             package.json, never in the app dependency tree)
-    ├── scripts/                       ← run-full.mjs (lifecycle), reset-db.mjs (only reset path)
-    ├── support/                       ← reset.sql, ai-stub/
+├── docker-compose.e2e.yml             ← isolated E2E stack; only `proxy` is host-facing
+└── e2e/                               ← Playwright suite — foundation implemented, journeys not
+    ├── playwright.config.ts             written yet; own package.json, never in the app
+    ├── scripts/                          dependency tree
+    │   run-full.mjs (lifecycle), reset-db.mjs (only reset path), verify-foundation.mjs
+    ├── support/                       ← reset.sql, db-init/ (roles→bundle→RLS), external-stub/
     └── tests/                         ← fixtures/e2e-test.ts, journeys/001–004
 ```
 
@@ -126,19 +127,30 @@ local-production database; E2E-only authentication that fails closed outside the
 minted per journey by a test-scoped in-memory fixture that runs after the database reset — no setup
 project and no `storageState` file; `workers: 1`; user-facing locators (role, label, text) with
 `data-testid` only as a documented last resort where no meaningful accessible locator exists; no
-CSS/XPath and no `waitForTimeout`; zero real Supabase or Storage calls, and no real AI provider
-call — the local AI stub above is how E2E satisfies that, not a loophole in it.
+CSS/XPath and no `waitForTimeout`; zero real Supabase Storage calls and no real AI provider
+call — `external-stub` above is how E2E satisfies that, not a loophole in it.
+
+**Only `proxy` is host-facing.** `app`, `db`, `db-init`, and `external-stub` sit on an
+`internal: true` Compose network with no route off it — verified empirically, not merely
+configured (an internal-only service's `ports:` entry is silently ignored). `proxy` is a plain
+nginx reverse proxy dual-homed onto that network and an ordinary bridge network, forwarding only
+to `app`; `db-init` runs roles → EF migration bundle → RLS once and exits, and `app` starts only on
+its `service_completed_successfully`.
 
 The canonical layout and per-file ownership are fixed in strategy.md §7.11 — `docker-compose.e2e.yml`
-owns the services, `playwright.config.ts` owns execution config only, `tests/fixtures/e2e-test.ts`
-owns reset-then-authenticate, `support/reset.sql` owns the deterministic SQL alone (never dropping
-migrations or RLS), `scripts/run-full.mjs` owns the stack lifecycle with a guaranteed `down -v`, and
-`tests/journeys/` holds exactly the four approved journeys. Do not invent folders outside it.
+owns the topology, `playwright.config.ts` owns execution config only, `tests/fixtures/e2e-test.ts`
+owns reset-then-authenticate (via the lazy `e2eSession`/`authenticatedPage` fixtures — the built-in
+`page` fixture is never overridden), `support/reset.sql` owns the deterministic SQL alone (never
+dropping migrations or RLS), `scripts/run-full.mjs` owns the stack lifecycle with a best-effort
+`down -v` on success, failure, and `SIGINT`/`SIGTERM` alike, and `tests/journeys/` holds exactly the
+four approved journeys. Do not invent folders outside it.
 
-**Exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** It validates the target
-(`commitahead-e2e` project, `commitahead_e2e` database) and executes `reset.sql`; it exports
-`resetDatabase()` for the fixture and runs from the CLI as `npm run db:reset`. `run-full.mjs`
-delegates to it. Never add a separate Compose/`psql` reset in a fixture, script, or doc.
+**Exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** It validates the running
+container's own Compose-project label (`commitahead-e2e`) and the database name
+(`commitahead_e2e`) before piping `reset.sql` to `psql` over stdin, connected as
+`commitahead_migrator` (the table owner). It exports `resetDatabase()` for the fixture and runs
+from the CLI as `npm run db:reset`. `run-full.mjs` delegates to it. Never add a separate
+Compose/`psql` reset in a fixture, script, or doc.
 
 Also: ordinary PRs do not execute Playwright, and the E2E stack is started only for explicit E2E
 work. `@playwright/test` is the permanent suite; Playwright's Agent CLI is an optional local

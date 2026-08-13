@@ -1,0 +1,21 @@
+{
+  "name": "commitahead-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stack:up": "docker compose -f ../docker-compose.e2e.yml -p commitahead-e2e up -d --build",
+    "stack:down": "docker compose -f ../docker-compose.e2e.yml -p commitahead-e2e down -v",
+    "db:reset": "node scripts/reset-db.mjs",
+    "verify:foundation": "node scripts/verify-foundation.mjs",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:journey": "playwright test",
+    "e2e:full": "node scripts/run-full.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@types/node": "^24.13.2",
+    "typescript": "~6.0.2"
+  }
+}

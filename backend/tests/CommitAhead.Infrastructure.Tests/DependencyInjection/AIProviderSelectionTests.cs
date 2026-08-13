@@ -34,7 +34,7 @@ public class AIProviderSelectionTests
             ["AI:Providers:Anthropic:Model"] = "claude-haiku-4-5-20251001",
         });
 
-        services.AddInfrastructure(configuration);
+        services.AddInfrastructure(configuration, "Development");
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<AnthropicAIProvider>(provider.GetRequiredService<IAIProvider>());
@@ -46,7 +46,7 @@ public class AIProviderSelectionTests
         var services = new ServiceCollection();
         var configuration = BuildConfiguration(new Dictionary<string, string?> { ["AI:Provider"] = "OpenAI" });
 
-        Assert.Throws<InvalidOperationException>(() => services.AddInfrastructure(configuration));
+        Assert.Throws<InvalidOperationException>(() => services.AddInfrastructure(configuration, "Development"));
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class AIProviderSelectionTests
         var services = new ServiceCollection();
         var configuration = BuildConfiguration(new Dictionary<string, string?>());
 
-        Assert.Throws<InvalidOperationException>(() => services.AddInfrastructure(configuration));
+        Assert.Throws<InvalidOperationException>(() => services.AddInfrastructure(configuration, "Development"));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class AIProviderSelectionTests
             ["AI:Providers:Anthropic:Model"] = "claude-sonnet-not-yet-supported",
         });
 
-        services.AddInfrastructure(configuration);
+        services.AddInfrastructure(configuration, "Development");
         using var provider = services.BuildServiceProvider();
 
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IAIProvider>());

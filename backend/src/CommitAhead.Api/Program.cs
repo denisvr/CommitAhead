@@ -21,9 +21,15 @@ builder.Services.AddControllers(options =>
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
+// Fail-closed, before anything else touches configuration: E2E:* settings must be present if and
+// only if this is the E2E environment, and — inside E2E — every external-provider URL/credential
+// must equal its exact approved sentinel (E2E Foundation Plan). Safe to run unconditionally,
+// including under build-time OpenAPI document generation, which never runs as ASPNETCORE_ENVIRONMENT=E2E.
+CommitAhead.Api.Security.E2EConfigurationGuard.Validate(builder.Configuration, builder.Environment.EnvironmentName);
+
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddCommitAheadAuthentication(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.EnvironmentName);
+builder.Services.AddCommitAheadAuthentication(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.AddCommitAheadSecurity(builder.Environment, builder.Configuration);
 
 var app = builder.Build();
@@ -37,8 +43,11 @@ if (app.Environment.IsDevelopment())
 // validation target with no TLS termination of its own — a real deployment puts this behind a
 // TLS-terminating reverse proxy/load balancer instead. Sending HSTS or redirecting to https
 // without any https listener behind it would just break every request, so both are skipped only
-// for this one environment name; every other non-Development environment keeps them.
-if (!app.Environment.IsEnvironment("Docker"))
+// for this one environment name; every other non-Development environment keeps them. "E2E"
+// (docker-compose.e2e.yml) is the same situation — its own reverse proxy terminates nothing and
+// forwards plain HTTP — so it is skipped for the identical reason, not merged into "Docker"
+// itself: the two stacks are deliberately distinct environments (E2E Foundation Plan).
+if (!app.Environment.IsEnvironment("Docker") && !app.Environment.IsEnvironment("E2E"))
 {
     if (!app.Environment.IsDevelopment())
     {

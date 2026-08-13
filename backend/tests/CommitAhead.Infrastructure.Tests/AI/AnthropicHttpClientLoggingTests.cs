@@ -29,7 +29,7 @@ public class AnthropicHttpClientLoggingTests
             ["AI:Providers:Anthropic:Model"] = "claude-haiku-4-5-20251001",
         }).Build();
 
-        services.AddInfrastructure(configuration);
+        services.AddInfrastructure(configuration, "Development");
 
         // No real network call — a stub primary handler for the same named client.
         services.AddHttpClient("AnthropicAIProvider")

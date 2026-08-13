@@ -260,31 +260,44 @@ the primary safeguard against an E2E run touching real data:
 |---|---|---|---|
 | Compose project | (default, directory-derived) | `commitahead-prod` | **`commitahead-e2e`** |
 | Database name | `commitahead` | `commitahead` | **`commitahead_e2e`** |
-| DB host port | `5433` | `127.0.0.1:5434` | **`127.0.0.1:5435`** |
-| App host port | n/a | `127.0.0.1:8080` | **`127.0.0.1:8081`** |
-| DB volume | named, persistent | named, persistent | **none — anonymous/`tmpfs`, destroyed with the container** |
+| DB host port | `5433` | `127.0.0.1:5434` | **none — `db` is internal-only** |
+| App host port | n/a | `127.0.0.1:8080` | **none — `app` is internal-only; only `proxy` publishes `127.0.0.1:8081`** |
+| DB volume | named, persistent | named, persistent | **none — `tmpfs`, capped at 512m, destroyed with the container** |
 | Data Protection keys | n/a | named volume | **ephemeral** |
 | `ASPNETCORE_ENVIRONMENT` | `Development` | `Docker` | **`E2E`** |
 
+**No DB host port at all — not even a distinct one.** An internal-only Compose network
+(`internal: true`) silently ignores any `ports:` entry on a service attached to it — verified
+empirically, not merely configured: `docker port` shows no mapping whatsoever for such a service,
+even though the process inside is listening fine. So `app` and `db` publish nothing; the *only*
+host-facing service is `proxy`, a plain nginx reverse proxy dual-homed onto both the internal
+network and an ordinary bridge network, forwarding exclusively to `app`. This is also how egress
+isolation and host reachability coexist: a service on *only* the internal network has no route
+off it (confirmed by exec'ing in and failing to reach a raw IP or a real hostname), while `proxy`
+— reachable from the host because it also sits on the bridge network — has no route to anything
+other than `app`, and holds no credentials of its own. Manual database access uses
+`docker compose exec db psql`, never a host connection string.
+
 Rules:
 
-- **The E2E database must never be persistent.** No named volume. A stack that cannot outlive
-  `docker compose down` cannot accumulate real data and cannot be mistaken for a real one.
+- **The E2E database must never be persistent.** `tmpfs`, not a volume — the data directory dies
+  with the container, so there is nothing for `down -v` (or a crash) to leave behind.
 - **A distinct database name (`commitahead_e2e`) is mandatory**, so that even a misconfigured
   connection string cannot silently land on the `commitahead` database of either other stack.
-- All E2E ports bind to `127.0.0.1` only, consistent with ADR-0021.
+- The one published port (`proxy`'s `127.0.0.1:8081`) binds to loopback only, consistent with
+  ADR-0021.
 - Anything that resets or seeds data must address the stack explicitly by both
   `-f docker-compose.e2e.yml` and `-p commitahead-e2e`. A reset helper that relies on ambient
   Docker context is a defect.
 - `baseURL` is `http://localhost:8081`. The Playwright config must **fail fast** if `baseURL`
-  resolves to `8080`, or if any DB-facing helper resolves to port `5433`/`5434` or database
-  `commitahead` — a wrong-target run must be impossible, not merely discouraged.
+  resolves to `8080` or anything else — a wrong-target run must be impossible, not merely
+  discouraged.
 
 Playwright's `webServer` option is deliberately **not** used to bring the stack up. The stack's
 lifecycle is owned by explicit scripts because (a) the reset fixture must talk to the same Compose
 project, and (b) `webServer` tears its process down by killing the process group, which would leave
 Compose resources behind rather than running `down`. Startup readiness is the container's own
-health check plus `GET /api/health`.
+health check plus `GET /api/health` through `proxy`.
 
 ### 7.3 E2E-only authentication that cannot exist anywhere else
 
@@ -294,20 +307,33 @@ project, save `storageState`) therefore cannot be followed literally.
 
 The contract:
 
-- Authentication is obtained through an **E2E-only session hook in the API**, gated on
-  `ASPNETCORE_ENVIRONMENT=E2E` **and** an explicit signing-key configuration value. It mints a
-  locally-signed JWT for the seeded E2E user and writes the same auth cookies the real callback
-  writes, so everything downstream of login is exercised unchanged. This mirrors the existing
-  `AuthTestWebApplicationFactory` precedent, which already points JWT validation at a fixed local
-  key instead of Supabase's JWKS — but as configuration, since a real container cannot be
-  reconfigured in-process.
-- **Fail closed at startup.** If the E2E signing key is configured while the environment is
-  anything other than `E2E`, the application must throw during startup rather than start with the
-  hook inert. "Inert unless enabled" is not sufficient; the presence of the key in a non-E2E
-  environment is itself a misconfiguration and must be loud.
-- The hook must be covered by an API test asserting it is unreachable under `Development`,
-  `Docker`, and `Production`.
-- The E2E signing key is a test-fixture value with no production meaning. It must never be reused
+- Authentication is obtained through **`POST /auth/e2e/session`**
+  (`E2ESessionController`), gated on `ASPNETCORE_ENVIRONMENT=E2E` **and** trusted `E2E:*`
+  configuration (`E2EOptions`: `SigningKey`, `Issuer`, `SupabaseUserId`). The controller checks the
+  environment *first*, before reading any of that configuration, and returns `404` immediately
+  outside `E2E` — genuinely unreachable, not merely inert. It is excluded from the generated
+  OpenAPI document (`[ApiExplorerSettings(IgnoreApi = true)]`) since it has no production meaning
+  and must never appear in the frontend's generated client. It accepts no request body, query
+  string, or header: the minted identity (the JWT `sub`) comes only from `E2EOptions.SupabaseUserId`,
+  never from the caller. It mints an HS256 JWT (`iss`, `aud=authenticated`, `sub`, `iat`, `nbf`,
+  `exp` no later than 15 minutes after `iat`) and writes exactly the cookies
+  `CallbackController` writes for a real login, so everything downstream of login is exercised
+  unchanged. This mirrors the existing `AuthTestWebApplicationFactory` precedent, which already
+  points JWT validation at a fixed local key instead of Supabase's JWKS — but as real
+  configuration, since a running container cannot be reconfigured in-process the way a test host
+  can.
+- **Fail closed at startup — `E2EConfigurationGuard.Validate`, called from `Program.cs` before the
+  pipeline is built.** Throws if any `E2E:*` value is present while the environment is anything
+  other than `E2E` (inert-unless-enabled is not sufficient — presence outside `E2E` is itself a
+  misconfiguration and must be loud); throws if `E2E` is missing any required `E2E:*` value; and,
+  inside `E2E`, throws unless `Supabase:Url`, `Supabase:AnonKey`, `Auth:CallbackUrl`, and the
+  Anthropic base address/API key each equal their one exact approved sentinel value — checked by
+  string equality, never a prefix heuristic like `sk-ant-`, so a real-looking credential is
+  rejected for not matching the sentinel, not for looking suspicious.
+- Covered by API tests asserting it is unreachable (404) under `Development`, `Docker`, and
+  `Production`, reachable and correct only under `E2E`, absent from the generated OpenAPI document,
+  and that the minted token's claims and lifetime are exactly as specified above.
+- Every `E2E:*` value is a test-fixture value with no production meaning. It must never be reused
   as, or derived from, any real secret.
 
 **A test-scoped authenticated fixture — no setup project, no state files.** Playwright's usual
@@ -345,7 +371,12 @@ Every journey starts from an identical, known database state.
 - Reset **truncates business tables** and re-seeds the single E2E user (plus any baseline
   configuration a journey needs). It must **not** drop the schema or the database: RLS policies and
   the EF migrations-history table must survive, or subsequent journeys would run against an
-  unprotected or unmigrated database and still appear to pass.
+  unprotected or unmigrated database and still appear to pass. It runs as `commitahead_migrator` —
+  the table owner, which holds `TRUNCATE` and, because RLS on these tables is `ENABLE` rather than
+  `FORCE`, bypasses row filtering; `commitahead_app` holds neither.
+- Nothing seeds the E2E user except this reset — `db-init` (below) applies roles, migrations, and
+  RLS only, deliberately no data. A journey that has never run a reset has no enabled `User` row
+  to authenticate against.
 - **There is exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** The Playwright
   fixture calls its exported `resetDatabase()`, `npm run db:reset` invokes the same module from the
   command line, and `run-full.mjs` delegates to it rather than reimplementing it. Nobody — operator,
@@ -402,20 +433,31 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
   and E2E honours it. But E2E does **not** use `FakeAIProvider`: that class exists only in test
   assemblies, unreachable from the production image, and swapping in a test double would leave the
   one layer that runs the real deployable artifact untested precisely where it matters. Instead,
-  **E2E runs the real `AnthropicAIProvider` against a deterministic local HTTP stub** inside the
-  E2E Compose stack. Nothing leaves the machine, responses are fixed, and the adapter's real
-  request construction, Structured Outputs handling, and deserialisation are exercised end to end
-  — coverage no fake can provide. This requires making the adapter's base address configurable; it
-  is currently **hardcoded** to `https://api.anthropic.com/`, and that change is a prerequisite.
-  The alternative — an E2E-gated `IAIProvider` registration swapped in at the composition root — is
-  a fallback only, acceptable solely if it carries the same fail-closed startup guard as §7.3, and
-  it forfeits the adapter coverage above.
-- **Enforce it, don't assert it.** The app container must have no route to the public internet in
-  the E2E stack (internal Compose network, external egress limited to the stub). "We didn't
-  configure a real key" is not evidence; an unroutable network is.
-- **Supabase Auth** is never called: §7.3 replaces login entirely, and JWT validation uses the E2E
-  key rather than Supabase's JWKS.
-- **Supabase Storage** is never called: journey 3 uses pasted text (§7.1).
+  **E2E runs the real `AnthropicAIProvider` against `external-stub`**, a deterministic Node
+  stdlib-only service inside the E2E Compose stack. The adapter's base address is configurable
+  (`AnthropicOptions.BaseUrl`, resolved and validated by `AnthropicBaseAddress.Resolve` — absolute
+  URI, HTTPS required outside `E2E`, and inside `E2E` it must equal `http://external-stub:8080/`
+  exactly); it defaults to the real `https://api.anthropic.com/` everywhere else. Nothing leaves
+  the machine, responses are fixed, and the adapter's real request construction, headers, and
+  response deserialisation are exercised end to end — coverage no fake can provide.
+- **`external-stub` also serves the two Supabase Auth endpoints the app cannot avoid calling even
+  in a pasted-text-only journey**: `POST /auth/v1/token?grant_type=refresh_token` and
+  `POST /auth/v1/logout`. Both are real HTTP calls the production `SupabaseAuthClient` makes
+  during any authenticated session — refresh happens automatically, and logout is explicit — so
+  they need a real target, not merely an absent one. `external-stub` supports **exactly** these
+  four endpoints (the two above plus the two Anthropic ones); anything else gets `501` and is
+  recorded, so a foundation-verification run can assert the unexpected-request count is zero. The
+  refresh response contains a locally HS256-signed access token for the seeded E2E user (`iss`,
+  `aud`, `sub`, `iat`, `nbf`, `exp` within the 15-minute cap) and a rotated refresh token, so the
+  real `RefreshUseCase`/`LogoutUseCase` run unmodified. No Supabase Storage behaviour is provided —
+  journey 3 uses pasted text, never a PDF upload (§7.1), so Storage is never called.
+- **Enforce it, don't assert it.** `app`, `db`, `db-init`, and `external-stub` sit only on an
+  `internal: true` Compose network with no route off it — verified empirically (an exec'd `curl`
+  to a raw IP or to `api.anthropic.com` fails to connect at all, not merely without credentials),
+  not merely configured. "We didn't configure a real key" is not evidence; an unroutable network
+  is. `proxy` is the sole exception, dual-homed onto both the internal network and an ordinary
+  bridge network so the host can reach `app` through it; `proxy` forwards only to `app` and holds
+  no credentials of its own.
 
 ### 7.7 Execution, parallelism, and CI
 
@@ -513,17 +555,25 @@ design question to raise, not a new folder to invent.
 CommitAhead/
 ├── docker-compose.e2e.yml          ← the isolated E2E stack (§7.2)
 └── e2e/
-    ├── package.json                ← Playwright deps, separate from frontend/
+    ├── package.json                ← Playwright/TypeScript deps, separate from frontend/
     ├── package-lock.json
     ├── tsconfig.json
     ├── playwright.config.ts
     ├── README.md                   ← operational runbook
     ├── scripts/
     │   ├── run-full.mjs            ← up → wait → test → guaranteed down -v
-    │   └── reset-db.mjs            ← the one executable reset path (§7.4)
+    │   ├── reset-db.mjs            ← the one executable reset path (§7.4)
+    │   └── verify-foundation.mjs   ← foundation checks (health, isolation, reset idempotence)
     ├── support/
-    │   ├── reset.sql
-    │   └── ai-stub/                ← deterministic local AI service (§7.6)
+    │   ├── reset.sql                ← the SQL only
+    │   ├── db-init/                 ← one-shot: roles → EF migration bundle → RLS
+    │   │   ├── Dockerfile
+    │   │   └── db-init.sh
+    │   ├── external-stub/           ← deterministic local Anthropic + Supabase Auth stub
+    │   │   ├── Dockerfile
+    │   │   └── server.mjs
+    │   └── proxy/
+    │       └── nginx.conf           ← the only host-facing service's config
     └── tests/
         ├── fixtures/
         │   └── e2e-test.ts         ← reset-before-auth + authenticated fixture
@@ -536,14 +586,16 @@ CommitAhead/
 
 | Path | Owns | Must not own |
 |---|---|---|
-| `docker-compose.e2e.yml` | The isolated app container, its PostgreSQL, and the local AI stub — service definitions, the E2E-only environment (`ASPNETCORE_ENVIRONMENT=E2E`), loopback ports, the internal no-egress network, and the deliberate absence of persistent volumes (§7.2, §7.6) | Test logic, seed data |
+| `docker-compose.e2e.yml` | Service definitions and topology: `proxy` (the only host-facing service, dual-homed), `app`/`db`/`db-init`/`external-stub` (internal-only), the E2E-only environment (`ASPNETCORE_ENVIRONMENT=E2E`), the loopback-only published port, and the deliberate absence of persistent volumes (§7.2, §7.6) | Test logic, seed data |
 | `e2e/playwright.config.ts` | Playwright **execution configuration only**: `testDir`, `baseURL`, `workers`, `retries`, artifact modes, the Chromium project, timeouts, and the fail-fast guard rejecting a non-E2E `baseURL` | Stack lifecycle (no `webServer`), auth, seeding, reset |
-| `e2e/tests/fixtures/e2e-test.ts` | The single extended `test` every journey imports: the reset step, the test-scoped authenticated fixture that depends on it, and the resulting reset-before-auth ordering (§7.3, §7.4) | Journey assertions, page-specific interaction detail |
-| `e2e/support/reset.sql` | **Only the deterministic SQL transformation** — truncating business tables and re-seeding the E2E user and baseline configuration | Anything executable: no target selection, no connection details, no Compose knowledge. Never drops the schema or database, touches `__EFMigrationsHistory`, or removes RLS policies (§7.4) |
-| `e2e/scripts/reset-db.mjs` | **The single executable reset path**: validating the target (fixed `commitahead-e2e` Compose project and `commitahead_e2e` database, refusing anything else) and executing `reset.sql` against it. Exports `resetDatabase()` for the fixture **and** runs directly from the command line, so `npm run db:reset` is the same code (§7.4) | The SQL itself; stack lifecycle |
-| `e2e/scripts/run-full.mjs` | The one-command run: bring the stack up, wait for health, invoke Playwright, and **always `down -v` in a `finally`** so a crashed or interrupted run never leaves a stack behind. Propagates Playwright's exit code. Delegates any reset to `reset-db.mjs` | Test logic; **reset logic of its own**; being a substitute for `playwright test` during iteration |
+| `e2e/tests/fixtures/e2e-test.ts` | The single extended `test` every journey imports: the automatic `resetDb` fixture, the lazy `e2eSession`/`authenticatedPage` fixtures that depend on it, and the resulting reset-before-auth ordering (§7.3, §7.4). Playwright's built-in `page` fixture is never overridden — it stays the anonymous page | Journey assertions, page-specific interaction detail |
+| `e2e/support/db-init/` | The one-shot initializer: roles → self-contained EF migration bundle (`linux-x64`, same runtime as `backend/scripts/build-migration-bundle.ps1` — no new musl/native-dependency risk) → RLS scripts, run as `commitahead_migrator`/`postgres`. `app` depends on this with `condition: service_completed_successfully`, so a failure here means `app` never starts | Seed data (no `users` row — that is `reset.sql`'s job), stack lifecycle |
+| `e2e/support/reset.sql` | **Only the deterministic SQL transformation** — truncating business tables and re-seeding the E2E user | Anything executable: no target selection, no connection details, no Compose knowledge. Never drops the schema or database, touches `__EFMigrationsHistory`, or removes RLS policies (§7.4) |
+| `e2e/scripts/reset-db.mjs` | **The single executable reset path**: validating the target (the `commitahead-e2e` Compose project via the running container's own label, and the `commitahead_e2e` database, refusing the legacy `commitahead` name) before piping `reset.sql` to `psql` over stdin as `commitahead_migrator`. Exports `resetDatabase()` for the fixture **and** runs directly from the command line, so `npm run db:reset` is the same code (§7.4) | The SQL itself; stack lifecycle |
+| `e2e/scripts/run-full.mjs` | The one-command run: bring the stack up, wait for health, invoke Playwright, and **always attempt `down -v`** — in a `finally`, and on `SIGINT`/`SIGTERM`. Cannot guarantee cleanup after `SIGKILL`, a Docker daemon crash, or a host failure; the fallback there is `npm run stack:down`. Propagates Playwright's exit code | Test logic; **reset logic of its own**; being a substitute for `playwright test` during iteration |
+| `e2e/scripts/verify-foundation.mjs` | Foundation-only checks: health through the proxy, the session/refresh/logout round trip against `external-stub`, reset idempotence with migrations/RLS surviving it, zero unexpected stub requests, and that only `proxy` publishes a host port. May call `resetDatabase()` only to prove idempotence, never as a substitute for the fixture's per-test reset | Journey behaviour; stack lifecycle |
 | `e2e/tests/journeys/` | Exactly the four approved journeys of §7.1, one file each | A fifth journey, helper modules, or shared state between files |
-| `e2e/support/ai-stub/` | Deterministic canned responses for the real `AnthropicAIProvider` (§7.6) | Any outbound call; any behaviour that varies between runs |
+| `e2e/support/external-stub/` | Deterministic canned responses for exactly four endpoints — the real `AnthropicAIProvider`'s two Messages API calls, plus the two Supabase Auth calls (`refresh_token`, `logout`) the production `SupabaseAuthClient` makes during any authenticated session regardless of journey. Anything else gets `501` and is recorded (§7.6) | Any real outbound call; Supabase Storage behaviour (unneeded — journey 3 uses pasted text) |
 
 **Planned but not yet created: the `/devalente-e2e` skill.** `.claude/skills/devalente-e2e/` is a
 project-specific, **version-controlled** Claude Code skill capturing the day-to-day E2E workflow.

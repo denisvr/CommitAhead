@@ -33,7 +33,7 @@ namespace CommitAhead.Infrastructure.DependencyInjection;
 
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, string environmentName)
     {
         services.AddDbContext<CommitAheadDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("CommitAheadDb")));
@@ -85,7 +85,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPdfTextExtractor, PdfPigTextExtractor>();
         services.AddScoped<IExportRenderer, QuestPdfCVExportRenderer>();
 
-        AddAIProvider(services, configuration);
+        AddAIProvider(services, configuration, environmentName);
 
         return services;
     }
@@ -99,7 +99,7 @@ public static class InfrastructureServiceCollectionExtensions
     /// later means one new case here, its own options/HTTP registration, and its own tests — no
     /// change to Domain, the AnalyzeX use cases, AnalysisCommandOrchestrator, or any controller.
     /// </summary>
-    private static void AddAIProvider(IServiceCollection services, IConfiguration configuration)
+    private static void AddAIProvider(IServiceCollection services, IConfiguration configuration, string environmentName)
     {
         const string AnthropicClientName = "AnthropicAIProvider";
 
@@ -126,9 +126,15 @@ public static class InfrastructureServiceCollectionExtensions
                 // (GET/PUT/DELETE included, not just analyze) would otherwise require the API key
                 // to be configured just to construct the controller. AnthropicAIProvider reads and
                 // validates the key lazily, only when a provider method is actually invoked.
-                services.AddHttpClient(AnthropicClientName, client =>
+                //
+                // BaseAddress IS resolved eagerly here (unlike the API key) because it is not a
+                // secret and AnthropicBaseAddress.Resolve is the fail-closed guard against a
+                // misconfigured/untrusted host (E2E Foundation Plan) — it must run whenever the
+                // named client is built, not be deferrable to first real use.
+                services.AddHttpClient(AnthropicClientName, (serviceProvider, client) =>
                     {
-                        client.BaseAddress = new Uri("https://api.anthropic.com/");
+                        var options = serviceProvider.GetRequiredService<IOptions<AnthropicOptions>>().Value;
+                        client.BaseAddress = AnthropicBaseAddress.Resolve(options.BaseUrl, environmentName);
                         client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
                     })
                     .AddTypedClient<IAIProvider>((httpClient, serviceProvider) =>
