@@ -377,12 +377,14 @@ Every journey starts from an identical, known database state.
 - Nothing seeds the E2E user except this reset — `db-init` (below) applies roles, migrations, and
   RLS only, deliberately no data. A journey that has never run a reset has no enabled `User` row
   to authenticate against.
-- **There is exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** The Playwright
-  fixture calls its exported `resetDatabase()`, `npm run db:reset` invokes the same module from the
-  command line, and `run-full.mjs` delegates to it rather than reimplementing it. Nobody — operator,
-  fixture, or script — issues their own `docker compose exec … psql` reset. A second reset path is
-  a second target-validation implementation, and the one that gets skipped is the one that
-  eventually points at the wrong database (§7.2).
+- **There is exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** The automatic
+  Playwright fixture calls its exported `resetDatabase()` before every test, `npm run db:reset` and
+  `verify-foundation.mjs` invoke the same module explicitly, and no other script reimplements the
+  reset. `run-full.mjs` owns only stack lifecycle and Playwright execution — it never resets the
+  database itself; that happens per-test, inside the fixture, once Playwright is already running.
+  Nobody — operator, fixture, or script — issues their own `docker compose exec … psql` reset. A
+  second reset path is a second target-validation implementation, and the one that gets skipped is
+  the one that eventually points at the wrong database (§7.2).
 - Reset runs before each journey, and **before authentication** — the authenticated fixture (§7.3)
   depends on it, so the E2E user row exists and is freshly seeded before any session is minted
   against it. With `workers: 1` this is safe by construction; under any future parallelism it would

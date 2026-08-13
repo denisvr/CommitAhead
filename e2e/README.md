@@ -160,9 +160,10 @@ Wait for health:
 docker compose -f ../docker-compose.e2e.yml -p commitahead-e2e ps
 ```
 
-`db`, `app`, and `proxy` should report `healthy`; `db-init` should show `Exited (0)`. The app is
-then reachable at <http://localhost:8081> — through `proxy`, which is the only service with a
-published port.
+`db` and `app` should report `healthy`; `proxy` has no healthcheck of its own and should report
+`Up` (it depends on `app`'s health, not the other way around); `db-init` should show `Exited (0)`.
+The app is then reachable at <http://localhost:8081> — through `proxy`, which is the only service
+with a published port.
 
 Tear down — `db`'s data directory is `tmpfs`, so this (and any crash) discards all E2E data by
 design:

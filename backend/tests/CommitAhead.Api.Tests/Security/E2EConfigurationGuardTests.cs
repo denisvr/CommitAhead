@@ -40,6 +40,19 @@ public sealed class E2EConfigurationGuardTests
         Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, environmentName));
     }
 
+    [Theory]
+    [InlineData("Supabase:Url", E2EConfigurationGuard.SupabaseUrlSentinel)]
+    [InlineData("Supabase:AnonKey", E2EConfigurationGuard.SupabaseAnonKeySentinel)]
+    [InlineData("Auth:CallbackUrl", E2EConfigurationGuard.AuthCallbackUrlSentinel)]
+    [InlineData("AI:Providers:Anthropic:BaseUrl", AnthropicBaseAddress.E2ESentinel)]
+    [InlineData("AI:Providers:Anthropic:ApiKey", E2EConfigurationGuard.AnthropicApiKeySentinel)]
+    public void Validate_OutsideE2E_WithAnE2ESentinelAccidentallyConfigured_Throws(string key, string sentinelValue)
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?> { [key] = sentinelValue });
+
+        Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "Production"));
+    }
+
     [Fact]
     public void Validate_InsideE2E_WithAllExactSentinels_DoesNotThrow()
     {
@@ -86,6 +99,21 @@ public sealed class E2EConfigurationGuardTests
         var configuration = BuildConfiguration(settings);
 
         Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "E2E"));
+    }
+
+    [Fact]
+    public void Validate_InsideE2E_WithAMistakenlyConfiguredRealSecret_ExceptionMessageDoesNotContainIt()
+    {
+        const string fakeRealAnthropicKey = "sk-ant-totally-real-looking-key-0000000000000000";
+        var settings = new Dictionary<string, string?>(ValidE2ESentinelSettings)
+        {
+            ["AI:Providers:Anthropic:ApiKey"] = fakeRealAnthropicKey,
+        };
+        var configuration = BuildConfiguration(settings);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "E2E"));
+
+        Assert.DoesNotContain(fakeRealAnthropicKey, exception.Message, StringComparison.Ordinal);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> settings)

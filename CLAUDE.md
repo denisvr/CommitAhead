@@ -117,47 +117,12 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 
 ## E2E testing contract
 
-Before creating or changing anything under `e2e/`, the Playwright config, or the E2E Docker stack,
-read **`docs/testing/strategy.md` Layer 7** (the normative contract — journeys, environment
-isolation, E2E-only auth, locators, external-call rules) and **`e2e/README.md`** (the operational
-runbook). Layer 7 wins if the two ever disagree. Its non-negotiables: exactly four journeys, each
-passing independently and in any order (numeric filename prefixes are organizational, never
-load-bearing); a fully isolated and non-persistent E2E stack that never touches the dev or
-local-production database; E2E-only authentication that fails closed outside the `E2E` environment,
-minted per journey by a test-scoped in-memory fixture that runs after the database reset — no setup
-project and no `storageState` file; `workers: 1`; user-facing locators (role, label, text) with
-`data-testid` only as a documented last resort where no meaningful accessible locator exists; no
-CSS/XPath and no `waitForTimeout`; zero real Supabase Storage calls and no real AI provider
-call — `external-stub` above is how E2E satisfies that, not a loophole in it.
-
-**Only `proxy` is host-facing.** `app`, `db`, `db-init`, and `external-stub` sit on an
-`internal: true` Compose network with no route off it — verified empirically, not merely
-configured (an internal-only service's `ports:` entry is silently ignored). `proxy` is a plain
-nginx reverse proxy dual-homed onto that network and an ordinary bridge network, forwarding only
-to `app`; `db-init` runs roles → EF migration bundle → RLS once and exits, and `app` starts only on
-its `service_completed_successfully`.
-
-The canonical layout and per-file ownership are fixed in strategy.md §7.11 — `docker-compose.e2e.yml`
-owns the topology, `playwright.config.ts` owns execution config only, `tests/fixtures/e2e-test.ts`
-owns reset-then-authenticate (via the lazy `e2eSession`/`authenticatedPage` fixtures — the built-in
-`page` fixture is never overridden), `support/reset.sql` owns the deterministic SQL alone (never
-dropping migrations or RLS), `scripts/run-full.mjs` owns the stack lifecycle with a best-effort
-`down -v` on success, failure, and `SIGINT`/`SIGTERM` alike, and `tests/journeys/` holds exactly the
-four approved journeys. Do not invent folders outside it.
-
-**Exactly one executable reset path: `e2e/scripts/reset-db.mjs`.** It validates the running
-container's own Compose-project label (`commitahead-e2e`) and the database name
-(`commitahead_e2e`) before piping `reset.sql` to `psql` over stdin, connected as
-`commitahead_migrator` (the table owner). It exports `resetDatabase()` for the fixture and runs
-from the CLI as `npm run db:reset`. `run-full.mjs` delegates to it. Never add a separate
-Compose/`psql` reset in a fixture, script, or doc.
-
-Also: ordinary PRs do not execute Playwright, and the E2E stack is started only for explicit E2E
-work. `@playwright/test` is the permanent suite; Playwright's Agent CLI is an optional local
-exploration aid whose output is never committed as generated and never a CI dependency. The
-`/devalente-e2e` skill (`.claude/skills/devalente-e2e/`) is project-specific and version-controlled
-— `.gitignore` has a narrow negation for that one directory while the rest of `.claude/` stays
-ignored — but it **must not be created until the E2E suite is implemented and stable**.
+- E2E is never part of ordinary feature development or PR validation.
+- Run it only when explicitly requested, or when directly changing something under `e2e/`.
+- Before touching `e2e/` or the E2E Docker stack, read `docs/testing/strategy.md` Layer 7 (the
+  normative contract) and `e2e/README.md` (the operational runbook) first.
+- Zero real Supabase or Anthropic calls, ever — the isolated stack replaces both.
+- Exactly four approved journey files under `e2e/tests/journeys/` — no more, no fewer.
 
 ## CI quality gates (every PR — all blocking)
 

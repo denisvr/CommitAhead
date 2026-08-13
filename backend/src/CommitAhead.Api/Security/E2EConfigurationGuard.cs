@@ -10,7 +10,9 @@ namespace CommitAhead.Api.Security;
 /// branch only rejects a misconfiguration that should never exist anyway. Every sentinel is
 /// checked by exact string equality, never a prefix or "looks safe" heuristic — a real provider
 /// URL or credential is rejected because it differs from the one approved value, not because it
-/// fails some pattern match.
+/// fails some pattern match. Exception messages name only the configuration key and its expected
+/// E2E category — never the configured value or the sentinel itself — so a real secret pasted
+/// into <c>AI:Providers:Anthropic:ApiKey</c> by mistake never reaches startup logs or test output.
 /// </summary>
 public static class E2EConfigurationGuard
 {
@@ -40,6 +42,12 @@ public static class E2EConfigurationGuard
                     $"E2E:* configuration must not be present outside the E2E environment. ASPNETCORE_ENVIRONMENT is '{environmentName}'.");
             }
 
+            RejectSentinelOutsideE2E(configuration, environmentName, "Supabase:Url", "Supabase URL", SupabaseUrlSentinel);
+            RejectSentinelOutsideE2E(configuration, environmentName, "Supabase:AnonKey", "Supabase anonymous key", SupabaseAnonKeySentinel);
+            RejectSentinelOutsideE2E(configuration, environmentName, "Auth:CallbackUrl", "auth callback URL", AuthCallbackUrlSentinel);
+            RejectSentinelOutsideE2E(configuration, environmentName, $"{AnthropicOptions.SectionName}:BaseUrl", "Anthropic base URL", AnthropicBaseAddress.E2ESentinel);
+            RejectSentinelOutsideE2E(configuration, environmentName, $"{AnthropicOptions.SectionName}:ApiKey", "Anthropic API key", AnthropicApiKeySentinel);
+
             return;
         }
 
@@ -64,20 +72,30 @@ public static class E2EConfigurationGuard
             throw new InvalidOperationException($"Missing required E2E configuration: {string.Join(", ", missing)}.");
         }
 
-        RequireExactSentinel(configuration, "Supabase:Url", SupabaseUrlSentinel);
-        RequireExactSentinel(configuration, "Supabase:AnonKey", SupabaseAnonKeySentinel);
-        RequireExactSentinel(configuration, "Auth:CallbackUrl", AuthCallbackUrlSentinel);
-        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:BaseUrl", AnthropicBaseAddress.E2ESentinel);
-        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:ApiKey", AnthropicApiKeySentinel);
+        RequireExactSentinel(configuration, "Supabase:Url", "Supabase URL", SupabaseUrlSentinel);
+        RequireExactSentinel(configuration, "Supabase:AnonKey", "Supabase anonymous key", SupabaseAnonKeySentinel);
+        RequireExactSentinel(configuration, "Auth:CallbackUrl", "auth callback URL", AuthCallbackUrlSentinel);
+        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:BaseUrl", "Anthropic base URL", AnthropicBaseAddress.E2ESentinel);
+        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:ApiKey", "Anthropic API key", AnthropicApiKeySentinel);
     }
 
-    private static void RequireExactSentinel(IConfiguration configuration, string key, string expectedValue)
+    private static void RequireExactSentinel(IConfiguration configuration, string key, string category, string expectedValue)
     {
         var actual = configuration[key];
         if (!string.Equals(actual, expectedValue, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"{key} must equal the exact E2E sentinel value '{expectedValue}' when ASPNETCORE_ENVIRONMENT=E2E. Configured value: '{actual ?? "(none)"}'.");
+                $"{key} must equal the approved E2E {category} sentinel when ASPNETCORE_ENVIRONMENT=E2E.");
+        }
+    }
+
+    private static void RejectSentinelOutsideE2E(IConfiguration configuration, string environmentName, string key, string category, string sentinelValue)
+    {
+        var actual = configuration[key];
+        if (string.Equals(actual, sentinelValue, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"{key} must not equal the E2E {category} sentinel outside the E2E environment. ASPNETCORE_ENVIRONMENT is '{environmentName}'.");
         }
     }
 }
