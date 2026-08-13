@@ -1,12 +1,12 @@
 # CommitAhead
 
-Private, invite-only interview preparation app — data is isolated per user by `OwnerUserId` from the start (see ADR-0015); public signup stays disabled. Today there is exactly one real user. Full domain model and architecture confirmed — read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives. See `docs/` for the complete product, domain, architecture, testing, and security documentation.
+Private, invite-only interview preparation app — data is isolated per user by `OwnerUserId` from the start (see ADR-0015); public signup stays disabled. Today there is exactly one real user. Before planning work, read `docs/current-state.md` for the current status, priority, and explicit deferrals. Read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives.
 
 ## Stack
 - **Frontend:** React 19 + TypeScript + Vite; OpenAPI-generated TypeScript client
 - **Backend:** ASP.NET Core 10 Web API — Controllers, feature-folder use cases, no MediatR, no Minimal APIs
 - **ORM:** EF Core 10 + Npgsql
-- **Database:** PostgreSQL on Supabase
+- **Database:** PostgreSQL in Docker for development and the Phase 6a local runtime; Supabase PostgreSQL is the deferred Phase 6c internet target
 - **Auth/Storage:** Supabase (backend-mediated — no Supabase keys in the browser)
 - **AI:** `IAIProvider` abstraction; Anthropic, Claude Haiku 4.5 (ADR-0019); never called from frontend or domain layer
 - **Hosting:** TBD — see `docs/tbd.md`
@@ -61,6 +61,7 @@ CommitAhead/
 │   ├── testing/                      ← strategy
 │   ├── security/                     ← threat model
 │   ├── deployment/                   ← strategy (TBD)
+│   ├── current-state.md              ← concise operational handoff and current priority
 │   ├── roadmap.md
 │   └── tbd.md
 ├── backend/                           ← ASP.NET Core solution — not the frontend

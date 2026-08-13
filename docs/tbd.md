@@ -17,7 +17,7 @@ Decisions that must be made before the affected phase begins. No decision here s
 ## Infrastructure
 
 ### Hosting platform for ASP.NET Core API and React frontend
-**Needed for:** Phase 6
+**Needed for:** Phase 6c internet deployment
 **Status:** explicitly deferred (ADR-0021) — Phase 6 starts with a hosting-neutral local Docker
 deployment (`Dockerfile` + `docker-compose.prod.yml`, repo root) to validate the container and its
 runtime behaviour before choosing a platform. Not resolved by that deployment; this entry stays
@@ -27,7 +27,7 @@ open until a platform is actually chosen.
 **Affects:** `docs/deployment/strategy.md`, Data Protection key ring configuration, secrets injection method
 
 ### Secrets management in production
-**Needed for:** Phase 6
+**Needed for:** Phase 6c internet deployment
 **Status:** deferred, depends on the hosting platform decision above. The local Docker deployment
 uses plain environment variables (`backend/.env.production`, gitignored) with no secrets-manager
 integration — a deliberate placeholder, not the production answer.
@@ -82,7 +82,7 @@ free-use eligibility must be reassessed if this project's ownership or commercia
 ## Operations
 
 ### Data Protection key ring storage
-**Needed for:** Phase 6
+**Needed for:** Phase 6c internet deployment
 **Status:** partially resolved for local Docker only (ADR-0021) — `PersistKeysToFileSystem` against
 a named volume (`docker-compose.prod.yml`, `DataProtection:KeyRingPath`) makes keys survive a
 container restart, proven by `DataProtectionKeyPersistenceTests`. **Not encrypted at rest** — that
@@ -95,7 +95,7 @@ deployments?
 **Affects:** Cookie encryption continuity across deployments; if keys rotate, all sessions are invalidated
 
 ### Backup retention and restore-test cadence
-**Needed for:** Phase 6
+**Needed for:** Phase 6c internet deployment
 **Status:** target policy decided — 30-day retention, quarterly restore test — but automated,
 encrypted, retention-policy-enforcing implementation deferred to the cloud-deployment stage (needs
 real Supabase Postgres + Storage coverage a local Docker stack can't exercise). For now,
@@ -110,7 +110,7 @@ half-restored) — not automated, not encrypted, not on a retention schedule.
 **Depends on:** Supabase plan and hosting platform
 
 ### Production log retention
-**Needed for:** Phase 6
+**Needed for:** Phase 6c internet deployment
 **Status:** target duration decided — 30 days — but implementation deferred to the cloud-deployment
 stage; the local Docker stack uses plain Docker log rotation (`max-size`/`max-file` in
 `docker-compose.prod.yml`), not a centralized logging platform.

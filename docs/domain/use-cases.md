@@ -96,5 +96,5 @@ These four flows are validated end-to-end after every merge to main:
 
 1. **Authenticated access** — open the app, authenticate via magic link (test auth scheme), land on the study queue.
 2. **Create → Review → Rank** — create a StudyItem, submit a StudyReview, verify it appears in the correct position in the ranked queue.
-3. **Job analysis draft flow** — create a JobAnalysis, trigger analysis (FakeAIProvider), review proposals, accept some, reject others, apply, verify EvidenceLinks created and draft status = Applied.
+3. **Job analysis draft flow** — create a JobAnalysis, trigger analysis through the real Anthropic adapter pointed at the deterministic local E2E stub, review proposals, accept some, reject others, apply, verify EvidenceLinks created and draft status = Applied.
 4. **CVPresentation edit + export** — select canonical entries, set format rules, save, export, verify exported content includes required fields and respects locale formatting.

@@ -69,7 +69,7 @@ against the real project, covered in "Setting Up the Real Supabase Project" belo
 **Not required for local development.** `Supabase:Url`/`Supabase:AnonKey` point at the real
 project for Auth, while `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres —
 auth and persistence are independent, and there's no need to develop against the real Postgres
-before deployment (Phase 6). The steps below apply the same
+before internet deployment (Phase 6c). The steps below apply the same
 `backend/scripts/database/001_roles.sql`-`005_rls_phase3.sql` used locally to the *real* Postgres,
 plus the Storage-only `006_storage_job_postings.sql`, for whenever you're ready (e.g. first
 deployment). Only you should run these — they need the project's real database password, which
@@ -261,7 +261,7 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 - React 19 + TypeScript + Vite
 - ASP.NET Core 10 Controllers
 - Lightweight Clean Architecture with feature-folder use cases; no MediatR or Minimal APIs
-- EF Core 10 + Npgsql + PostgreSQL on Supabase
+- EF Core 10 + Npgsql; PostgreSQL in Docker locally, with Supabase PostgreSQL deferred to Phase 6c
 - Backend-mediated Supabase Auth and private Storage
 - Provider-neutral `IAIProvider`
 
@@ -269,6 +269,7 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 
 | Document | Purpose |
 |---|---|
+| `docs/current-state.md` | Current implementation state, priority, deferrals, and handoff for a new session |
 | `CONTEXT.md` | Ubiquitous language and glossary |
 | `docs/product/brief.md` | Product purpose, principles, and MVP |
 | `docs/product/out-of-scope.md` | Explicit MVP exclusions |

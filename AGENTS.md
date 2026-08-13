@@ -2,10 +2,13 @@
 
 Before changing code or documentation:
 
-1. Read `README.md`, `CONTEXT.md`, and `CLAUDE.md`.
+1. Read `docs/current-state.md`, `README.md`, `CONTEXT.md`, and `CLAUDE.md`.
 2. Read the relevant product, domain, architecture, testing, and security documents under `docs/`.
 3. Read every ADR that affects the requested change.
 4. Check `docs/tbd.md`; never resolve an open decision by assumption.
+
+Before planning new work, confirm the current priority and explicit deferrals in
+`docs/current-state.md`. Do not infer that a later roadmap phase has started.
 
 The hard constraints and architecture rules in `CLAUDE.md` apply to every coding agent, including Codex. Do not introduce MediatR, Minimal APIs, generic use-case dispatchers, direct frontend access to Supabase/AI, persisted EffectiveScore, or real AI calls in automated CI.
 
