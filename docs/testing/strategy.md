@@ -10,7 +10,7 @@
 | API | xUnit, WebApplicationFactory, shared Testcontainers DB, `FakeAIProvider` |
 | Architecture | NetArchTest |
 | Frontend component | Vitest, React Testing Library, MSW |
-| E2E | Playwright, Chromium only (foundation implemented — Layer 7 is the normative contract; the four journey specs are pending) |
+| E2E | Playwright, Chromium only (foundation implemented and verified; journey 1 implemented and passing — Layer 7 is the normative contract; journeys 2–4 are pending) |
 | AI adapter | xUnit, stubbed HTTP/SDK responses |
 
 **Absolute rule**: zero real *external* AI calls in any automated test — no test, at any layer, may
@@ -201,13 +201,16 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 
 ## Layer 7: E2E Tests (Playwright — post-merge or manual)
 
-**Foundation implemented; the four journeys are pending.** The Playwright project, configuration,
-fixtures, scripts, local `external-stub`, and the isolated E2E Docker stack all exist and are
-verified (§7.11) — but `tests/journeys/001`–`004` themselves have not been written yet. Everything
-below is the **normative contract** that those four files must satisfy once written, not a
-description of journeys running today. `e2e/README.md` is the operational runbook for the same
-contract; this document owns the *rules*, that one owns the *commands*. Both must be read before
-changing E2E code.
+**Foundation implemented; journey 1 implemented and passing; journeys 2–4 are pending.** The
+Playwright project, configuration, fixtures, scripts, local `external-stub`, and the isolated E2E
+Docker stack all exist and are verified (§7.11). `tests/journeys/001-authenticated-access.spec.ts`
+is written and passes — verified via `verify:foundation`, standalone (`playwright test
+001-authenticated-access.spec.ts`), and via the guaranteed-teardown `npm run e2e:full`, with the
+external stub recording zero unexpected requests and the stack fully removed afterward.
+`tests/journeys/002`–`004` themselves have not been written yet. Everything below is the
+**normative contract** those three remaining files must satisfy once written, and that journey 1
+already satisfies. `e2e/README.md` is the operational runbook for the same contract; this document
+owns the *rules*, that one owns the *commands*. Both must be read before changing E2E code.
 
 Research basis: Playwright's official documentation, current release `1.62.x`, reviewed
 2026-08-12. Where this contract departs from official guidance, the deviation is stated and

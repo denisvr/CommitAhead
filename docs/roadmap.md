@@ -138,7 +138,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 ---
 
-## Phase 6 — Production Hardening *(6a local production-like runtime implemented and infrastructure-verified; 6b local Playwright journeys explicitly invoked only, not started; 6c internet deployment explicitly deferred, not started)*
+## Phase 6 — Production Hardening *(6a local production-like runtime implemented and infrastructure-verified; 6b local Playwright journeys explicitly invoked only, journey 1 of 4 implemented and passing; 6c internet deployment explicitly deferred, not started)*
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
@@ -171,13 +171,14 @@ Real authentication and authenticated end-user journeys are not part of this exi
 are the manual acceptance checklist's job (README.md). Not an internet-facing deployment and does
 not imply one.
 
-### Phase 6b — Local Playwright E2E Journeys *(explicitly invoked only — not started)*
+### Phase 6b — Local Playwright E2E Journeys *(explicitly invoked only — journey 1 of 4 implemented and passing)*
 
 **Outcome:** The four approved Playwright journeys pass against the isolated, non-persistent local
 E2E stack (`docker-compose.e2e.yml`, `e2e/`) — a separate environment from Phase 6a's
 production-like runtime, never started automatically and never part of ordinary PR validation.
 
-- [ ] Run all four Playwright journeys — the E2E foundation is implemented and verified (see Phase 0 above); the four journey specs are not written yet. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
+- [x] Journey 1 (`001-authenticated-access.spec.ts`) — implemented and passing. Verified via `npm run verify:foundation`, standalone (`playwright test 001-authenticated-access.spec.ts`), and via the guaranteed-teardown `npm run e2e:full`; the external stub recorded zero unexpected requests and the stack was fully removed afterward each time.
+- [ ] Journeys 2–4 — not started; implemented incrementally, one at a time, only when explicitly requested. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
 
 **Exit criteria:** all four journeys pass, run explicitly and in isolation from both Phase 6a's
 local runtime and Phase 6c's hosting/deployment implementation — 6b is not part of that
