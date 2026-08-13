@@ -3,12 +3,11 @@
 Operational guide for the Playwright end-to-end suite: how to install it, bring the stack up, run
 the journeys, reset data, and read the artifacts when something fails.
 
-> **Status: foundation implemented; journeys 1–3 implemented and passing; journey 4 not written
-> yet.** The Docker stack, the E2E-only auth endpoint, the reset path, the orchestration scripts,
-> and the Playwright/fixture skeleton all exist and are verified (`npm run verify:foundation`).
-> `001-authenticated-access.spec.ts`, `002-study-queue-ranking.spec.ts`, and
-> `003-job-analysis-draft.spec.ts` each pass standalone and together via `npm run e2e:full`.
-> Journey 4 is the next slice, tracked separately in `docs/roadmap.md`.
+> **Status: foundation implemented; all four journeys implemented and passing.** The Docker stack,
+> the E2E-only auth endpoint, the reset path, the orchestration scripts, and the Playwright/fixture
+> skeleton all exist and are verified (`npm run verify:foundation`). `001-authenticated-access.spec.ts`,
+> `002-study-queue-ranking.spec.ts`, `003-job-analysis-draft.spec.ts`, and
+> `004-cv-presentation-export.spec.ts` each pass standalone and together via `npm run e2e:full`.
 
 **Read [`docs/testing/strategy.md`](../docs/testing/strategy.md) Layer 7 first.** It is the
 normative contract — journeys, isolation, auth, locators, and the rules about what E2E may and may
@@ -47,7 +46,7 @@ CommitAhead/
             ├── 001-authenticated-access.spec.ts   (implemented, passing)
             ├── 002-study-queue-ranking.spec.ts     (implemented, passing)
             ├── 003-job-analysis-draft.spec.ts      (implemented, passing)
-            └── 004-cv-presentation-export.spec.ts  (not written yet)
+            └── 004-cv-presentation-export.spec.ts  (implemented, passing)
 ```
 
 Full per-file responsibilities are in `docs/testing/strategy.md` §7.11. In short: the Compose file
@@ -199,9 +198,7 @@ This is the right first thing to run after touching anything under `docker-compo
 
 ## Running the journeys
 
-All commands run from `e2e/`. (Only `001-authenticated-access.spec.ts`,
-`002-study-queue-ranking.spec.ts`, and `003-job-analysis-draft.spec.ts` exist so far; these
-commands are documented for the full suite of four.)
+All commands run from `e2e/`. All four journey files exist now.
 
 ```bash
 npm test

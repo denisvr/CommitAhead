@@ -138,7 +138,7 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 ---
 
-## Phase 6 — Production Hardening *(6a local production-like runtime implemented and infrastructure-verified; 6b local Playwright journeys explicitly invoked only, journeys 1–3 of 4 implemented and passing; 6c internet deployment explicitly deferred, not started)*
+## Phase 6 — Production Hardening *(6a local production-like runtime implemented and infrastructure-verified; 6b local Playwright journeys explicitly invoked only, all four journeys implemented and passing; 6c internet deployment explicitly deferred, not started)*
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
@@ -171,7 +171,7 @@ Real authentication and authenticated end-user journeys are not part of this exi
 are the manual acceptance checklist's job (README.md). Not an internet-facing deployment and does
 not imply one.
 
-### Phase 6b — Local Playwright E2E Journeys *(explicitly invoked only — journeys 1–3 of 4 implemented and passing)*
+### Phase 6b — Local Playwright E2E Journeys *(explicitly invoked only — all four journeys implemented and passing)*
 
 **Outcome:** The four approved Playwright journeys pass against the isolated, non-persistent local
 E2E stack (`docker-compose.e2e.yml`, `e2e/`) — a separate environment from Phase 6a's
@@ -180,7 +180,9 @@ production-like runtime, never started automatically and never part of ordinary 
 - [x] Journey 1 (`001-authenticated-access.spec.ts`) — implemented and passing. Verified via `npm run verify:foundation`, standalone (`playwright test 001-authenticated-access.spec.ts`), and via the guaranteed-teardown `npm run e2e:full`; the external stub recorded zero unexpected requests and the stack was fully removed afterward each time.
 - [x] Journey 2 (`002-study-queue-ranking.spec.ts`) — implemented and passing. Creates two StudyItems and submits a StudyReview entirely through the UI, proving the ranked queue's lead item changes accordingly (EffectiveScorePolicy: Item A at importance 5/mastery 1 leads at score 65; after a confidence-5 review its mastery rises to 5, dropping it to 40, below Item B's 45, so B becomes the new lead). Verified standalone, alongside Journey 1 standalone to confirm independence, and together via the guaranteed-teardown `npm run e2e:full`; the external stub recorded zero unexpected requests and the stack was fully removed afterward each time.
 - [x] Journey 3 (`003-job-analysis-draft.spec.ts`) — implemented and passing. Creates a pasted-text JobAnalysis and triggers Analyze entirely through the UI, exercising the real `AnthropicAIProvider` against `external-stub`'s deterministic AddJobRequirement/AddJobGap pair response (structurally classified by the request's own Structured Outputs schema, never free-text matching); accepts one pair and rejects another on the review page; Applies; confirms the accepted requirement/gap are visible on the JobAnalysis and the rejected pair's are not (`toHaveCount(0)`). Building this journey surfaced and fixed a real, previously-undetected production defect in `AnthropicStructuredOutputSchema` — see `docs/testing/strategy.md` Layer 7 for the full account and the backend regression tests added alongside it (`AnthropicStructuredOutputSchemaTests`, `AnalyzeJobAnalysisUseCaseTests`, `AiStudyItemDetailsParserTests`). Verified standalone, alongside Journeys 1–2 standalone to confirm independence, and together via the guaranteed-teardown `npm run e2e:full`; the external stub recorded zero unexpected requests and the stack was fully removed afterward each time.
-- [ ] Journey 4 — not started; only when explicitly requested. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
+- [x] Journey 4 (`004-cv-presentation-export.spec.ts`) — implemented and passing. Seeds a ProfessionalProfile with one Experience entry via API (§7.9: legitimate setup, not the tested behavior), then creates a CVPresentation, adds the seeded entry to its selections, and exports entirely through the UI; a real Playwright `download` event is asserted (`suggestedFilename()` ends `.pdf`, `failure()` is `null`, the file read from `download.path()` is non-empty and begins with the `%PDF-` magic number) — no PDF content parsing in Playwright, per §7.10. Verified standalone, alongside Journeys 1–3 standalone to confirm independence, and together via the guaranteed-teardown `npm run e2e:full`; the external stub recorded zero unexpected requests and the stack was fully removed afterward each time.
+
+All four approved journeys are implemented and passing. Adding a fifth requires an explicit product decision recorded here and in `docs/testing/strategy.md` Layer 7 (§7.1). The `/devalente-e2e` skill (Layer 7 §7.11) may now be planned separately, as an explicit next step — not part of this change.
 
 **Exit criteria:** all four journeys pass, run explicitly and in isolation from both Phase 6a's
 local runtime and Phase 6c's hosting/deployment implementation — 6b is not part of that

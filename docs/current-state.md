@@ -10,15 +10,20 @@ priority, and document routing; detailed rules remain in their authoritative doc
 - Phase 6a, the persistent local production-like Docker runtime, is implemented and
   infrastructure-verified.
 - The isolated Playwright project, Docker stack, fixtures, scripts, database reset, and external
-  stub are implemented. Journeys 1 (`001-authenticated-access.spec.ts`), 2
-  (`002-study-queue-ranking.spec.ts`), and 3 (`003-job-analysis-draft.spec.ts`) are implemented and
-  passing — each verified standalone and together via the guaranteed-teardown `npm run e2e:full`,
-  with zero unexpected external-stub requests and the stack fully removed afterward each time.
-  Journey 3 also surfaced and fixed a real production defect in `AnthropicStructuredOutputSchema`
-  (StructuredSuggestion payload and StudyItemProposal details fields were declared camelCase in the
-  schema sent to the real Anthropic API, but every actual consumer has always required the
-  canonical PascalCase those opaque JSON strings use everywhere else) — corrected with backend
-  regression tests, not by changing the E2E stub's casing to dodge it. Journey 4 is not yet written.
+  stub are implemented. All four approved journeys are implemented and passing — 1
+  (`001-authenticated-access.spec.ts`), 2 (`002-study-queue-ranking.spec.ts`), 3
+  (`003-job-analysis-draft.spec.ts`), and 4 (`004-cv-presentation-export.spec.ts`) — each verified
+  standalone and together via the guaranteed-teardown `npm run e2e:full`, with zero unexpected
+  external-stub requests and the stack fully removed afterward each time. Journey 3 also surfaced
+  and fixed a real production defect in `AnthropicStructuredOutputSchema` (StructuredSuggestion
+  payload and StudyItemProposal details fields were declared camelCase in the schema sent to the
+  real Anthropic API, but every actual consumer has always required the canonical PascalCase those
+  opaque JSON strings use everywhere else) — corrected with backend regression tests, not by
+  changing the E2E stub's casing to dodge it. Journey 4 seeds a ProfessionalProfile/Experience
+  entry via API (legitimate setup, not the tested behavior, per Layer 7 §7.9) and drives
+  presentation creation, selection editing, and export/download entirely through the UI.
+  The `/devalente-e2e` skill has not been created yet — it may now be planned as a separate,
+  explicit next step.
 - Phase 6c, internet production deployment, has not started and is explicitly deferred.
 
 ## Current priority and verification boundary
@@ -35,9 +40,9 @@ volumes, restart/reset behaviour, and the absence of automatic Supabase or Anthr
 external configuration was used — that is exactly what the deferred manual acceptance checklist
 would prove, whenever the user chooses to pick it up.
 
-Phase 6b journeys 1, 2, and 3 are complete. The next implementation work is **Phase 6b journey 004
-only**, and only when explicitly requested. Do not create `/devalente-e2e` until all four journeys
-are implemented and stable.
+Phase 6b is complete — all four approved journeys are implemented and passing. There is no next
+Phase 6b journey. `/devalente-e2e` may be planned as a separate, explicit next step, but was
+deliberately not created in the same change as journey 4 — plan it only when explicitly requested.
 
 Do not begin Phase 6c, choose hosting, or implement internet-deployment controls without explicit
 user authorization.
