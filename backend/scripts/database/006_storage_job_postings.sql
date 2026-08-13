@@ -6,8 +6,10 @@
 -- used for development and CI, which has no such schema at all. It is NOT run by
 -- backend/scripts/setup-local-db.ps1 and is NOT covered by any automated test. Applying it is a
 -- one-time operator action against the real project (using the project's own SQL editor or the
--- Supabase CLI, with the operator's own real project credentials), deferred to deployment
--- (Phase 6) — the exact same precedent already set for applying 001-005 to the real Supabase
+-- Supabase CLI, with the operator's own real project credentials). Required whenever the Phase 6a
+-- manual PDF-upload acceptance check is performed against a real Supabase project, and again for
+-- Phase 6c internet deployment — never for CI or the isolated Phase 6b E2E stack, which use no real
+-- Supabase project at all. Same precedent already set for applying 001-005 to the real Supabase
 -- Postgres (see docs/roadmap.md Phase 0).
 --
 -- ADR-0018: the application itself NEVER uses the project's service-role key for these Storage
