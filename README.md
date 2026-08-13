@@ -182,6 +182,40 @@ cleanup, whether the restore succeeded or not, without masking whichever failure
 Not automated, not encrypted, not on any retention schedule — that's still the deferred
 cloud-deployment work below.
 
+**Everyday operations:**
+
+```bash
+# Logs (both services, following)
+docker compose -f docker-compose.prod.yml --env-file backend/.env.production logs -f
+
+# Shut down — containers stop, named volumes (db data, Data Protection keys) are kept
+docker compose -f docker-compose.prod.yml --env-file backend/.env.production down
+
+# Start again later — same volumes, same data, no rebuild needed
+docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d
+
+# Clean reset — discards ALL local data (db + Data Protection keys) and starts from empty.
+# Re-run setup-production-db.ps1 and bootstrap-production-user.ps1 afterward.
+docker compose -f docker-compose.prod.yml --env-file backend/.env.production down -v
+```
+
+Always pass `--env-file backend/.env.production` to every `docker compose ... -f docker-compose.prod.yml`
+command, including `logs`/`ps`/`down` — omitting it makes Compose evaluate every `${VAR}` in the
+file against an empty environment instead, which does not affect already-running containers but
+prints a `variable is not set` warning per undefined one.
+
+Empirically verified (this exact command sequence, end to end, against a disposable local
+`backend/.env.production`): `setup-production-db.ps1` → `bootstrap-production-user.ps1` → `up -d
+--build` → `/api/health` returns `200 {"status":"Healthy"}` → the built SPA is served at `/` →
+`down` (no `-v`) → `up -d` again with no rebuild → the seeded `users` row and `/api/health` are
+both still there, proving the named volumes actually persist data across a routine restart. The
+app started and served every check above with a placeholder Supabase URL and a blank
+`ANTHROPIC_API_KEY` — both are validated lazily, per request, never at startup — which is also the
+proof that **no automatic Supabase or Anthropic call ever happens**: Anthropic is only ever called
+when you explicitly trigger an "Analyze" action from a signed-in session, and Supabase is only ever
+called on an actual login/refresh/logout attempt. A real login round trip needs a real Supabase
+project (see "Setting Up the Real Supabase Project" above) and was not part of this pass.
+
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
 hosting platform, secrets management, Data Protection key encryption at rest, automated/encrypted
 backups on a retention schedule, and centralized log retention. See `docs/tbd.md` for the target

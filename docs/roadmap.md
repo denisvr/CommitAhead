@@ -138,16 +138,41 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 ---
 
-## Phase 6 — Production Hardening
+## Phase 6 — Production Hardening *(6a local production-like runtime implemented and verified; 6b internet deployment explicitly deferred, not started)*
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
-**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention — all explicitly deferred (see below); Phase 6 starts instead with a hosting-neutral local Docker deployment (ADR-0021) to validate the container itself before choosing where it runs.
+**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention — all explicitly deferred to Phase 6b below; Phase 6 starts instead with a hosting-neutral local Docker deployment (ADR-0021) to validate the container itself before choosing where it runs.
+
+Split into two explicitly separate tracks, per the current priority: get the local production-like
+runtime solid first, and do not start internet deployment work until that is explicitly decided.
+
+### Phase 6a — Local Production-Like Runtime *(current priority)*
+
+**Outcome:** The complete app (API + built SPA + local PostgreSQL) runs reliably on a developer's
+own machine in a production-like way — real Docker image, reproducible migrations/RLS, real
+Supabase Auth against whatever project is configured, data persisting across ordinary restarts,
+secrets outside the image, and zero automatic external calls — with startup/health/logs/shutdown/
+reset all documented. Not an internet deployment and not evaluated as one.
 
 - [x] Build reviewed EF migration bundle and production container — `Dockerfile` (repo root) is a multi-stage build (Node frontend build → pinned `.NET SDK 10.0.302` publish → minimal ASP.NET Core runtime as a non-root user), built and verified locally with `docker build`. `docker-compose.prod.yml` runs it alongside a dedicated PostgreSQL, both restart-safe via named volumes, both bound to `127.0.0.1` only (not the whole LAN), with `app` carrying a `deploy.resources.limits` (1 CPU / 1 GiB) making the threat model's own "container limits are the real backstop" claim actually true. `backend/scripts/build-migration-bundle.ps1` produces the self-contained EF migration bundle (`dotnet ef migrations bundle --self-contained`) as the portable artifact for a target without the .NET SDK; `backend/scripts/setup-production-db.ps1` mirrors `setup-local-db.ps1` (roles → migrations → RLS) against this stack's own Postgres for local validation, using `dotnet ef database update` directly since the SDK is already present on the developer's machine, and now rejects the `change_me` placeholder credentials `.env.production.example` ships rather than silently bootstrapping on them. `backend/scripts/bootstrap-production-user.ps1` seeds/updates exactly one local `users` row after migrations (never a Supabase account, never public signup) — without it, closed login (ADR-0015) has no enabled user to ever match on a fresh database. The Supabase magic-link callback is now configurable per environment (`Auth:CallbackUrl`, sent as a percent-encoded `redirect_to` query parameter on `/auth/v1/otp` — GoTrue reads it only from the query string, never the JSON body) rather than never sent at all — `http://localhost:5120/auth/callback` for local dev, `http://localhost:8080/auth/callback` for this stack, both required in the Supabase project's redirect allow-list.
 - [x] Configure durable Data Protection keys (local Docker only; hosting secrets remain deferred) — `AddCommitAheadSecurity` persists the key ring to a configurable path (`DataProtection:KeyRingPath`) via `PersistKeysToFileSystem`; `docker-compose.prod.yml` backs it with a named volume, so cookie-encryption keys survive a container restart. Proven with a real test (`DataProtectionKeyPersistenceTests`): a payload protected by one `IServiceProvider` is unprotected by a second one pointed at the same path, the closest in-process stand-in for a restart. Keys are **not** encrypted at rest yet — that needs a cloud KMS, still open in `docs/tbd.md`. `ASPNETCORE_ENVIRONMENT=Docker` is a new environment name (ADR-0021) that skips `UseHsts()`/`UseHttpsRedirection()` only for this one hosting-neutral local stack, which has no TLS termination of its own; every other environment is unchanged. Auth/CSRF cookies needed no code change — they already read `Secure=true` unconditionally, and browsers treat `http://localhost` as a secure context regardless of scheme, so they are still sent to this stack at `http://localhost:8080`.
 - [x] Configure Dependabot for NuGet, npm, Docker, and GitHub Actions — `.github/dependabot.yml` covers all four ecosystems (`/backend` for NuGet, `/frontend` for npm, repo root for Docker and GitHub Actions), each on a weekly schedule.
 - [x] Pin Actions to SHAs and minimise workflow permissions — already true since CI was first added: every `uses:` step in `.github/workflows/ci.yml` is pinned to a full commit SHA (with a version comment for readability), and the workflow's only `permissions` block is the top-level `contents: read`, inherited by every job with no broader scope added anywhere.
+- [x] Document and empirically verify everyday local operations — README.md "Production (Local Docker)" "Everyday operations" now documents `logs`/`down`/`up` (restart)/`down -v` (clean reset), and states the `--env-file` requirement on every `docker compose ... -f docker-compose.prod.yml` subcommand. Verified end to end against a disposable local `.env.production`: `setup-production-db.ps1` → `bootstrap-production-user.ps1` → `up -d --build` → `/api/health` returns `200 {"status":"Healthy"}` → the built SPA is served at `/` → `down` (no `-v`) → `up -d` again with no rebuild → the seeded `users` row and health both survive, proving the named volumes persist data across a routine restart. The app started and served every check with a placeholder Supabase URL and a blank `ANTHROPIC_API_KEY` (both validated lazily, per request, never at startup), confirming no automatic Supabase or Anthropic call ever happens. A real Supabase login round trip needs a real Supabase project and was not part of this pass.
+
+**Exit criteria:** one documented Compose workflow reliably starts, stops, restarts (with data
+persisting), and cleanly resets the complete local stack; migrations/RLS apply reproducibly;
+secrets stay outside the image; zero automatic external calls — all verified empirically above.
+Not an internet-facing deployment and does not imply one.
+
+### Phase 6b — Internet Production Deployment *(explicitly deferred — not started)*
+
+**Outcome:** The complete MVP is safely deployable to the internet.
+
+Deferred until there is an explicit decision to begin production deployment — hosting platform and
+secrets management (the "Decide first" above) are the first open questions, not yet chosen.
+
 - [ ] Generate SBOM and block deployment on high/critical Trivy findings
 - [ ] Run OWASP ZAP baseline against staging with FakeAIProvider
 - [ ] Configure encrypted backups and complete a restoration test — target policy decided (30-day retention, quarterly restore test) but automated/encrypted implementation deferred to the cloud-deployment stage (needs Supabase Storage + Postgres coverage a local stack can't exercise). In the meantime, `backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local Docker stack a real, tested, lossless manual command — `pg_dump --format=custom` run entirely inside the `db` container and copied out with `docker compose cp` (never through PowerShell's text pipeline, so accented/non-ASCII content round-trips exactly) to a timestamped `backend/backups/*.dump` file; restore runs `pg_restore --clean --if-exists` the same way, preserving ownership (`commitahead_migrator`) and grants (`commitahead_app`) exactly as dumped, stopping and restarting the `app` service around the restore — not an automated system, not encrypted, not scheduled.
@@ -155,4 +180,4 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 - [ ] Add manual live-AI smoke workflow with explicit provider/model/token/cost limits
 - [ ] Complete the pre-internet-deployment security checklist
 
-**Exit criteria:** every MVP completion criterion in `docs/product/brief.md` is met and the production deployment passes its security gates. The local Docker deployment above is a validation step toward that, not the exit criterion itself — hosting platform, secrets management, encrypted-at-rest Data Protection keys, automated backups, and centralized log retention are all still open (`docs/tbd.md`) and gate the actual internet-facing deployment.
+**Exit criteria:** every MVP completion criterion in `docs/product/brief.md` is met and the production deployment passes its security gates. Phase 6a's local Docker deployment is a validation step toward that, not the exit criterion itself — hosting platform, secrets management, encrypted-at-rest Data Protection keys, automated backups, and centralized log retention are all still open (`docs/tbd.md`) and gate the actual internet-facing deployment.
