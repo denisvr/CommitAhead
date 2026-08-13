@@ -138,16 +138,19 @@ ranked-queue tiebreaker (`EffectiveScore DESC, CreatedAt ASC, Id ASC`) are decid
 
 ---
 
-## Phase 6 — Production Hardening *(6a local production-like runtime implemented and verified; 6b internet deployment explicitly deferred, not started)*
+## Phase 6 — Production Hardening *(6a local production-like runtime implemented and infrastructure-verified; 6b local Playwright journeys explicitly invoked only, not started; 6c internet deployment explicitly deferred, not started)*
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
-**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention — all explicitly deferred to Phase 6b below; Phase 6 starts instead with a hosting-neutral local Docker deployment (ADR-0021) to validate the container itself before choosing where it runs.
+**Decide first:** hosting/secrets platform, Data Protection key storage, backup retention/restore cadence, and log retention — all explicitly deferred to Phase 6c below; Phase 6 starts instead with a hosting-neutral local Docker deployment (ADR-0021) to validate the container itself before choosing where it runs.
 
-Split into two explicitly separate tracks, per the current priority: get the local production-like
-runtime solid first, and do not start internet deployment work until that is explicitly decided.
+Split into three explicitly separate tracks, per the current priority: get the local
+production-like runtime solid first (6a); run the local, isolated Playwright E2E journeys only
+when explicitly invoked (6b) — never automatically, never as part of ordinary PR validation, and
+never as a substitute for internet-deployment work; do not start internet deployment work (6c)
+until that is explicitly decided.
 
-### Phase 6a — Local Production-Like Runtime *(current priority)*
+### Phase 6a — Local Production-Like Runtime *(implemented and infrastructure-verified)*
 
 **Outcome:** The complete app (API + built SPA + local PostgreSQL) runs reliably on a developer's
 own machine in a production-like way — real Docker image, reproducible migrations/RLS, real
@@ -159,14 +162,27 @@ reset all documented. Not an internet deployment and not evaluated as one.
 - [x] Configure durable Data Protection keys (local Docker only; hosting secrets remain deferred) — `AddCommitAheadSecurity` persists the key ring to a configurable path (`DataProtection:KeyRingPath`) via `PersistKeysToFileSystem`; `docker-compose.prod.yml` backs it with a named volume, so cookie-encryption keys survive a container restart. Proven with a real test (`DataProtectionKeyPersistenceTests`): a payload protected by one `IServiceProvider` is unprotected by a second one pointed at the same path, the closest in-process stand-in for a restart. Keys are **not** encrypted at rest yet — that needs a cloud KMS, still open in `docs/tbd.md`. `ASPNETCORE_ENVIRONMENT=Docker` is a new environment name (ADR-0021) that skips `UseHsts()`/`UseHttpsRedirection()` only for this one hosting-neutral local stack, which has no TLS termination of its own; every other environment is unchanged. Auth/CSRF cookies needed no code change — they already read `Secure=true` unconditionally, and browsers treat `http://localhost` as a secure context regardless of scheme, so they are still sent to this stack at `http://localhost:8080`.
 - [x] Configure Dependabot for NuGet, npm, Docker, and GitHub Actions — `.github/dependabot.yml` covers all four ecosystems (`/backend` for NuGet, `/frontend` for npm, repo root for Docker and GitHub Actions), each on a weekly schedule.
 - [x] Pin Actions to SHAs and minimise workflow permissions — already true since CI was first added: every `uses:` step in `.github/workflows/ci.yml` is pinned to a full commit SHA (with a version comment for readability), and the workflow's only `permissions` block is the top-level `contents: read`, inherited by every job with no broader scope added anywhere.
-- [x] Document and empirically verify everyday local operations — README.md "Production (Local Docker)" "Everyday operations" now documents `logs`/`down`/`up` (restart)/`down -v` (clean reset), and states the `--env-file` requirement on every `docker compose ... -f docker-compose.prod.yml` subcommand. Verified end to end against a disposable local `.env.production`: `setup-production-db.ps1` → `bootstrap-production-user.ps1` → `up -d --build` → `/api/health` returns `200 {"status":"Healthy"}` → the built SPA is served at `/` → `down` (no `-v`) → `up -d` again with no rebuild → the seeded `users` row and health both survive, proving the named volumes persist data across a routine restart. The app started and served every check with a placeholder Supabase URL and a blank `ANTHROPIC_API_KEY` (both validated lazily, per request, never at startup), confirming no automatic Supabase or Anthropic call ever happens. A real Supabase login round trip needs a real Supabase project and was not part of this pass.
+- [x] Document and empirically verify everyday local operations — README.md "Production (Local Docker)" "Everyday operations" now documents `logs`/`down`/`up` (restart)/`down -v` (clean reset), and states the `--env-file` requirement on every `docker compose ... -f docker-compose.prod.yml` subcommand. **What was actually verified**, end to end against a disposable local `.env.production` with placeholder Supabase/Anthropic configuration: Docker build and startup; the `/api/health` endpoint and the built SPA being served; migrations/RLS applying via `setup-production-db.ps1` and the one enabled user seeding via `bootstrap-production-user.ps1`; the database and Data Protection named volumes persisting data across a `down` (no `-v`)/`up -d` restart; clean-reset behaviour (`down -v`); and that no automatic Supabase or Anthropic call ever happens (both are validated lazily, per request — the app started and served every check above with a placeholder Supabase URL and a blank `ANTHROPIC_API_KEY`). **What this did not prove**: real Supabase magic-link login/logout, or any authenticated end-user journey (StudyItem, CV, job analysis, AI review) — those need a real Supabase project (and, for AI, a real Anthropic key), which this pass deliberately did not use. README.md's "Manual acceptance checklist" names exactly what to click through by hand once real credentials are configured.
 
 **Exit criteria:** one documented Compose workflow reliably starts, stops, restarts (with data
 persisting), and cleanly resets the complete local stack; migrations/RLS apply reproducibly;
 secrets stay outside the image; zero automatic external calls — all verified empirically above.
-Not an internet-facing deployment and does not imply one.
+Real authentication and authenticated end-user journeys are not part of this exit criterion; they
+are the manual acceptance checklist's job (README.md). Not an internet-facing deployment and does
+not imply one.
 
-### Phase 6b — Internet Production Deployment *(explicitly deferred — not started)*
+### Phase 6b — Local Playwright E2E Journeys *(explicitly invoked only — not started)*
+
+**Outcome:** The four approved Playwright journeys pass against the isolated, non-persistent local
+E2E stack (`docker-compose.e2e.yml`, `e2e/`) — a separate environment from Phase 6a's
+production-like runtime, never started automatically and never part of ordinary PR validation.
+
+- [ ] Run all four Playwright journeys — the E2E foundation is implemented and verified (see Phase 0 above); the four journey specs are not written yet. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
+
+**Exit criteria:** all four journeys pass, run explicitly and in isolation from both Phase 6a's
+local runtime and any internet deployment. Not required for, and not part of, Phase 6c below.
+
+### Phase 6c — Internet Production Deployment *(explicitly deferred — not started)*
 
 **Outcome:** The complete MVP is safely deployable to the internet.
 
@@ -176,7 +192,6 @@ secrets management (the "Decide first" above) are the first open questions, not 
 - [ ] Generate SBOM and block deployment on high/critical Trivy findings
 - [ ] Run OWASP ZAP baseline against staging with FakeAIProvider
 - [ ] Configure encrypted backups and complete a restoration test — target policy decided (30-day retention, quarterly restore test) but automated/encrypted implementation deferred to the cloud-deployment stage (needs Supabase Storage + Postgres coverage a local stack can't exercise). In the meantime, `backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local Docker stack a real, tested, lossless manual command — `pg_dump --format=custom` run entirely inside the `db` container and copied out with `docker compose cp` (never through PowerShell's text pipeline, so accented/non-ASCII content round-trips exactly) to a timestamped `backend/backups/*.dump` file; restore runs `pg_restore --clean --if-exists` the same way, preserving ownership (`commitahead_migrator`) and grants (`commitahead_app`) exactly as dumped, stopping and restarting the `app` service around the restore — not an automated system, not encrypted, not scheduled.
-- [ ] Run all four Playwright journeys post-merge — the E2E foundation is implemented and verified (see Phase 0 above); the four journey specs are not written yet. The normative contract and the canonical `e2e/` layout are fixed in `docs/testing/strategy.md` Layer 7 (§7.11), with `e2e/README.md` as the runbook. Ordinary PRs do not execute Playwright and the E2E stack is started only for explicit E2E work; the four approved journeys are the complete list, and adding a fifth requires an explicit product decision recorded here and in Layer 7.
 - [ ] Add manual live-AI smoke workflow with explicit provider/model/token/cost limits
 - [ ] Complete the pre-internet-deployment security checklist
 

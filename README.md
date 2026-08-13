@@ -213,8 +213,24 @@ app started and served every check above with a placeholder Supabase URL and a b
 `ANTHROPIC_API_KEY` — both are validated lazily, per request, never at startup — which is also the
 proof that **no automatic Supabase or Anthropic call ever happens**: Anthropic is only ever called
 when you explicitly trigger an "Analyze" action from a signed-in session, and Supabase is only ever
-called on an actual login/refresh/logout attempt. A real login round trip needs a real Supabase
-project (see "Setting Up the Real Supabase Project" above) and was not part of this pass.
+called on an actual login/refresh/logout attempt. **What this did not prove**: real Supabase
+magic-link login/logout, or any authenticated end-user journey — placeholder external configuration
+was used throughout, deliberately, so none of that was exercised. See "Manual acceptance checklist"
+directly below for what to verify once you configure a real Supabase project (and, for the AI
+checks, a real Anthropic key).
+
+**Manual acceptance checklist (needs real credentials):** the infrastructure verification above
+proves the container/database/persistence mechanics, nothing about the actual product working for
+a real signed-in user. Once `backend/.env.production` has a real `SUPABASE_URL`/`SUPABASE_ANON_KEY`
+(and, to check AI analysis, a real `ANTHROPIC_API_KEY`), click through this by hand — none of it is
+automated, and it is not part of CI:
+
+- [ ] Magic-link login completes and logout clears the session
+- [ ] StudyItem create → review → ranked-queue ordering works end to end
+- [ ] Professional profile → CV presentation flow (create, edit selections, preview) works end to end
+- [ ] Job posting flow — pasted text and PDF upload — extracts and saves correctly
+- [ ] An explicit AI analysis (Analyze → review the draft → apply) completes against the real Anthropic key
+- [ ] Restart the stack (`down` then `up -d`, no `-v`) and confirm data persists and session/login behaves as expected (still signed in via cookie, or a fresh login is required — whichever matches the app's actual session lifetime, not assumed)
 
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
 hosting platform, secrets management, Data Protection key encryption at rest, automated/encrypted
