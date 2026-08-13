@@ -3,11 +3,12 @@
 Operational guide for the Playwright end-to-end suite: how to install it, bring the stack up, run
 the journeys, reset data, and read the artifacts when something fails.
 
-> **Status: foundation implemented; journey 1 implemented and passing; journeys 2–4 not written
+> **Status: foundation implemented; journeys 1–2 implemented and passing; journeys 3–4 not written
 > yet.** The Docker stack, the E2E-only auth endpoint, the reset path, the orchestration scripts,
 > and the Playwright/fixture skeleton all exist and are verified (`npm run verify:foundation`).
-> `001-authenticated-access.spec.ts` passes standalone and via `npm run e2e:full`. Journeys 2–4 are
-> the next slice, tracked separately in `docs/roadmap.md`.
+> `001-authenticated-access.spec.ts` and `002-study-queue-ranking.spec.ts` each pass standalone and
+> together via `npm run e2e:full`. Journeys 3–4 are the next slice, tracked separately in
+> `docs/roadmap.md`.
 
 **Read [`docs/testing/strategy.md`](../docs/testing/strategy.md) Layer 7 first.** It is the
 normative contract — journeys, isolation, auth, locators, and the rules about what E2E may and may
@@ -44,7 +45,7 @@ CommitAhead/
         │   └── e2e-test.ts         ← resetDb (auto) → e2eSession (lazy) → authenticatedPage (lazy)
         └── journeys/
             ├── 001-authenticated-access.spec.ts   (implemented, passing)
-            ├── 002-study-queue-ranking.spec.ts     (not written yet)
+            ├── 002-study-queue-ranking.spec.ts     (implemented, passing)
             ├── 003-job-analysis-draft.spec.ts      (not written yet)
             └── 004-cv-presentation-export.spec.ts  (not written yet)
 ```
@@ -198,8 +199,9 @@ This is the right first thing to run after touching anything under `docker-compo
 
 ## Running the journeys
 
-All commands run from `e2e/`. (Only `001-authenticated-access.spec.ts` exists so far; these
-commands are documented for the full suite of four.)
+All commands run from `e2e/`. (Only `001-authenticated-access.spec.ts` and
+`002-study-queue-ranking.spec.ts` exist so far; these commands are documented for the full suite of
+four.)
 
 ```bash
 npm test
