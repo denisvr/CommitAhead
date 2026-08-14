@@ -82,9 +82,9 @@ CommitAhead/
 │   ├── src/
 │   └── tests (colocated with src, e.g. src/App.test.tsx)
 ├── docker-compose.e2e.yml             ← isolated E2E stack; only `proxy` is host-facing
-└── e2e/                               ← Playwright suite — foundation implemented, journeys not
-    ├── playwright.config.ts             written yet; own package.json, never in the app
-    ├── scripts/                          dependency tree
+└── e2e/                               ← Playwright suite — foundation implemented, all four
+    ├── playwright.config.ts             journeys written and passing; own package.json, never in
+    ├── scripts/                          the app dependency tree
     │   run-full.mjs (lifecycle), reset-db.mjs (only reset path), verify-foundation.mjs
     ├── support/                       ← reset.sql, db-init/ (roles→bundle→RLS), external-stub/
     └── tests/                         ← fixtures/e2e-test.ts, journeys/001–004
@@ -153,7 +153,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - Parsed PDF/CV assertions
 
 **Post-merge / manual only:**
-- Playwright E2E — foundation implemented (see "E2E testing contract" above); the four journeys themselves are still pending, tracked in `docs/roadmap.md` Phase 6b
+- Playwright E2E — foundation implemented and all four journeys passing (see "E2E testing contract" above and `docs/roadmap.md` Phase 6b) — still post-merge/manual only, never a blocking PR gate
 - Visual regression fixtures (per CV template)
 - SBOM generation + Trivy container scan (high/critical blocks deployment)
 - OWASP ZAP baseline (FakeAIProvider, fail on confirmed high-severity)
