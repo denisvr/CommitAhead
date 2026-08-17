@@ -29,6 +29,45 @@ cd backend && dotnet build && dotnet test
 cd frontend && npm ci && npm run lint && npm test && npm run build
 ```
 
+## Quick Start (Run Everything Locally)
+
+The entire application — backend, frontend, database, **and authentication** — runs locally with
+no external account, no credentials, and no internet connection required. Auth used to mean a
+real Supabase Cloud project even for local work; since ADR-0023, a fully local Supabase instance
+(via the official CLI) replaces that, including a fake mailbox (Mailpit) that catches every
+magic-link email so you can click through a real login without leaving your machine.
+
+```bash
+# 1. App's own database (separate from Supabase's own — see "Local Database" below)
+cd backend
+cp .env.example .env                   # then edit the three passwords
+powershell -File scripts/setup-local-db.ps1
+
+# 2. Local Supabase — Auth + Mailpit (see "Local Supabase" below for what this prints/needs)
+npx supabase@latest start              # first run pulls Docker images, a few minutes
+dotnet user-secrets set "Supabase:Url" "http://127.0.0.1:54321" --project src/CommitAhead.Api
+dotnet user-secrets set "Supabase:AnonKey" "<ANON_KEY from the output above>" --project src/CommitAhead.Api
+
+# 3. Seed one enabled user (closed login, ADR-0015 - nobody can sign in until this runs once)
+powershell -File scripts/bootstrap-local-supabase-user.ps1 -Email "you@example.com"
+
+# 4. Run the app
+dotnet run --project src/CommitAhead.Api    # http://localhost:5120
+cd ../frontend && npm ci && npm run dev     # http://localhost:5173, in a second terminal
+```
+
+Open <http://localhost:5173>, enter the email from step 3, then open Mailpit
+(<http://127.0.0.1:54324>) and click the real magic-link email that just arrived — you land back
+in the app, fully signed in. Logout, refresh, and CSRF all work exactly as they would against
+Supabase Cloud.
+
+Prefer one command instead of four terminals? See "Local Development (Fully Containerized,
+Hot-Reload)" below — same local Supabase instance, but the app itself (`api`/`frontend`, plus
+migrations) runs entirely inside Docker too, no .NET SDK or Node.js needed on the host.
+
+The sections below cover each piece (database, Supabase, containerized alternative, and — separately
+— production) in full detail, including the Docker networking gotchas ADR-0022/ADR-0023 document.
+
 ## Local Database (Development)
 
 Development uses a fully local Supabase instance for authentication (see "Local Supabase
