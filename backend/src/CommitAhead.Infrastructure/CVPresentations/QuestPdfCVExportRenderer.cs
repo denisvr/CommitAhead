@@ -24,7 +24,7 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
 
     public RenderedCVExport Render(CVExportDocument document)
     {
-        var pdfBytes = RenderPdfBytes(document);
+        var pdfBytes = BuildDocument(document).GeneratePdf();
 
         int pageCount;
         using (var opened = PdfDocument.Open(pdfBytes))
@@ -35,9 +35,27 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
         return new RenderedCVExport(pdfBytes, pageCount);
     }
 
-    private static byte[] RenderPdfBytes(CVExportDocument document)
+    /// <summary>
+    /// One PNG per page, rasterised from the exact same document tree <see cref="Render"/> turns
+    /// into PDF bytes — never a separately-maintained rendering path — so a visual-regression
+    /// fixture comparing these images is actually exercising production layout code, not a
+    /// reimplementation of it. Not part of <see cref="IExportRenderer"/>: no production caller
+    /// needs a raster image, only the visual-regression test fixture does.
+    /// </summary>
+    public IReadOnlyList<byte[]> RenderPageImages(CVExportDocument document)
     {
-        var pdf = Document.Create(container =>
+        var settings = new ImageGenerationSettings
+        {
+            ImageFormat = ImageFormat.Png,
+            RasterDpi = 144,
+        };
+
+        return BuildDocument(document).GenerateImages(settings).ToList();
+    }
+
+    private static IDocument BuildDocument(CVExportDocument document)
+    {
+        return Document.Create(container =>
         {
             container.Page(page =>
             {
@@ -99,8 +117,6 @@ public sealed class QuestPdfCVExportRenderer : IExportRenderer
                 });
             });
         });
-
-        return pdf.GeneratePdf();
     }
 
     private static void RenderHeader(IContainer container, CVExportDocument document)

@@ -11,6 +11,12 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Respawn" Version="7.0.0" />
+    <!-- Test-only: decodes rendered/baseline PNGs for the visual-regression pixel diff below.
+         Never referenced by production code — QuestPdfCVExportRenderer returns raw PNG bytes.
+         Pinned to the last 3.x release (Apache 2.0, no license-key enforcement) — 4.x requires a
+         build-time SixLabors license key even for free-tier-eligible use, which this project has
+         no reason to take on for a pure PNG-decode-and-diff test helper. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <!-- Pins the transitive SSH.NET pulled in by Testcontainers.PostgreSql past GHSA-q939-rpr3-3284 -->
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />

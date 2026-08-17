@@ -154,7 +154,7 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 
 **Post-merge / manual only:**
 - Playwright E2E — foundation implemented and all four journeys passing (see "E2E testing contract" above and `docs/roadmap.md` Phase 6b) — still post-merge/manual only, never a blocking PR gate
-- Visual regression fixtures (per CV template)
+- Visual regression fixtures (per CV template) — implemented (`QuestPdfCVExportRendererVisualRegressionTests`); regenerating a baseline after an intentional template change is a separate, explicitly-run test, never automatic
 - SBOM generation + Trivy container scan (high/critical blocks deployment)
 - OWASP ZAP baseline (FakeAIProvider, fail on confirmed high-severity)
 - Live AI smoke tests (manual trigger, explicit cost ceiling, never scheduled)

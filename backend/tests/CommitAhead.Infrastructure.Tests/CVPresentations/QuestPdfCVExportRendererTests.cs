@@ -6,32 +6,13 @@ namespace CommitAhead.Infrastructure.Tests.CVPresentations;
 
 /// <summary>
 /// Parsed-output assertions against the real rendered PDF (via PdfPig, never a golden-file/visual
-/// diff — those are the separate, post-merge-only visual-regression fixtures the roadmap already
-/// defers) — proves the template actually contains the data ExportCVPresentationUseCase resolved,
-/// not just that QuestPDF didn't throw.
+/// diff — that's <see cref="QuestPdfCVExportRendererVisualRegressionTests"/>) — proves the
+/// template actually contains the data ExportCVPresentationUseCase resolved, not just that
+/// QuestPDF didn't throw.
 /// </summary>
 public class QuestPdfCVExportRendererTests
 {
-    private static CVExportDocument CreateDocument(int pageLimit = 3) => new(
-        "US Resume",
-        "United States",
-        "Backend Engineer",
-        pageLimit,
-        new CVExportContact("Ada Lovelace", "ada@example.com", "+1 555 0100", "123 Analytical Engine St"),
-        [new MarkdownParagraph([new MarkdownText("A concise professional summary.")])],
-        [
-            new CVExportExperience(
-                "Acme Corp", null, "Senior Engineer", "Permanent", "Remote", "Remote",
-                "Jan 2020 – Jun 2023",
-                [new MarkdownParagraph([new MarkdownText("Led backend systems.")])],
-                ["Shipped the payments platform."]),
-        ],
-        [new CVExportEducation("State University", "BSc Computer Science", null, null, "Sep 2016 – Jun 2020", [])],
-        ["C#", "PostgreSQL"],
-        [new CVExportLanguage("English", "Native", null)],
-        [new CVExportCertification("AWS Certified Developer", "Amazon", "Jan 2022", null, null, null)],
-        [new CVExportProject("Side Project", null, "2021", [new MarkdownParagraph([new MarkdownText("A hobby project.")])], null)],
-        [new CVExportLink("GitHub", "https://github.com/example")]);
+    private static CVExportDocument CreateDocument(int pageLimit = 3) => CVExportDocumentFixtures.Sample(pageLimit);
 
     private static string ExtractText(byte[] pdfBytes)
     {

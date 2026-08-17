@@ -194,8 +194,10 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 - Locale date formatting correct (e.g. `en-GB` vs `de-DE`)
 - Configured page limit respected
 
-**Visual regression (post-merge or manual):**
-- One deterministic snapshot per CV template in a fixed-font/container environment
+**Visual regression (implemented, manual to run):**
+- One committed baseline PNG per CV template (`backend/tests/CommitAhead.Infrastructure.Tests/CVPresentations/VisualBaselines/`), rasterised by `QuestPdfCVExportRenderer.RenderPageImages` from the exact same document tree `Render` turns into PDF bytes — never a separately-maintained rendering path
+- A tolerant per-pixel diff (`QuestPdfCVExportRendererVisualRegressionTests`), not byte-for-byte PNG equality: Skia's own anti-aliasing can shift a pixel or two at glyph edges between runs even when the layout is identical, so exact-bytes would be a flaky test wearing a deterministic-sounding name
+- Regenerating a baseline after an intentional template change is a separate, `[Fact(Skip = ...)]`-guarded test (`RegenerateBaseline_ModernOnePage`) run explicitly by name and reviewed by eye before committing the new PNG — nothing writes a baseline as a side effect of an ordinary test run
 
 ---
 
