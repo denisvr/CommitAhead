@@ -59,7 +59,10 @@ services:
       ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead;Username=commitahead_app;Password=${COMMITAHEAD_APP_PASSWORD}"
       # Optional — same as running on the host. Leave unset and the app still starts; every
       # AnalyzeX/login/refresh use case fails closed with a clear error instead of a silent
-      # fallback, exactly like an unconfigured host `dotnet run` today.
+      # fallback, exactly like an unconfigured host `dotnet run` today. For local Supabase
+      # (ADR-0023, `supabase start`), SUPABASE_URL must be http://host.docker.internal:54321, not
+      # 127.0.0.1 — that address means this container itself, not the host running Supabase's own
+      # containers. See README.md "Local Supabase (Development)".
       Supabase__Url: ${SUPABASE_URL:-}
       Supabase__AnonKey: ${SUPABASE_ANON_KEY:-}
       AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}

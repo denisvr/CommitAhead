@@ -7,7 +7,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 - **Backend:** ASP.NET Core 10 Web API — Controllers, feature-folder use cases, no MediatR, no Minimal APIs
 - **ORM:** EF Core 10 + Npgsql
 - **Database:** PostgreSQL in Docker for development and the Phase 6a local runtime; Supabase PostgreSQL is the deferred Phase 6c internet target
-- **Auth/Storage:** Supabase (backend-mediated — no Supabase keys in the browser)
+- **Auth/Storage:** Supabase (backend-mediated — no Supabase keys in the browser); local via the Supabase CLI (`supabase start`) in development, Cloud only in production (ADR-0023)
 - **AI:** `IAIProvider` abstraction; Anthropic, Claude Haiku 4.5 (ADR-0019); never called from frontend or domain layer
 - **Hosting:** TBD — see `docs/tbd.md`
 
@@ -71,6 +71,7 @@ CommitAhead/
 │   │                                     docker-compose.dev.yml (ADR-0022) via multi-file layering
 │   ├── scripts/db-init/               ← dev-only migration-bundle init (own copy, not shared
 │   │                                     with e2e/support/db-init/ — see ADR-0022)
+│   ├── scripts/bootstrap-local-supabase-user.ps1 ← seeds a local Supabase Auth user (ADR-0023)
 │   ├── src/
 │   │   ├── CommitAhead.Domain/
 │   │   ├── CommitAhead.Application/
@@ -87,6 +88,8 @@ CommitAhead/
 │   └── tests (colocated with src, e.g. src/App.test.tsx)
 ├── docker-compose.dev.yml             ← fully-containerized hot-reload dev (ADR-0022); layers onto
 │                                         backend/docker-compose.yml's db, never used alone
+├── supabase/config.toml               ← local Supabase instance config (ADR-0023); `supabase start`
+│                                         runs it entirely via Docker, no Cloud project needed in dev
 ├── docker-compose.e2e.yml             ← isolated E2E stack; only `proxy` is host-facing
 └── e2e/                               ← Playwright suite — foundation implemented, all four
     ├── playwright.config.ts             journeys written and passing; own package.json, never in

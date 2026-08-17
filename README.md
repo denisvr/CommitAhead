@@ -16,7 +16,7 @@ Phase 5 (CV Export, ADR-0020: PDF via QuestPDF) is implemented and tested end to
 
 Phase 6b's four Playwright journeys are now implemented and passing against the isolated local E2E stack (`docker-compose.e2e.yml`, `e2e/`) — each verified standalone and together via the guaranteed-teardown `npm run e2e:full`, with zero unexpected calls to the deterministic external stub. Journey 1 satisfies Phase 0's E2E exit criterion, Journey 2 satisfies Phase 1's, Journey 4 satisfies Phase 2's and Phase 5's, and Journey 3 satisfies Phase 4's — Phases 0, 1, 2, 4, and 5 are now all fully complete (Phase 3 never had an explicit E2E gate). Building Journey 3 also surfaced and fixed a real, previously-undetected casing defect in `AnthropicStructuredOutputSchema` — see `docs/testing/strategy.md` Layer 7 and `docs/roadmap.md` Phase 4/6b for the full account. Phase 5's post-merge visual-regression fixture (`QuestPdfCVExportRendererVisualRegressionTests`, a tolerant per-pixel diff against one committed baseline PNG per template) is also now implemented, making Phase 5 fully complete. Phase 6c (internet deployment, explicitly deferred pending a hosting decision) is the only open work remaining — see `docs/roadmap.md` for the exact checklist.
 
-NetArchTest rule 5 (repository and `IAIProvider` production implementations exist only in Infrastructure) is fully active now that Phase 4 declared `IAIProvider` and shipped `AnthropicAIProvider` as its real implementation. Development uses Supabase Auth (remote) for authentication; the application's own PostgreSQL stays entirely local via Docker (development never connects to or migrates the real Supabase Postgres — see "Setting up the real Supabase project" below for why, and for the steps whenever you're ready to point at it, e.g. at deployment). Live AI calls additionally require a real Anthropic API key — configuration key `AI:Providers:Anthropic:ApiKey` (environment-variable form: `AI__Providers__Anthropic__ApiKey`), read lazily so everything else works with none configured; the key is never in CI or the browser. See `docs/roadmap.md` for the full picture.
+NetArchTest rule 5 (repository and `IAIProvider` production implementations exist only in Infrastructure) is fully active now that Phase 4 declared `IAIProvider` and shipped `AnthropicAIProvider` as its real implementation. Development uses a fully local Supabase instance for authentication (ADR-0023, via `supabase start` — see "Local Supabase (Development)" below), and the application's own PostgreSQL is also entirely local via Docker; neither ever touches Supabase Cloud during development (see "Setting Up Supabase Cloud (Production Only)" below for when that changes, at deployment). Live AI calls additionally require a real Anthropic API key — configuration key `AI:Providers:Anthropic:ApiKey` (environment-variable form: `AI__Providers__Anthropic__ApiKey`), read lazily so everything else works with none configured; the key is never in CI or the browser. See `docs/roadmap.md` for the full picture.
 
 ## Local Requirements
 
@@ -31,10 +31,11 @@ cd frontend && npm ci && npm run lint && npm test && npm run build
 
 ## Local Database (Development)
 
-Development uses Supabase Auth (remote) for authentication, but the application's own PostgreSQL
-stays entirely local via Docker — the real Supabase Postgres is never connected to or migrated
-during development (see "Setting Up the Real Supabase Project" below for when that changes, at
-deployment).
+Development uses a fully local Supabase instance for authentication (see "Local Supabase
+(Development)" below, ADR-0023) — the application's own PostgreSQL, set up here, is a completely
+separate local Docker Postgres, never Supabase's (local or Cloud). Neither ever touches Supabase
+Cloud during development (see "Setting Up Supabase Cloud (Production Only)" below for when that
+changes, at deployment).
 
 ```bash
 cd backend
@@ -63,6 +64,63 @@ the real Supabase project's own managed `storage` schema (bucket + RLS for uploa
 PDFs — ADR-0018), which doesn't exist in the local Docker Postgres at all. It is **not** run by
 `setup-local-db.ps1` and has no local-dev equivalent — applying it is a one-time operator action
 against the real project, covered in "Setting Up the Real Supabase Project" below.
+
+## Local Supabase (Development)
+
+CommitAhead uses Supabase Auth as its only identity provider (ADR-0006), backend-mediated — but
+during development, that Supabase instance is **entirely local** (ADR-0023), via the official
+[Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started). No
+Supabase project, credentials, or internet connection required. Supabase Cloud is reserved for
+production only (Phase 6c, still deferred).
+
+```bash
+npx supabase@latest start   # first run pulls several Docker images — a few minutes
+```
+
+This prints (and `npx supabase@latest status -o json` reprints later) the local instance's
+`API_URL` (`http://127.0.0.1:54321`), `ANON_KEY` (a fixed, published local demo key — not a
+secret), `SERVICE_ROLE_KEY`, and `MAILPIT_URL` (`http://127.0.0.1:54324` — every magic-link email
+sent locally lands here instead of a real inbox, no configuration needed). Point the backend at it:
+
+```bash
+cd backend
+dotnet user-secrets set "Supabase:Url" "http://127.0.0.1:54321" --project src/CommitAhead.Api
+dotnet user-secrets set "Supabase:AnonKey" "<ANON_KEY from supabase status>" --project src/CommitAhead.Api
+```
+
+A fresh local Supabase instance has no users at all, and closed login (ADR-0015) rejects every
+email until one exists locally too — `backend/scripts/bootstrap-local-supabase-user.ps1` creates
+the Supabase Auth user (idempotent — finds it if it already exists) and seeds/enables the matching
+row in the local Postgres `users` table in one step:
+
+```bash
+powershell -File scripts/bootstrap-local-supabase-user.ps1 -Email "you@example.com"
+```
+
+Then `dotnet run --project src/CommitAhead.Api`, `POST /auth/login` with that email, and open
+Mailpit (`http://127.0.0.1:54324`) to click the real magic link — the full magic-link → session →
+refresh → logout cycle works exactly like it does against Supabase Cloud, just without leaving
+your machine.
+
+**For `docker-compose.dev.yml` (below):** the `api` container reaches the local Supabase instance
+via `host.docker.internal`, not `127.0.0.1` — that address means the container itself there, not
+the host running `supabase start`'s own containers:
+
+```
+SUPABASE_URL=http://host.docker.internal:54321
+SUPABASE_ANON_KEY=<ANON_KEY from supabase status>
+```
+
+in `backend/.env` (already read by `docker-compose.dev.yml`'s `api` service).
+
+See ADR-0023 for the two `AuthenticationServiceCollectionExtensions.cs` fixes this needed
+(`RequireHttpsMetadata`, and refetching JWKS from the caller's own reachable address instead of
+GoTrue's self-reported `jwks_uri`) — neither is a local-only special case; both are strictly more
+correct treatments of the OIDC discovery contract that happen to matter for Cloud not at all today.
+
+`supabase stop` shuts the local instance down; `supabase stop --no-backup` also discards its data
+(the Supabase CLI's own internal Postgres, on port 54322 — entirely separate from the application's
+own local Postgres above, never shared).
 
 ## Local Development (Fully Containerized, Hot-Reload)
 
@@ -112,12 +170,13 @@ recreated (no `DataProtection:KeyRingPath` here, matching plain `Development` be
 `api` signs everyone out, exactly like restarting a host `dotnet run` process. Not something this
 workflow needed to fix; not a regression it introduced either.
 
-## Setting Up the Real Supabase Project
+## Setting Up Supabase Cloud (Production Only)
 
-**Not required for local development.** `Supabase:Url`/`Supabase:AnonKey` point at the real
-project for Auth, while `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres —
-auth and persistence are independent, and there's no need to develop against the real Postgres
-before internet deployment (Phase 6c). The steps below apply the same
+**Not required for local development** — see "Local Supabase (Development)" above (ADR-0023).
+`Supabase:Url`/`Supabase:AnonKey` point at the real Cloud project for Auth, while
+`ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres — auth and persistence are
+independent, and there's no need to develop against the real Postgres before internet deployment
+(Phase 6c). The steps below apply the same
 `backend/scripts/database/001_roles.sql`-`005_rls_phase3.sql` used locally to the *real* Postgres,
 plus the Storage-only `006_storage_job_postings.sql`, for whenever you're ready (e.g. first
 deployment). Only you should run these — they need the project's real database password, which

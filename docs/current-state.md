@@ -39,20 +39,38 @@ priority, and document routing; detailed rules remain in their authoritative doc
   `HttpClient`s leave `BaseAddress` unset instead of throwing, and `RefreshUseCase`/`CallbackUseCase`
   catch the resulting call-time failure the same way `LoginUseCase`/`LogoutUseCase` already did,
   degrading to `AuthResult.Denied()` (403) instead of an unhandled 500.
+- Development now uses a fully local Supabase instance for authentication (ADR-0023, via
+  `supabase start` — no Supabase Cloud project, credentials, or internet connection needed
+  during development; Cloud is reserved for production only, Phase 6c). A real magic-link login →
+  session → refresh → logout cycle is now genuinely proven — via curl and via a real browser
+  against a real (if local) Supabase Auth instance, Mailpit capturing the email, both from a
+  host-run backend and from `docker-compose.dev.yml`'s containerized one. This surfaced and fixed
+  two real bugs in `AuthenticationServiceCollectionExtensions.cs`, neither previously exercised
+  because `Authority` had only ever pointed at a real Cloud project before: `RequireHttpsMetadata`
+  (JwtBearer refuses a plain-HTTP Authority by default) and `LocalSupabaseOpenIdConfigurationRetriever`
+  (GoTrue's discovery document always advertises `jwks_uri` as its own fixed, self-referential URL,
+  unreachable from inside the `api` container, which reaches the same local instance via
+  `host.docker.internal` — now refetches signing keys from the caller's own reachable address
+  instead). `backend/scripts/bootstrap-local-supabase-user.ps1` (new) creates a local Supabase Auth
+  user and seeds the matching local `users` row in one idempotent step.
 
 ## Current priority and verification boundary
 
-The Phase 6a real-credentials manual acceptance checklist (`README.md`) remains deferred by user
-choice — the user has chosen not to configure real Supabase/Anthropic credentials or run the local
-production-like Docker stack for now. This is a deferral, not a gap: nothing about it blocks Phase
-6b, which runs against its own isolated, credential-free E2E stack.
+Real magic-link authentication is now proven end to end against a local Supabase instance (see
+above, ADR-0023) — this closes what used to be the Phase 6a manual acceptance checklist's one
+unproven gap for the *local* case. The Phase 6a manual acceptance checklist itself
+(`README.md`, against `docker-compose.prod.yml`) remains not yet run — it still uses placeholder
+external configuration and has not been pointed at either the local Supabase instance or a real
+Cloud project. This is a deferral, not a gap: nothing about it blocks Phase 6b, which runs against
+its own isolated, credential-free E2E stack.
 
 The Phase 6a infrastructure verification (already completed earlier) proved Docker build/startup,
 API health, SPA serving, migrations/RLS, bootstrap, persistent database and Data Protection
-volumes, restart/reset behaviour, and the absence of automatic Supabase or Anthropic calls. It did
-**not** prove real magic-link authentication or authenticated product journeys because placeholder
-external configuration was used — that is exactly what the deferred manual acceptance checklist
-would prove, whenever the user chooses to pick it up.
+volumes, restart/reset behaviour, and the absence of automatic Supabase or Anthropic calls, using
+placeholder external configuration throughout — real magic-link login against *that* stack
+specifically (`docker-compose.prod.yml`) is what the deferred manual acceptance checklist would
+still prove, whenever the user chooses to pick it up (it could now use the local Supabase instance
+instead of a real Cloud project, per ADR-0023's "Consequences").
 
 Phase 6b is complete — all four approved journeys are implemented and passing. There is no next
 Phase 6b journey. `/devalente-e2e` may be planned as a separate, explicit next step, but was
@@ -65,8 +83,8 @@ user authorization.
 
 | Environment | Purpose | Persistence and external services |
 |---|---|---|
-| Normal development (host-run) | Fast feature iteration, IDE debugging | Local Docker PostgreSQL; real Supabase Auth/Storage and Anthropic only when explicitly configured and used |
-| Normal development (containerized, ADR-0022) | Same as above, without host .NET SDK/Node.js; hot-reload | Same local Docker PostgreSQL/volume as host-run — shares data, not a separate environment |
+| Normal development (host-run) | Fast feature iteration, IDE debugging | Local Docker PostgreSQL; local Supabase instance for Auth (ADR-0023, `supabase start`) — never Cloud during development |
+| Normal development (containerized, ADR-0022) | Same as above, without host .NET SDK/Node.js; hot-reload | Same local Docker PostgreSQL/volume as host-run — shares data, not a separate environment; reaches the same local Supabase instance via `host.docker.internal` |
 | Phase 6a local production-like | Exercise the deployable image locally as the user will normally run it | Persistent local Docker PostgreSQL and Data Protection volumes; configured real external services are request-driven only |
 | Phase 6b E2E | Run the four approved Playwright journeys explicitly | Isolated, non-persistent Docker stack; local Supabase/Anthropic stub; no real external calls |
 | Phase 6c internet production | Future internet deployment | Deferred; hosting and production controls remain undecided |

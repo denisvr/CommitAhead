@@ -4,6 +4,8 @@ using CommitAhead.Api.Security;
 using CommitAhead.Application.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CommitAhead.Api.DependencyInjection;
@@ -52,8 +54,30 @@ public static class AuthenticationServiceCollectionExtensions
                 }
                 else if (!string.IsNullOrWhiteSpace(supabaseUrl))
                 {
-                    options.Authority = $"{supabaseUrl}/auth/v1";
+                    var authority = $"{supabaseUrl}/auth/v1";
+                    var requireHttpsMetadata = supabaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+                    options.Authority = authority;
                     options.Audience = "authenticated";
+                    options.RequireHttpsMetadata = requireHttpsMetadata;
+
+                    // GoTrue's own discovery document always advertises `jwks_uri` as its own fixed
+                    // self-referential URL (e.g. http://127.0.0.1:54321/... for a local `supabase
+                    // start` instance, since its external_url is never configured per-consumer) —
+                    // unreachable from inside the api container, which reaches this same instance via
+                    // host.docker.internal, not 127.0.0.1 (that address means the container itself
+                    // there). Confirmed empirically: the discovery fetch itself succeeds, but the
+                    // follow-up jwks_uri fetch then fails with "Connection refused (127.0.0.1:54321)".
+                    // LocalSupabaseOpenIdConfigurationRetriever below still uses the discovery
+                    // document for Issuer (a fixed string, safe to trust regardless of which address
+                    // reached it) but refetches signing keys from OUR OWN configured `authority`
+                    // instead of trusting the document's jwks_uri. For a real Cloud Authority
+                    // (https), Supabase always sets its own external_url to that same public URL, so
+                    // this never diverges from the default OIDC behaviour there.
+                    options.ConfigurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+                        $"{authority}/.well-known/openid-configuration",
+                        new LocalSupabaseOpenIdConfigurationRetriever(authority),
+                        new HttpDocumentRetriever { RequireHttps = requireHttpsMetadata });
                 }
 
                 options.MapInboundClaims = false;
@@ -121,5 +145,29 @@ public static class AuthenticationServiceCollectionExtensions
         services.AddScoped<ICurrentUserAccessToken, CurrentUserAccessTokenAccessor>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Trusts the discovery document's Issuer (a fixed string, valid regardless of which address
+    /// reached it) but refetches signing keys from the caller's own known-reachable `authority`
+    /// instead of the document's self-reported `jwks_uri` — see the comment where this is
+    /// constructed for why that matters for a locally-run Supabase instance reached through
+    /// Docker's `host.docker.internal`.
+    /// </summary>
+    private sealed class LocalSupabaseOpenIdConfigurationRetriever(string authority) : IConfigurationRetriever<OpenIdConnectConfiguration>
+    {
+        public async Task<OpenIdConnectConfiguration> GetConfigurationAsync(string address, IDocumentRetriever retriever, CancellationToken cancel)
+        {
+            var discoveryDocument = await retriever.GetDocumentAsync(address, cancel);
+            var configuration = new OpenIdConnectConfiguration(discoveryDocument);
+
+            var jwksDocument = await retriever.GetDocumentAsync($"{authority}/.well-known/jwks.json", cancel);
+            foreach (var signingKey in new JsonWebKeySet(jwksDocument).GetSigningKeys())
+            {
+                configuration.SigningKeys.Add(signingKey);
+            }
+
+            return configuration;
+        }
     }
 }
