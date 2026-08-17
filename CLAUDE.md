@@ -67,6 +67,10 @@ CommitAhead/
 ├── backend/                           ← ASP.NET Core solution — not the frontend
 │   ├── CommitAhead.slnx
 │   ├── global.json
+│   ├── docker-compose.yml             ← dev Postgres only; shared by host-run dev and
+│   │                                     docker-compose.dev.yml (ADR-0022) via multi-file layering
+│   ├── scripts/db-init/               ← dev-only migration-bundle init (own copy, not shared
+│   │                                     with e2e/support/db-init/ — see ADR-0022)
 │   ├── src/
 │   │   ├── CommitAhead.Domain/
 │   │   ├── CommitAhead.Application/
@@ -81,6 +85,8 @@ CommitAhead/
 │   ├── package.json                     Clean Architecture layer; builds to frontend/dist
 │   ├── src/
 │   └── tests (colocated with src, e.g. src/App.test.tsx)
+├── docker-compose.dev.yml             ← fully-containerized hot-reload dev (ADR-0022); layers onto
+│                                         backend/docker-compose.yml's db, never used alone
 ├── docker-compose.e2e.yml             ← isolated E2E stack; only `proxy` is host-facing
 └── e2e/                               ← Playwright suite — foundation implemented, all four
     ├── playwright.config.ts             journeys written and passing; own package.json, never in

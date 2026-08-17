@@ -1,0 +1,106 @@
+# Fully-containerized, hot-reload local dev environment (ADR-0022) — API (`dotnet watch`) +
+# frontend (Vite dev server) + one-shot db-init, layered ON TOP OF backend/docker-compose.yml's
+# existing Postgres so both this stack and the "run API/frontend on the host" workflow
+# (README.md "Local Database (Development)") share the exact same database/volume rather than
+# diverging. Always invoke with backend/docker-compose.yml listed FIRST — Compose derives the
+# default project name from the first -f file's directory, and keeping it "backend" both ways is
+# what makes the two workflows share one db/network/volume instead of silently forking into two.
+#
+# Usage: see README.md "Local Development (Fully Containerized, Hot-Reload)". In short:
+#   cp backend/.env.example backend/.env   # then edit real values (Supabase/Anthropic optional)
+#   docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# No host .NET SDK and no host Node.js required at all — db-init builds and runs a self-contained
+# EF migration bundle inside its own image (same approach as e2e/support/db-init/, deliberately a
+# separate copy — see that Dockerfile's own header for why), and both `api`/`frontend` run from
+# their own SDK/Node images with source mounted as a volume, never installed on the host.
+#
+# IMPORTANT: because backend/docker-compose.yml is listed first, Compose resolves every relative
+# path in THIS file (build context, volume sources) against backend/'s own directory, not this
+# file's — verified via `docker compose config`, not assumed. `..` reaches the repo root from
+# there, `.` reaches backend/ itself, and `../frontend` reaches frontend/.
+
+services:
+  db-init:
+    build:
+      # Compose resolves every relative path in a multi-file merge against the FIRST -f file's own
+      # directory (backend/), not against docker-compose.dev.yml's — verified empirically via
+      # `docker compose config` after getting this wrong once. `..` from there is the repo root,
+      # which this build needs (it COPYs backend/ at build time).
+      context: ..
+      dockerfile: backend/scripts/db-init/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: commitahead
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      COMMITAHEAD_MIGRATOR_PASSWORD: ${COMMITAHEAD_MIGRATOR_PASSWORD}
+      COMMITAHEAD_APP_PASSWORD: ${COMMITAHEAD_APP_PASSWORD}
+    restart: "no"
+
+  api:
+    image: mcr.microsoft.com/dotnet/sdk:10.0.302
+    working_dir: /src/backend
+    # --no-launch-profile: launchSettings.json's profiles are for the IDE/host `dotnet run`, not a
+    # container that already gets its own ASPNETCORE_ENVIRONMENT/ASPNETCORE_URLS below.
+    command: ["dotnet", "watch", "run", "--project", "src/CommitAhead.Api", "--no-launch-profile"]
+    volumes:
+      # `.`, not `./backend` — relative paths here resolve against backend/docker-compose.yml's own
+      # directory (backend/ itself), not docker-compose.dev.yml's (see the db-init comment above).
+      - .:/src/backend
+      # A named volume for the NuGet package cache — without it, every `docker compose up` would
+      # re-restore all packages from scratch inside a fresh container filesystem layer.
+      - commitahead_dev_nuget_cache:/root/.nuget/packages
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead;Username=commitahead_app;Password=${COMMITAHEAD_APP_PASSWORD}"
+      # Optional — same as running on the host. Leave unset and the app still starts; every
+      # AnalyzeX/login/refresh use case fails closed with a clear error instead of a silent
+      # fallback, exactly like an unconfigured host `dotnet run` today.
+      Supabase__Url: ${SUPABASE_URL:-}
+      Supabase__AnonKey: ${SUPABASE_ANON_KEY:-}
+      AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+    ports:
+      # Same port host `dotnet run` already uses (launchSettings.json), so the callback URL
+      # already registered in Supabase's redirect allow-list (README.md) needs no change.
+      - "127.0.0.1:5120:8080"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+  frontend:
+    image: node:24-alpine
+    working_dir: /src/frontend
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    volumes:
+      # `../frontend`, not `./frontend` — same base-directory rule as above (backend/, not repo
+      # root), so frontend/ needs one level up.
+      - ../frontend:/src/frontend
+      # A named volume specifically for node_modules, mounted *over* the source bind mount's own
+      # node_modules path — otherwise the host's (likely absent, or wrong-OS-native-binary)
+      # node_modules would shadow whatever npm ci installs inside the container.
+      - commitahead_dev_frontend_node_modules:/src/frontend/node_modules
+    environment:
+      # vite.config.ts's dev proxy defaults to http://localhost:5120 (the host `dotnet run` case);
+      # inside this container, "localhost" would mean the frontend container itself, not `api`, so
+      # the proxy target must be the Compose service name instead.
+      VITE_DEV_API_PROXY_TARGET: http://api:8080
+      # Docker Desktop's bind-mount implementation on Windows/macOS does not reliably propagate
+      # native filesystem-change events into the container the way it does on native Linux, so
+      # Vite's underlying watcher (chokidar) silently never fires and hot-reload never happens —
+      # discovered by actually editing a file and watching the container's own logs, not assumed.
+      # CHOKIDAR_USEPOLLING is chokidar's own documented escape hatch for exactly this; the host
+      # workflow (plain `npm run dev`) never sets this and keeps using native events, which are
+      # cheaper and work fine there.
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  commitahead_dev_nuget_cache:
+  commitahead_dev_frontend_node_modules:

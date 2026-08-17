@@ -64,6 +64,54 @@ PDFs — ADR-0018), which doesn't exist in the local Docker Postgres at all. It 
 `setup-local-db.ps1` and has no local-dev equivalent — applying it is a one-time operator action
 against the real project, covered in "Setting Up the Real Supabase Project" below.
 
+## Local Development (Fully Containerized, Hot-Reload)
+
+An alternative to the workflow above (ADR-0022) for when you'd rather not install the .NET SDK or
+Node.js locally at all — everything, including migrations, runs in containers, and editing code
+reflects immediately (`dotnet watch` / Vite's dev server), no rebuild needed:
+
+```bash
+cp backend/.env.example backend/.env   # then edit real values — Supabase/Anthropic are optional
+docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Then open <http://localhost:5173> — the frontend dev server, proxying `/api`/`/auth` to the `api`
+container internally. The API is also directly reachable at <http://localhost:5120> (same port as
+a host `dotnet run`), and `/api/health` should return `200` once `db-init` finishes.
+
+**Always list `backend/docker-compose.yml` first** in `-f` — this stack layers `db-init`/`api`/
+`frontend` onto that file's existing `db` service rather than duplicating it, and Compose derives
+its default project name from the first `-f` file's directory. Keeping that order means this
+workflow and "run the API/frontend directly on the host" (above) resolve to the same project name
+and therefore share the exact same database/volume — you can freely switch between the two without
+switching data.
+
+`backend/scripts/db-init/` builds and runs a self-contained EF migration bundle inside its own
+image on first `up` — the same approach `e2e/support/db-init/` already uses, deliberately a
+separate copy (see that Dockerfile's own header, and ADR-0022, for why) so this dev stack and the
+isolated E2E stack stay genuinely separate environments. This is what makes the whole workflow
+need zero host .NET SDK or Node.js: `db-init`, `api`, and `frontend` each build/run entirely inside
+their own images.
+
+Logs, shutdown, and reset follow the same shape as every other Compose stack in this repo:
+
+```bash
+# Logs (all three new services, following)
+docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml logs -f db-init api frontend
+
+# Shut down — containers stop, the db volume and NuGet/node_modules caches are kept
+docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml down
+
+# Clean reset — discards the database too (NuGet/node_modules caches survive; re-run `up` to
+# re-migrate from scratch)
+docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml down -v
+```
+
+Session cookies and Data Protection keys are **not** persisted across the `api` container being
+recreated (no `DataProtection:KeyRingPath` here, matching plain `Development` behavior) — restarting
+`api` signs everyone out, exactly like restarting a host `dotnet run` process. Not something this
+workflow needed to fix; not a regression it introduced either.
+
 ## Setting Up the Real Supabase Project
 
 **Not required for local development.** `Supabase:Url`/`Supabase:AnonKey` point at the real

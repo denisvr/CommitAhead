@@ -1,6 +1,13 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
+// Host `dotnet run` (launchSettings.json) listens on localhost:5120 — the default. Running inside
+// docker-compose.dev.yml's `frontend` container, "localhost" would mean this very container, not
+// the `api` one, so that stack sets VITE_DEV_API_PROXY_TARGET to the Compose service name instead
+// (see that file's own comment for why). Only affects `vite dev`; the production build proxies
+// nothing — Kestrel serves the SPA and the API from the same origin.
+const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET ?? 'http://localhost:5120'
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -9,11 +16,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5120',
+        target: devApiProxyTarget,
         changeOrigin: true,
       },
       '/auth': {
-        target: 'http://localhost:5120',
+        target: devApiProxyTarget,
         changeOrigin: true,
       },
     },

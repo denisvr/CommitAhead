@@ -25,6 +25,13 @@ priority, and document routing; detailed rules remain in their authoritative doc
   The `/devalente-e2e` skill has not been created yet — it may now be planned as a separate,
   explicit next step.
 - Phase 6c, internet production deployment, has not started and is explicitly deferred.
+- A fully-containerized, hot-reload dev environment (ADR-0022) is implemented:
+  `docker-compose.dev.yml` layers `db-init`/`api`/`frontend` onto `backend/docker-compose.yml`'s
+  existing `db`, so it shares the same database/volume as the host-run dev workflow rather than
+  forking a second one. No host .NET SDK or Node.js is required — `db-init`
+  (`backend/scripts/db-init/`, a deliberately separate copy of the E2E stack's own migration-bundle
+  approach, not a shared file) runs roles→migrations→RLS once per `up`, `api` runs `dotnet watch`,
+  and `frontend` runs Vite's dev server, both with source bind-mounted for hot-reload.
 
 ## Current priority and verification boundary
 
@@ -51,7 +58,8 @@ user authorization.
 
 | Environment | Purpose | Persistence and external services |
 |---|---|---|
-| Normal development | Fast feature iteration | Local Docker PostgreSQL; real Supabase Auth/Storage and Anthropic only when explicitly configured and used |
+| Normal development (host-run) | Fast feature iteration, IDE debugging | Local Docker PostgreSQL; real Supabase Auth/Storage and Anthropic only when explicitly configured and used |
+| Normal development (containerized, ADR-0022) | Same as above, without host .NET SDK/Node.js; hot-reload | Same local Docker PostgreSQL/volume as host-run — shares data, not a separate environment |
 | Phase 6a local production-like | Exercise the deployable image locally as the user will normally run it | Persistent local Docker PostgreSQL and Data Protection volumes; configured real external services are request-driven only |
 | Phase 6b E2E | Run the four approved Playwright journeys explicitly | Isolated, non-persistent Docker stack; local Supabase/Anthropic stub; no real external calls |
 | Phase 6c internet production | Future internet deployment | Deferred; hosting and production controls remain undecided |
