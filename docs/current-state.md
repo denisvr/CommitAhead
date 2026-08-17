@@ -32,6 +32,13 @@ priority, and document routing; detailed rules remain in their authoritative doc
   (`backend/scripts/db-init/`, a deliberately separate copy of the E2E stack's own migration-bundle
   approach, not a shared file) runs roles→migrations→RLS once per `up`, `api` runs `dotnet watch`,
   and `frontend` runs Vite's dev server, both with source bind-mounted for hot-reload.
+- Fixed: an unconfigured `Supabase:Url` used to throw an unhandled `UriFormatException` (from
+  `HttpClient.BaseAddress = new Uri(...)` at DI-construction time) on the first real request that
+  resolved `ISupabaseAuthClient`/`IJobPostingStorage` — surfaced only once someone actually opened
+  the SPA against a genuinely-empty `Supabase:Url` via the new dev container. Now the typed
+  `HttpClient`s leave `BaseAddress` unset instead of throwing, and `RefreshUseCase`/`CallbackUseCase`
+  catch the resulting call-time failure the same way `LoginUseCase`/`LogoutUseCase` already did,
+  degrading to `AuthResult.Denied()` (403) instead of an unhandled 500.
 
 ## Current priority and verification boundary
 

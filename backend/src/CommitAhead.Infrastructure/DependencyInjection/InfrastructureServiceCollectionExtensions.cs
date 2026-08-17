@@ -67,8 +67,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHttpClient<ISupabaseAuthClient, SupabaseAuthClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<SupabaseAuthOptions>>().Value;
-            client.BaseAddress = new Uri(options.Url);
-            client.DefaultRequestHeaders.Add("apikey", options.AnonKey);
+            ConfigureSupabaseBaseAddress(client, options);
         });
 
         // Reuses SupabaseAuthOptions (Url + AnonKey) rather than a redundant options type — Storage
@@ -78,8 +77,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHttpClient<IJobPostingStorage, SupabaseStorageClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<SupabaseAuthOptions>>().Value;
-            client.BaseAddress = new Uri(options.Url);
-            client.DefaultRequestHeaders.Add("apikey", options.AnonKey);
+            ConfigureSupabaseBaseAddress(client, options);
         });
 
         services.AddScoped<IPdfTextExtractor, PdfPigTextExtractor>();
@@ -88,6 +86,25 @@ public static class InfrastructureServiceCollectionExtensions
         AddAIProvider(services, configuration, environmentName);
 
         return services;
+    }
+
+    /// <summary>
+    /// An unconfigured/invalid Supabase:Url must not throw here — this delegate runs the moment
+    /// SupabaseAuthClient/SupabaseStorageClient is constructed via DI (e.g. on every /api/me-
+    /// triggered token refresh), well before any use case's own try/catch around the actual HTTP
+    /// call ever runs. Leaving BaseAddress unset instead means the client still constructs
+    /// successfully; the first real request then fails with an ordinary, catchable
+    /// InvalidOperationException from HttpClient itself, exactly like any other Supabase-call
+    /// failure the surrounding use cases already handle.
+    /// </summary>
+    private static void ConfigureSupabaseBaseAddress(HttpClient client, SupabaseAuthOptions options)
+    {
+        if (Uri.TryCreate(options.Url, UriKind.Absolute, out var baseAddress))
+        {
+            client.BaseAddress = baseAddress;
+        }
+
+        client.DefaultRequestHeaders.Add("apikey", options.AnonKey ?? string.Empty);
     }
 
     /// <summary>
