@@ -11,19 +11,19 @@ Clean Architecture .NET projects conventionally use MediatR for command/query di
 
 ## Decision
 
-MediatR is excluded from the project. Each operation is a concrete use case class (e.g. `CreateStudyItemUseCase`, `ApplyAnalysisDraftUseCase`) with a single `ExecuteAsync` method, injected directly into a thin controller. Generic `IUseCase<TRequest, TResponse>` interfaces are also excluded.
+MediatR is excluded from the project. Each operation is a concrete use case class (e.g. `CreateProfessionalProfileUseCase`, `ExportCVPresentationUseCase`) with a single `ExecuteAsync` method, injected directly into a thin controller. Generic `IUseCase<TRequest, TResponse>` interfaces are also excluded.
 
 Use case classes are organised under feature folders:
 ```
 Features/
-  StudyItems/
-    CreateStudyItem/
-      CreateStudyItemController.cs
-      CreateStudyItemUseCase.cs
-    SubmitStudyReview/
+  ProfessionalProfiles/
+    CreateProfessionalProfile/
+      CreateProfessionalProfileController.cs
+      CreateProfessionalProfileUseCase.cs
+    UpdateProfessionalProfile/
       ...
-  JobAnalyses/
-    AnalyzeJobAnalysis/
+  CVPresentations/
+    ExportCVPresentation/
       ...
 ```
 

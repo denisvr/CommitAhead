@@ -28,7 +28,7 @@ builder.Services.AddOpenApi();
 CommitAhead.Api.Security.E2EConfigurationGuard.Validate(builder.Configuration, builder.Environment.EnvironmentName);
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.EnvironmentName);
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddCommitAheadAuthentication(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.AddCommitAheadSecurity(builder.Environment, builder.Configuration);
 
@@ -69,10 +69,6 @@ app.UseCommitAheadCors(app.Environment);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Moved after UseAuthentication()/UseAuthorization(): the "ai-analysis" policy partitions by the
-// authenticated owner's UserId (ADR-0019), which only exists once authentication middleware has
-// run. The IP-partitioned "login" policy is unaffected by this reorder — it never depended on
-// running before authentication.
 app.UseRateLimiter();
 
 app.UseMiddleware<CsrfMiddleware>();

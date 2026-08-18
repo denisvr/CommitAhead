@@ -32,11 +32,5 @@
     <ProjectReference Include="..\..\src\CommitAhead.Infrastructure\CommitAhead.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- A small, real, password-protected PDF (RC4-128, generated once with pypdf — see its header
-         comment) — proves PdfPig's own encrypted-document rejection against a genuine fixture,
-         not hand-rolled crypto shipped in this project. -->
-    <EmbeddedResource Include="JobAnalyses\Fixtures\encrypted.pdf" />
-  </ItemGroup>
 
 </Project>

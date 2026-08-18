@@ -1,22 +1,18 @@
 # CommitAhead
 
-CommitAhead is a private, invite-only web application for structured software-engineering interview preparation. It combines a ranked study queue with professional-profile, job-analysis, and interview evidence so the user can answer: **what should I study next, and why?**
+CommitAhead is a private, invite-only web application for maintaining one canonical professional profile and curating it into locale-specific, exportable CV presentations. It answers: **what does my CV look like for this market, and can I get a PDF of it?**
 
 ## Status
 
 Phase 0's security and architecture baseline is implemented and verified: solution skeleton, EF Core/Npgsql, backend-mediated magic-link/PKCE auth with closed (invite-only) login, secure-by-default authorization, CSRF, security headers, and a minimal authenticated screen — including one real call to the live Supabase Auth API.
 
-Phase 1 (the ranked study queue — StudyItem, StudyReview, PriorityOverride, ScoringConfig) and Phase 2 (ProfessionalProfile, CVPresentation, and their curated selections) are implemented end to end — domain, use cases, EF mappings/migrations, owner-scoped RLS, API controllers, and frontend pages — and covered by domain, use-case, real-runtime-role integration, API, and MSW-backed frontend component tests.
+Professional Profile and CV Presentations (ProfessionalProfile, CVPresentation, and their curated selections) are implemented end to end — domain, use cases, EF mappings/migrations, owner-scoped RLS, API controllers, and frontend pages — and covered by domain, use-case, real-runtime-role integration, API, and MSW-backed frontend component tests.
 
-Phase 3 (Evidence Sources — JobAnalysis, JobRequirement, JobGap, InterviewNote, and the secure pasted-text/PDF-upload flow) is implemented end to end: domain, use cases, EF mappings/migrations (including a composite foreign key enforcing that a JobGap's RequirementId belongs to the same JobAnalysis, as defense-in-depth alongside the in-memory invariant), owner-scoped RLS, API controllers, and frontend pages (JobAnalysis/InterviewNote list/create/detail, including the uploaded PDF's extracted text shown for verification). The upload endpoint (`POST /api/job-analyses/upload`) extracts text with PdfPig under strict limits — a 10-second extraction budget that is best-effort (PdfPig's own API is synchronous and uncancellable, so a slow parse can keep running on its own thread after the budget elapses; container memory/CPU limits are the real backstop, not an in-process guarantee) — and uploads to Supabase Storage via the current user's own forwarded JWT (ADR-0018, never a service-role key). Storage cleanup after a rejected upload or a JobAnalysis deletion is best-effort: on failure it logs the orphaned object's key (never the exception itself) for manual remediation, rather than blocking the request. **Live PDF upload against the real Supabase project additionally requires the private `job-postings` bucket and its RLS policies from `scripts/database/006_storage_job_postings.sql` to be provisioned first** (see "Setting Up the Real Supabase Project" below) — it is not live-ready until that one-time operator step has run.
+CV Export (ADR-0020: PDF via QuestPDF) is implemented and tested end to end, backend and frontend. `ExportCVPresentationUseCase` (`GET /api/cv-presentations/{id}/export`) resolves a CVPresentation's selected/ordered ProfessionalProfile entries, applies its `IncludeEmail`/`IncludePhone`/`IncludeAddress` visibility flags, rejects export explicitly for an unsupported `TemplateKey` (only `"modern-one-page"` renders) or `IncludePhoto=true` (no photo upload/storage path exists anywhere in this codebase), formats `YearMonth` dates locale-aware, and renders the result via `QuestPdfCVExportRenderer` (`IExportRenderer`, Infrastructure) — one A4 template rendering every field the export projection carries, including nested Markdown bullet lists. The renderer counts its own rendered pages internally (via PdfPig) and returns that count alongside the PDF bytes; `PageLimit` is enforced as a hard cap by the use case comparing against that count, never by constraining QuestPDF's layout mid-render (Application has no PDF-library dependency at all — only Infrastructure does). Markdown fields (summary, entry descriptions) go through `RestrictedMarkdownParser` (Markdig-based), mirroring `RestrictedMarkdown.tsx`/`restrictedUrlTransform.ts`'s exact allowlist — no images, no raw HTML, links kept only for https/http/mailto. The frontend adds a "Download PDF" button to `CVPresentationDetailPage` that fetches the PDF as a `Blob` (openapi-fetch's `parseAs: 'blob'`, keeping the existing 401-refresh middleware intact) and triggers a synthetic-anchor download, with an inline message for a not-found presentation or one that's unsupported (page limit, template, or photo); the form's Template field is a disabled single-option control and "Include photo" can only be unchecked. Every layer — the Markdown parser, the use case's selection/visibility/template/photo/page-limit logic, the renderer's actual PDF output, the endpoint's HTTP round trip, and the frontend download flow — is covered by tests that assert on real parsed values or a real triggered download, never a snapshot. See ADR-0020 for QuestPDF's actual (source-available, not MIT) Community License terms.
 
-Phase 4 (AI-assisted analysis) is implemented end to end: `AnalyzeJobAnalysis`/`AnalyzeCVPresentation`/`AnalyzeInterviewNote` call `IAIProvider` (real implementation: `AnthropicAIProvider`, Claude Haiku 4.5 — ADR-0019; `FakeAIProvider` everywhere in automated tests, per the zero-real-AI-calls-in-CI rule) and produce an `AnalysisDraft` with immutable proposed content (StructuredSuggestions, LinkProposals, StudyItemProposals) that a human must explicitly decide on — AI never writes to domain entities directly (ADR-0005). Durable per-owner idempotency and a Reserved→Completed/Failed `AIUsageRecord` lifecycle (ADR-0014) make retries safe; a per-owner daily/monthly USD budget and an hourly rate limit are enforced before every AI call. `GetAnalysisDraft` (`GET /api/analysis-drafts/{id}`), `ApplyAnalysisDraft` (exactly one Accepted/Rejected decision per proposal, one atomic accepted-effects transaction, EvidenceLink creation for accepted LinkProposals), and `DiscardAnalysisDraft` (explicit Pending → Discarded, including for a draft with zero proposals) round out the write side. The frontend's `AnalysisDraftReviewPage` shows every proposal's full immutable proposed content before any decision, lets the user finalise accepted payloads, exposes Apply and Discard, and renders Applied/Discarded drafts as a read-only audit view; the "Analyze" trigger on `JobAnalysisDetailPage` holds one idempotency key across a transport/5xx retry and recovers an already-pending draft (via its id, carried in the `DraftAlreadyPending` conflict) instead of dead-ending. CVPresentation/InterviewNote "Analyze" trigger buttons are the one explicitly deferred piece — the review page itself is already source-agnostic.
+Two Playwright journeys are implemented and passing against the isolated local E2E stack (`docker-compose.e2e.yml`, `e2e/`) — verified standalone and together via the guaranteed-teardown `npm run e2e:full`, with zero unexpected calls to the deterministic external stub: `001-authenticated-access.spec.ts` (an unauthenticated visitor is kept out, a session authorizes the app, logout ends it) and `004-cv-presentation-export.spec.ts` (curating a CVPresentation's selections and exporting it end to end through the real UI). A post-merge visual-regression fixture (`QuestPdfCVExportRendererVisualRegressionTests`, a tolerant per-pixel diff against one committed baseline PNG per template) is also implemented. Internet deployment (explicitly deferred pending a hosting decision) is the only open work remaining — see `docs/roadmap.md` for the exact checklist.
 
-Phase 5 (CV Export, ADR-0020: PDF via QuestPDF) is implemented and tested end to end, backend and frontend. `ExportCVPresentationUseCase` (`GET /api/cv-presentations/{id}/export`) resolves a CVPresentation's selected/ordered ProfessionalProfile entries, applies its `IncludeEmail`/`IncludePhone`/`IncludeAddress` visibility flags, rejects export explicitly for an unsupported `TemplateKey` (only `"modern-one-page"` renders) or `IncludePhoto=true` (no photo upload/storage path exists anywhere in this codebase), formats `YearMonth` dates locale-aware, and renders the result via `QuestPdfCVExportRenderer` (`IExportRenderer`, Infrastructure) — one A4 template rendering every field the export projection carries, including nested Markdown bullet lists. The renderer counts its own rendered pages internally (via PdfPig) and returns that count alongside the PDF bytes; `PageLimit` is enforced as a hard cap by the use case comparing against that count, never by constraining QuestPDF's layout mid-render (Application has no PDF-library dependency at all — only Infrastructure does). Markdown fields (summary, entry descriptions) go through `RestrictedMarkdownParser` (Markdig-based), mirroring `RestrictedMarkdown.tsx`/`restrictedUrlTransform.ts`'s exact allowlist — no images, no raw HTML, links kept only for https/http/mailto. The frontend adds a "Download PDF" button to `CVPresentationDetailPage` that fetches the PDF as a `Blob` (openapi-fetch's `parseAs: 'blob'`, keeping the existing 401-refresh middleware intact) and triggers a synthetic-anchor download, with an inline message for a not-found presentation or one that's unsupported (page limit, template, or photo); the form's Template field is a disabled single-option control and "Include photo" can only be unchecked. Every layer — the Markdown parser, the use case's selection/visibility/template/photo/page-limit logic, the renderer's actual PDF output, the endpoint's HTTP round trip, and the frontend download flow — is covered by tests that assert on real parsed values or a real triggered download, never a snapshot. See ADR-0020 for QuestPDF's actual (source-available, not MIT) Community License terms.
-
-Phase 6b's four Playwright journeys are now implemented and passing against the isolated local E2E stack (`docker-compose.e2e.yml`, `e2e/`) — each verified standalone and together via the guaranteed-teardown `npm run e2e:full`, with zero unexpected calls to the deterministic external stub. Journey 1 satisfies Phase 0's E2E exit criterion, Journey 2 satisfies Phase 1's, Journey 4 satisfies Phase 2's and Phase 5's, and Journey 3 satisfies Phase 4's — Phases 0, 1, 2, 4, and 5 are now all fully complete (Phase 3 never had an explicit E2E gate). Building Journey 3 also surfaced and fixed a real, previously-undetected casing defect in `AnthropicStructuredOutputSchema` — see `docs/testing/strategy.md` Layer 7 and `docs/roadmap.md` Phase 4/6b for the full account. Phase 5's post-merge visual-regression fixture (`QuestPdfCVExportRendererVisualRegressionTests`, a tolerant per-pixel diff against one committed baseline PNG per template) is also now implemented, making Phase 5 fully complete. Phase 6c (internet deployment, explicitly deferred pending a hosting decision) is the only open work remaining — see `docs/roadmap.md` for the exact checklist.
-
-NetArchTest rule 5 (repository and `IAIProvider` production implementations exist only in Infrastructure) is fully active now that Phase 4 declared `IAIProvider` and shipped `AnthropicAIProvider` as its real implementation. Development uses a fully local Supabase instance for authentication (ADR-0023, via `supabase start` — see "Local Supabase (Development)" below), and the application's own PostgreSQL is also entirely local via Docker; neither ever touches Supabase Cloud during development (see "Setting Up Supabase Cloud (Production Only)" below for when that changes, at deployment). Live AI calls additionally require a real Anthropic API key — configuration key `AI:Providers:Anthropic:ApiKey` (environment-variable form: `AI__Providers__Anthropic__ApiKey`), read lazily so everything else works with none configured; the key is never in CI or the browser. See `docs/roadmap.md` for the full picture.
+Development uses a fully local Supabase instance for authentication (ADR-0023, via `supabase start` — see "Local Supabase (Development)" below), and the application's own PostgreSQL is also entirely local via Docker; neither ever touches Supabase Cloud during development (see "Setting Up Supabase Cloud (Production Only)" below for when that changes, at deployment). See `docs/roadmap.md` for the full picture.
 
 ## Local Requirements
 
@@ -58,8 +54,10 @@ cd ../frontend && npm ci && npm run dev     # http://localhost:5173, in a second
 
 Open <http://localhost:5173>, enter the email from step 3, then open Mailpit
 (<http://127.0.0.1:54324>) and click the real magic-link email that just arrived — you land back
-in the app, fully signed in. Logout, refresh, and CSRF all work exactly as they would against
-Supabase Cloud.
+in the app, fully signed in. From there, fill in your Professional Profile (experience, education,
+skills, and the rest of its canonical collections), create a CVPresentation that curates and orders
+a subset of it for one target market/locale, and download it as a PDF. Logout, refresh, and CSRF
+all work exactly as they would against Supabase Cloud.
 
 Prefer one command instead of four terminals? See "Local Development (Fully Containerized,
 Hot-Reload)" below — same local Supabase instance, but the app itself (`api`/`frontend`, plus
@@ -90,19 +88,10 @@ see `docs/architecture/persistence.md` ("Migration Strategy") for why that split
 artifact is authoritative for each. It: starts the Postgres container (`docker compose up`, which
 runs `scripts/database/001_roles.sql` automatically on first start, creating the
 `commitahead_app`/`commitahead_migrator` roles from `.env`), applies pending EF Core migrations,
-then applies `scripts/database/002_rls_users.sql` (RLS on `users`), `scripts/database/003_rls_phase1.sql`
-(grants/RLS on the Phase 1 business tables), `scripts/database/004_rls_phase2.sql` (grants/RLS on
-the Phase 2 ProfessionalProfile/CVPresentation tables), `scripts/database/005_rls_phase3.sql`
-(grants/RLS on the Phase 3 JobAnalysis/InterviewNote tables), and `scripts/database/007_rls_phase4.sql`
-(grants/RLS on the Phase 4 AnalysisDraft/AIUsageRecord tables) — all safe to re-run. When the real
+then applies `scripts/database/002_rls_users.sql` (RLS on `users`) and `scripts/database/004_rls_phase2.sql`
+(grants/RLS on the ProfessionalProfile/CVPresentation tables) — both safe to re-run. When the real
 Supabase project is created, the same SQL scripts are the template for setting it up (see
 `backend/scripts/database/`) — only the connection host/credentials change.
-
-`scripts/database/006_storage_job_postings.sql` is different in kind, not just number: it targets
-the real Supabase project's own managed `storage` schema (bucket + RLS for uploaded job-posting
-PDFs — ADR-0018), which doesn't exist in the local Docker Postgres at all. It is **not** run by
-`setup-local-db.ps1` and has no local-dev equivalent — applying it is a one-time operator action
-against the real project, covered in "Setting Up the Real Supabase Project" below.
 
 ## Local Supabase (Development)
 
@@ -168,7 +157,7 @@ Node.js locally at all — everything, including migrations, runs in containers,
 reflects immediately (`dotnet watch` / Vite's dev server), no rebuild needed:
 
 ```bash
-cp backend/.env.example backend/.env   # then edit real values — Supabase/Anthropic are optional
+cp backend/.env.example backend/.env   # then edit real values — Supabase configuration is optional
 docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
@@ -216,10 +205,10 @@ workflow needed to fix; not a regression it introduced either.
 `ConnectionStrings:CommitAheadDb` stays on the local Docker Postgres — auth and persistence are
 independent, and there's no need to develop against the real Postgres before internet deployment
 (Phase 6c). The steps below apply the same
-`backend/scripts/database/001_roles.sql`-`005_rls_phase3.sql` used locally to the *real* Postgres,
-plus the Storage-only `006_storage_job_postings.sql`, for whenever you're ready (e.g. first
-deployment). Only you should run these — they need the project's real database password, which
-this assistant never sees or handles, even if you offer to share it:
+`backend/scripts/database/001_roles.sql`-`004_rls_phase2.sql` used locally to the *real* Postgres,
+for whenever you're ready (e.g. first deployment). Only you should run these — they need the
+project's real database password, which this assistant never sees or handles, even if you offer
+to share it:
 
 ```bash
 # 1. In the Supabase SQL editor, run 001_roles.sql with the ${...} placeholders replaced by real
@@ -228,8 +217,7 @@ this assistant never sees or handles, even if you offer to share it:
 COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_migrator;Password=<real password>" \
   dotnet ef database update --project src/CommitAhead.Infrastructure --startup-project src/CommitAhead.Api
 # 3. In the Supabase SQL editor, run 002_rls_users.sql (needs the `users` table from step 2),
-#    then 003_rls_phase1.sql, 004_rls_phase2.sql, and 005_rls_phase3.sql (each needs its own
-#    tables from the same migration).
+#    then 004_rls_phase2.sql (needs its own tables from the same migration).
 # 4. Seed each enabled user's row (use their real Supabase Auth UID and email):
 #    INSERT INTO users (id, supabase_user_id, email, is_enabled, created_at_utc)
 #    VALUES ('<uid>', '<uid>', '<email>', true, now());
@@ -237,10 +225,6 @@ COMMITAHEAD_MIGRATION_CONNECTION="Host=db.<project-ref>.supabase.co;Port=5432;Da
 dotnet user-secrets set "ConnectionStrings:CommitAheadDb" \
   "Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=commitahead_app;Password=<real password>" \
   --project src/CommitAhead.Api
-# 6. In the Supabase dashboard or SQL editor, run 006_storage_job_postings.sql — creates the
-#    private `job-postings` bucket and its RLS policies (ADR-0018). Unlike steps 1-4, this targets
-#    Supabase's own managed `storage` schema, not the migrated application tables, and needs no
-#    migration to have run first.
 ```
 
 Also in the Supabase dashboard: Authentication → URL Configuration → add **both** callback URLs
@@ -355,27 +339,22 @@ Empirically verified (this exact command sequence, end to end, against a disposa
 --build` → `/api/health` returns `200 {"status":"Healthy"}` → the built SPA is served at `/` →
 `down` (no `-v`) → `up -d` again with no rebuild → the seeded `users` row and `/api/health` are
 both still there, proving the named volumes actually persist data across a routine restart. The
-app started and served every check above with a placeholder Supabase URL and a blank
-`ANTHROPIC_API_KEY` — both are validated lazily, per request, never at startup — which is also the
-proof that **no automatic Supabase or Anthropic call ever happens**: Anthropic is only ever called
-when you explicitly trigger an "Analyze" action from a signed-in session, and Supabase is only ever
-called on an actual login/refresh/logout attempt. **What this did not prove**: real Supabase
-magic-link login/logout, or any authenticated end-user journey — placeholder external configuration
-was used throughout, deliberately, so none of that was exercised. See "Manual acceptance checklist"
-directly below for what to verify once you configure a real Supabase project (and, for the AI
-checks, a real Anthropic key).
+app started and served every check above with a placeholder Supabase URL — validated lazily, per
+request, never at startup — which is also the proof that **no automatic Supabase call ever
+happens**: it is only ever called on an actual login/refresh/logout attempt. **What this did not
+prove**: real Supabase magic-link login/logout, or any authenticated end-user journey — placeholder
+external configuration was used throughout, deliberately, so none of that was exercised. See
+"Manual acceptance checklist" directly below for what to verify once you configure a real Supabase
+project.
 
 **Manual acceptance checklist (needs real credentials):** the infrastructure verification above
 proves the container/database/persistence mechanics, nothing about the actual product working for
-a real signed-in user. Once `backend/.env.production` has a real `SUPABASE_URL`/`SUPABASE_ANON_KEY`
-(and, to check AI analysis, a real `ANTHROPIC_API_KEY`), click through this by hand — none of it is
-automated, and it is not part of CI:
+a real signed-in user. Once `backend/.env.production` has a real `SUPABASE_URL`/`SUPABASE_ANON_KEY`,
+click through this by hand — none of it is automated, and it is not part of CI:
 
 - [ ] Magic-link login completes and logout clears the session
-- [ ] StudyItem create → review → ranked-queue ordering works end to end
 - [ ] Professional profile → CV presentation flow (create, edit selections, preview) works end to end
-- [ ] Job posting flow — pasted text and PDF upload — extracts and saves correctly (PDF upload additionally needs the private Supabase Storage bucket/RLS policies from `scripts/database/006_storage_job_postings.sql` provisioned first)
-- [ ] An explicit AI analysis (Analyze → review the draft → apply) completes against the real Anthropic key
+- [ ] CV export produces a downloadable PDF with the expected content, exclusions, and page limit
 - [ ] Restart the stack (`down` then `up -d`, no `-v`) and confirm data persists and session/login behaves as expected (still signed in via cookie, or a fresh login is required — whichever matches the app's actual session lifetime, not assumed)
 
 **Still explicitly deferred**, per ADR-0021 — none of this is resolved by the local stack above:
@@ -386,14 +365,9 @@ test) and what's still open.
 
 ## MVP
 
-- Unified StudyItems for Theory, LeetCode, System Design, and Behavioral preparation
-- Transparent ranking from Importance, Demand, and Mastery gap
 - Canonical ProfessionalProfile with market-specific CVPresentations and export
-- JobAnalysis and InterviewNote evidence sources
-- Explicit EvidenceLinks that explain Demand
-- Three user-triggered AI analyses that produce drafts requiring human confirmation
 
-The app does not recreate LeetCode, provide an interview simulator, run background AI, or offer public signup or cross-user sharing. See `docs/product/out-of-scope.md`.
+The app does not offer public signup or cross-user sharing. See `docs/product/out-of-scope.md`.
 
 ## Project Layout
 
@@ -408,8 +382,7 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 - ASP.NET Core 10 Controllers
 - Lightweight Clean Architecture with feature-folder use cases; no MediatR or Minimal APIs
 - EF Core 10 + Npgsql; PostgreSQL in Docker locally, with Supabase PostgreSQL deferred to Phase 6c
-- Backend-mediated Supabase Auth and private Storage
-- Provider-neutral `IAIProvider`
+- Backend-mediated Supabase Auth
 
 ## Documentation
 

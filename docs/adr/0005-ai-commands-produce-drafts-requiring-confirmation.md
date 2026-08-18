@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # AI commands produce AnalysisDrafts; AI never writes to domain entities directly
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 Three AI commands are available: AnalyzeCVPresentation, AnalyzeJobAnalysis, and AnalyzeInterviewNote. Each reads an evidence source and produces proposals: suggestions for the source, links to existing StudyItems, and new StudyItems to create. The question was whether these proposals should be applied automatically or require explicit human review.

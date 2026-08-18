@@ -1,5 +1,4 @@
 using CommitAhead.Api.Security;
-using CommitAhead.Infrastructure.AI;
 using Microsoft.Extensions.Configuration;
 
 namespace CommitAhead.Api.Tests.Security;
@@ -14,8 +13,6 @@ public sealed class E2EConfigurationGuardTests
         ["Supabase:Url"] = E2EConfigurationGuard.SupabaseUrlSentinel,
         ["Supabase:AnonKey"] = E2EConfigurationGuard.SupabaseAnonKeySentinel,
         ["Auth:CallbackUrl"] = E2EConfigurationGuard.AuthCallbackUrlSentinel,
-        ["AI:Providers:Anthropic:BaseUrl"] = AnthropicBaseAddress.E2ESentinel,
-        ["AI:Providers:Anthropic:ApiKey"] = E2EConfigurationGuard.AnthropicApiKeySentinel,
     };
 
     [Theory]
@@ -44,8 +41,6 @@ public sealed class E2EConfigurationGuardTests
     [InlineData("Supabase:Url", E2EConfigurationGuard.SupabaseUrlSentinel)]
     [InlineData("Supabase:AnonKey", E2EConfigurationGuard.SupabaseAnonKeySentinel)]
     [InlineData("Auth:CallbackUrl", E2EConfigurationGuard.AuthCallbackUrlSentinel)]
-    [InlineData("AI:Providers:Anthropic:BaseUrl", AnthropicBaseAddress.E2ESentinel)]
-    [InlineData("AI:Providers:Anthropic:ApiKey", E2EConfigurationGuard.AnthropicApiKeySentinel)]
     public void Validate_OutsideE2E_WithAnE2ESentinelAccidentallyConfigured_Throws(string key, string sentinelValue)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?> { [key] = sentinelValue });
@@ -77,43 +72,12 @@ public sealed class E2EConfigurationGuardTests
     [InlineData("Supabase:Url")]
     [InlineData("Supabase:AnonKey")]
     [InlineData("Auth:CallbackUrl")]
-    [InlineData("AI:Providers:Anthropic:BaseUrl")]
-    [InlineData("AI:Providers:Anthropic:ApiKey")]
     public void Validate_InsideE2E_WithASentinelValueThatDoesNotExactlyMatch_Throws(string sentinelKey)
     {
         var settings = new Dictionary<string, string?>(ValidE2ESentinelSettings) { [sentinelKey] = "https://a-real-looking-host.example.com/" };
         var configuration = BuildConfiguration(settings);
 
         Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "E2E"));
-    }
-
-    [Fact]
-    public void Validate_InsideE2E_RejectsARealAnthropicKeyEvenThoughItDoesNotMatchAnyPrefixHeuristic()
-    {
-        // The guard checks exact equality against the one approved sentinel, not a prefix like
-        // "sk-ant-" — any value other than the sentinel is rejected, real-looking or not.
-        var settings = new Dictionary<string, string?>(ValidE2ESentinelSettings)
-        {
-            ["AI:Providers:Anthropic:ApiKey"] = "sk-ant-totally-real-looking-key-0000000000000000",
-        };
-        var configuration = BuildConfiguration(settings);
-
-        Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "E2E"));
-    }
-
-    [Fact]
-    public void Validate_InsideE2E_WithAMistakenlyConfiguredRealSecret_ExceptionMessageDoesNotContainIt()
-    {
-        const string fakeRealAnthropicKey = "sk-ant-totally-real-looking-key-0000000000000000";
-        var settings = new Dictionary<string, string?>(ValidE2ESentinelSettings)
-        {
-            ["AI:Providers:Anthropic:ApiKey"] = fakeRealAnthropicKey,
-        };
-        var configuration = BuildConfiguration(settings);
-
-        var exception = Assert.Throws<InvalidOperationException>(() => E2EConfigurationGuard.Validate(configuration, "E2E"));
-
-        Assert.DoesNotContain(fakeRealAnthropicKey, exception.Message, StringComparison.Ordinal);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> settings)

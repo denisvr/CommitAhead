@@ -13,12 +13,12 @@ using Testcontainers.PostgreSql;
 namespace CommitAhead.Infrastructure.Tests.Security;
 
 /// <summary>
-/// The Phase 2 counterpart to RlsIsolationTests — proves 004_rls_phase2.sql's grants/RLS actually
-/// work for the real, least-privileged commitahead_app role against professional_profiles, one
-/// representative transitively-scoped child table (skills), and cv_presentations. Bootstraps a
-/// dedicated container the same way backend/scripts/setup-local-db.ps1 does: 001_roles.sql (as
-/// superuser) -> EF migrations (as commitahead_migrator) -> 002/003/004 RLS scripts (as
-/// superuser) -> business queries (as commitahead_app).
+/// Proves 004_rls_phase2.sql's grants/RLS actually work for the real, least-privileged
+/// commitahead_app role against professional_profiles, one representative transitively-scoped
+/// child table (skills), and cv_presentations. Bootstraps a dedicated container the same way
+/// backend/scripts/setup-local-db.ps1 does: 001_roles.sql (as superuser) -> EF migrations (as
+/// commitahead_migrator) -> 002/004 RLS scripts (as superuser) -> business queries (as
+/// commitahead_app).
 /// </summary>
 public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
 {
@@ -66,7 +66,7 @@ public sealed class RlsIsolationPhase2Tests : IAsyncLifetime
 
     private Task ApplyRlsScriptsAsync()
     {
-        return ExecuteAsSuperuserAsync(ReadScript("002_rls_users.sql") + "\n" + ReadScript("003_rls_phase1.sql") + "\n" + ReadScript("004_rls_phase2.sql"));
+        return ExecuteAsSuperuserAsync(ReadScript("002_rls_users.sql") + "\n" + ReadScript("004_rls_phase2.sql"));
     }
 
     private async Task ExecuteAsSuperuserAsync(string sql)

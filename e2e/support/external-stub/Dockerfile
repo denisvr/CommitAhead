@@ -1,5 +1,5 @@
-# CommitAhead E2E external-stub — deterministic Node stdlib-only replacement for real Supabase
-# Auth and Anthropic endpoints (E2E Foundation Plan). No dependencies to install, so this is a
+# CommitAhead E2E external-stub — deterministic Node stdlib-only replacement for the real
+# Supabase Auth endpoints (E2E Foundation Plan). No dependencies to install, so this is a
 # single-stage, single-file image.
 FROM node:24-alpine
 WORKDIR /app

@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # Evidence-source deletion and polymorphic cleanup are application-managed
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). `CVPresentation`'s delete is now a plain single-aggregate delete; the polymorphic EvidenceLink/AnalysisDraft cleanup this ADR describes no longer exists. Kept for historical record.**
+
 ## Context
 
 `EvidenceLink` and `AnalysisDraft` carry polymorphic source references: `sourceType` (CVPresentation, JobAnalysis, or InterviewNote) plus `sourceId`. Normal foreign-key cascades cannot target three possible tables. Uploaded JobAnalysis sources also create a cross-system Storage cleanup problem.

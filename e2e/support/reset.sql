@@ -3,21 +3,18 @@
 -- Compose knowledge. It is executed exclusively by e2e/scripts/reset-db.mjs, connected as
 -- commitahead_migrator (the table owner — RLS here is ENABLE, not FORCE, so an owner connection
 -- bypasses row filtering, and only the owner/migrator role holds TRUNCATE; commitahead_app does
--- not, per backend/scripts/database/002_rls_users.sql/003_rls_phase1.sql).
+-- not, per backend/scripts/database/002_rls_users.sql/004_rls_phase2.sql).
 --
 -- Truncates every business table and re-seeds the one E2E user. Never drops the schema, the
 -- database, or "__EFMigrationsHistory", and never touches RLS policies/grants — TRUNCATE removes
 -- rows only; policies, grants, and the RLS ENABLE flag are catalog objects a TRUNCATE cannot
 -- affect. RESTART IDENTITY resets serial/identity sequences; CASCADE lets one statement cover all
--- 22 business tables regardless of their FK relationships to each other.
+-- business tables regardless of their FK relationships to each other.
 
 TRUNCATE TABLE
-  analysis_drafts, ai_usage_records, suggestion_proposals, link_proposals, study_item_proposals,
-  study_items, study_reviews, scoring_config_overrides, evidence_links,
   professional_profiles, certification_entries, education_entries, experience_entries,
   language_entries, profile_links, project_entries, skills,
-  cv_presentations,
-  job_analyses, interview_notes, job_requirements, job_gaps
+  cv_presentations
 RESTART IDENTITY CASCADE;
 
 -- The one seeded E2E user. supabase_user_id must equal E2E:SupabaseUserId exactly — it is the JWT

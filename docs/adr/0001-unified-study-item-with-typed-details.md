@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # Unified StudyItem with typed category details
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 CommitAhead covers four preparation categories: Theory, LeetCode, SystemDesign, and Behavioral. Each category has meaningfully different fields (e.g. LeetCode needs problem number and complexity; Behavioral needs STAR fields). The design question was whether to model them as separate entities or as a single unified type.

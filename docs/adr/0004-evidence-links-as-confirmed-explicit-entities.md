@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # EvidenceLinks are explicit confirmed entities, not automatic tag-matching
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 Demand — one of the three inputs to EffectiveScore — must reflect how urgently evidence sources signal that a StudyItem topic is needed. The design question was how to compute that signal: automatically from shared tags, or via explicit human-confirmed links.

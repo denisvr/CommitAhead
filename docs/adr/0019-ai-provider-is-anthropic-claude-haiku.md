@@ -5,6 +5,8 @@ date: 2026-08-08
 
 # The AI provider is Anthropic, model Claude Haiku 4.5
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 `docs/tbd.md`'s "AI provider selection" entry blocked `ProviderAIAdapter` (Infrastructure) — the

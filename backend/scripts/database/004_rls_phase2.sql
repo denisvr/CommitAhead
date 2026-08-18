@@ -2,9 +2,9 @@
 --
 -- Never executed by the running application itself. It IS executed by CI and by
 -- backend/scripts/setup-local-db.ps1. Run this AFTER 001_roles.sql, AFTER EF Core migrations have
--- created these tables, and AFTER 002_rls_users.sql/003_rls_phase1.sql (which defines
--- app_current_owner_user_id(), reused here rather than redefined) — ALTER TABLE/GRANT/CREATE
--- POLICY below fail if a table or that function doesn't exist yet.
+-- created these tables, and AFTER 002_rls_users.sql (which defines app_current_owner_user_id(),
+-- reused here rather than redefined) — ALTER TABLE/GRANT/CREATE POLICY below fail if a table or
+-- that function doesn't exist yet.
 --
 -- This script covers the nine Phase 2 tables:
 --   professional_profiles, cv_presentations                          (owner_user_id directly)
@@ -12,10 +12,10 @@
 --   certification_entries, project_entries, profile_links             (transitively, via
 --                                                                       professional_profile_id)
 --
--- Isolation model: identical to 003_rls_phase1.sql's — every policy compares owner_user_id
--- (directly, or transitively through professional_profiles for the seven child tables) against
--- app_current_owner_user_id(). A NULL comparison is never true, so a request with no owner
--- context matches zero rows on every one of these tables, by construction.
+-- Isolation model: every policy compares owner_user_id (directly, or transitively through
+-- professional_profiles for the seven child tables) against app_current_owner_user_id()
+-- (002_rls_users.sql). A NULL comparison is never true, so a request with no owner context
+-- matches zero rows on every one of these tables, by construction.
 --
 -- DROP + CREATE, and idempotent GRANT/ALTER statements make this script safe to re-run.
 

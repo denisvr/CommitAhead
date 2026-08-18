@@ -36,34 +36,6 @@ integration — a deliberate placeholder, not the production answer.
 
 ---
 
-## AI Provider
-
-### ~~AI provider selection~~ — decided
-Resolved (ADR-0019): Anthropic is the initial configured provider (not a permanent dependency —
-`IAIProvider` stays provider-neutral; which implementation runs is one explicit,
-configuration-driven choice made at startup), model Claude Haiku 4.5 pinned to
-`claude-haiku-4-5-20251001`, called directly via the Messages API using native Structured Outputs
-(not tool-use). Every `AnalyzeX` command uses this model; a per-command override remains possible
-later without reopening this decision.
-
-### ~~Default AI budgets~~ — decided
-Resolved (ADR-0019): USD 0.25/day and USD 5.00/month, per owner, enforced inside the same atomic
-reservation transaction ADR-0014 describes (`IAIUsageRecordRepository.GetSpentCostAsync` — Completed
-actual cost plus active Reserved cost). Not user-editable from a settings UI; changing the ceiling
-is a code/config change, not a runtime one, matching the "no runtime fallback or automatic routing"
-posture ADR-0019 also takes for provider selection.
-
-### ~~StructuredSuggestion command allowlist~~ — decided
-Resolved at Phase 4 kickoff to exactly the "minimum candidates" list, with no additions:
-`AddJobRequirement`, `AddJobGap`, `UpdateCVPresentationSummary`, `AddInterviewGap`, `AddInterviewLesson`
-(`StructuredSuggestionCommandType`, `backend/src/CommitAhead.Domain/AnalysisDrafts/`). A source
-mutation not on this list can only ever be proposed as an AdvisorySuggestion, never applied
-automatically. Extending the allowlist later is a normal backward-compatible enum addition, not a
-breaking change — deferring the other four candidates' own command handlers to when their
-Application-layer slice is built does not require reopening this decision.
-
----
-
 ## Frontend
 
 ### ~~CV export format~~ — decided
@@ -98,7 +70,7 @@ deployments?
 **Needed for:** Phase 6c internet deployment
 **Status:** target policy decided — 30-day retention, quarterly restore test — but automated,
 encrypted, retention-policy-enforcing implementation deferred to the cloud-deployment stage (needs
-real Supabase Postgres + Storage coverage a local Docker stack can't exercise). For now,
+real Supabase Postgres coverage a local Docker stack can't exercise). For now,
 `backend/scripts/backup-production-db.ps1`/`restore-production-db.ps1` give the local stack a real,
 lossless manual command (`pg_dump --format=custom`/`pg_restore --single-transaction --exit-on-error
 --clean --if-exists`, run inside the container and copied in/out as a raw binary file via
@@ -106,7 +78,7 @@ lossless manual command (`pg_dump --format=custom`/`pg_restore --single-transact
 exactly, and any restore failure rolls back atomically instead of leaving the database
 half-restored) — not automated, not encrypted, not on a retention schedule.
 **Question:** How are the decided retention/cadence actually implemented once a hosting platform and Supabase plan are chosen?
-**Constraints:** Must cover PostgreSQL and private Storage; restored data must remain access-controlled and test artifacts must be deleted
+**Constraints:** Must cover PostgreSQL; restored data must remain access-controlled and test artifacts must be deleted
 **Depends on:** Supabase plan and hosting platform
 
 ### Production log retention
@@ -115,4 +87,4 @@ half-restored) — not automated, not encrypted, not on a retention schedule.
 stage; the local Docker stack uses plain Docker log rotation (`max-size`/`max-file` in
 `docker-compose.prod.yml`), not a centralized logging platform.
 **Question:** Where are metadata-only production logs shipped/retained once a hosting platform is chosen?
-**Constraints:** No user-authored content, request bodies, tokens, cookies, query strings, prompts, responses, or uploaded file content; access restricted to the owner/operator
+**Constraints:** No user-authored content, request bodies, tokens, cookies, or query strings; access restricted to the owner/operator

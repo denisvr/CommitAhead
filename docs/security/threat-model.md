@@ -5,14 +5,9 @@
 | Asset | Sensitivity |
 |---|---|
 | Professional profile, CV data, experience entries | High — personal career intelligence |
-| Job analyses, gap assessments, interview notes | High — confidential preparation intelligence |
-| Behavioral stories, LeetCode solutions, study notes | Medium — personal but not externally sensitive |
-| AI analysis drafts | Medium — derived from high-sensitivity inputs |
 | Auth tokens (access token, refresh token) | High — authentication credentials |
-| AI provider API key | High — cost exposure |
 | Supabase service-role key | High — full database access |
 | Database and backups | High — contains all of the above |
-| AI budget (daily/monthly allowance) | Medium — financial exposure |
 
 ---
 
@@ -21,11 +16,9 @@
 | Boundary | Trusted side | Untrusted side |
 |---|---|---|
 | Authenticated session | Validated, enabled-user request, isolated to that user's own data (ADR-0015) | Unauthenticated request, or a request from a disabled/unknown user |
-| Backend API | Validated + sanitised inputs | Browser, uploaded files, pasted text, AI output |
+| Backend API | Validated + sanitised inputs | Browser input |
 | Supabase PostgreSQL | Backend (least-privileged credential) | All direct client access (blocked by RLS) |
 | Supabase Auth | Backend PKCE callback and server-held Supabase credentials | Browser and unauthenticated internet; no Supabase key is shipped to React |
-| Supabase Storage | Backend, forwarding the current user's own JWT (ADR-0018) | All direct client access |
-| AI provider | Backend `IAIProvider` call | Frontend, domain layer |
 | CI / deployment / secrets | Secrets store, GitHub Actions secrets | Code repository (secrets never committed) |
 
 ---
@@ -36,9 +29,7 @@
 |---|---|---|
 | Unauthorized access | High | Auth middleware; `sub` must match an existing, enabled application `User` (ADR-0015); 15-min JWT; HttpOnly cookies |
 | Credential theft | High | HttpOnly + Secure + SameSite=Strict cookies; no tokens in localStorage; short token lifetime |
-| XSS / file parsing | High | CSP from `default-src 'none'`; restricted CommonMark; DOMPurify; PDF text-only parser with strict limits |
-| Prompt injection / data disclosure | High | Source text marked untrusted; AI receives no tools/URLs/secrets; minimal inputs per command; structured output validated |
-| AI cost abuse | High | Auth required; 10 calls/hour rate limit; one in-flight limit; idempotency key; daily + monthly budget with atomic reservation |
+| XSS | High | CSP from `default-src 'none'`; restricted CommonMark; DOMPurify |
 | Misconfiguration | Medium | RLS blocks all direct client access; Supabase anon key backend-only; secrets never in source |
 | Deep DDoS | Low (deferred) | Rate limiting provides basic protection; dedicated DDoS mitigation is post-MVP |
 
@@ -62,24 +53,13 @@
 - DB enforces FK constraints as a second line of defence
 - Supabase RLS: enabled on all tables; no `anon` or `authenticated` policies — direct Data API access is denied
 - EF Core uses the dedicated `commitahead_app` PostgreSQL role with minimal grants and explicit RLS policies; a separate migration credential owns schema changes
-- The service-role key is not an Npgsql credential and is reserved for backend Auth/Storage administration only
+- The service-role key is not an Npgsql credential and is reserved for backend Auth administration only
 - CSRF validation required on all state-changing requests
 
-### Transport and Storage
+### Transport and Data at Rest
 - TLS required in production (HSTS with `max-age=31536000`; `includeSubDomains` only when all controlled subdomains are HTTPS)
-- Database, Storage, logs, and backups encrypted at rest (Supabase defaults + operator responsibility)
+- Database, logs, and backups encrypted at rest (Supabase defaults + operator responsibility)
 - Periodic restoration tests to verify backup integrity
-
-### PDF Upload
-- Size limit: 5 MB
-- Validation: extension, declared MIME, `%PDF-` magic bytes, page count, non-empty extracted text
-- Rejected if: malformed, encrypted, image-only, wrong MIME, oversized
-- Storage path: backend-generated quarantine key; original filename never used as path
-- Parsing: text-only library; a strict page-count and 50 000-character output limit, enforced explicitly by the extractor itself. The 10-second extraction budget is best-effort, not a hard guarantee: the parser has no cancellable API, so a slow parse can keep running on its own thread past the budget or a caller cancellation; container memory/CPU limits are the real backstop against a runaway parse, not an in-process one
-- Parsed once at upload; never re-executed
-- Failed uploads: Storage object delete attempted best-effort; on failure, the orphaned object's key (never the exception) is logged for manual cleanup rather than blocking the response
-- Never serve PDFs inline; never render scripts or follow embedded links; no parser network access
-- Files whose extracted text exceeds the 50 000-character limit are rejected with an explicit user-visible error; extraction is never silently truncated
 
 ### Markdown / XSS
 - Stored as raw Markdown; sanitised at every rendering boundary
@@ -87,7 +67,6 @@
 - Allowed link schemes: `https`, `http`, `mailto` — blocked: `javascript:`, `data:`
 - No images, iframes, or embedded HTML in Markdown output
 - CV/PDF export: same allowlist and sanitisation before HTML generation
-- AI-generated Markdown content: same pipeline, no exceptions
 - Every HTML-producing pipeline applies an allowlist sanitizer appropriate to its runtime; DOMPurify is used only when the selected browser/Node export pipeline supports it
 - CSP as defence-in-depth (see Security Headers)
 
@@ -114,40 +93,18 @@ Cache-Control: no-store  [on all authenticated and API responses]
 ```
 CSP tested first in report-only mode; exceptions added only after verified violations.
 
-### AI Security
-- Source text explicitly marked as untrusted data in system prompt
-- AI receives no tools, URLs, DB access, or secrets
-- Per-command data minimisation (see ADR-0002)
-- Structured output required; proposals validated against schemas, IDs, lengths, enums, weights, and domain invariants before draft creation
-- Configurable input/output token limits; explicit rejection (not silent truncation) when exceeded
-- Every proposal requires human confirmation before domain state changes
-- Raw prompts and responses never logged
-
-### AI Cost Controls
-- Authentication required to trigger any AI command
-- Rate limit: 10 `AnalyzeX` requests/hour per authenticated owner (configurable); 429 + `Retry-After` when exceeded
-- One AI call in flight per owner at a time (never system-wide — ADR-0015)
-- One Pending draft per source (natural deduplication guard)
-- Idempotency key required; server deduplicates duplicate requests
-- Daily (USD 0.25) and monthly (USD 5.00) budgets, per owner, USD-only (ADR-0019 — a non-USD `AiProviderDescriptor.Currency` is rejected before any reservation); a Reserved AIUsageRecord is committed, in its own transaction, before the provider is ever called — no database transaction is held open for the duration of the external AI call — and a later, separate transaction transitions it to Completed or Failed (ADR-0014)
-- No automatic retries; every retry is an explicit user action
-- `AIUsageRecord`: unique idempotency key, command/source, provider/model/pricing version/currency, Reserved/Completed/Failed status, reserved and actual tokens/cost, timestamps, safe outcome code, and optional draft ID — never content
-
 ### Secrets Management
 - `.NET User Secrets` for local development
 - Hosting/CI secrets store in deployed environments (provider TBD)
 - Supabase anon key: backend-only (not shipped to browser)
-- Supabase service-role key: backend-only; used only for Auth-session administration and one-time Storage bucket/policy provisioning (`006_storage_job_postings.sql`) — never a runtime credential for uploading or deleting Storage objects, which forward the current user's own JWT instead (ADR-0018)
-- AI provider key: backend-only; never logged or included in prompts
+- Supabase service-role key: backend-only; used only for Auth-session administration
 - ASP.NET Data Protection key ring: persisted, encrypted; used for cookies and antiforgery
 - Credentials rotated when exposed
 
 ### Logging Policy
-**Never log**: headers, cookies, query strings, PKCE codes, uploaded file content, request/response bodies, user-authored content, AI prompts, AI responses.
+**Never log**: headers, cookies, query strings, PKCE codes, request/response bodies, user-authored content.
 
-**Production log fields**: correlation ID, route template, HTTP method, status code, duration, safe error code/type, AI usage metadata (no content).
-
-The sole additional operational field is a backend-generated `storageObjectKey` on a `StorageCleanupFailed` event, required for manual orphan cleanup. Original filenames and file contents are never logged; a Storage key grants no access to the private bucket by itself.
+**Production log fields**: correlation ID, route template, HTTP method, status code, duration, safe error code/type.
 
 Log access is restricted. The exact production retention period remains TBD in `docs/tbd.md`.
 
@@ -165,18 +122,14 @@ Log access is restricted. The exact production retention period remains TBD in `
 - Gitleaks secret scanning
 - Dependency CVE scans (direct + transitive)
 - Auth, enabled-user check, CSRF, CSP, CORS, `Cache-Control: no-store` API tests
-- Malicious upload rejection tests
 - Markdown/XSS protocol tests
-- AI schema validation tests
-- Idempotency deduplication tests
-- Rate limit and budget enforcement tests
 - Log-redaction tests
 - NetArchTest architecture rules
 
 ### Post-merge / Release Security
 - SBOM generation
 - Trivy container scan (high/critical blocks deployment)
-- OWASP ZAP baseline against test environment with `FakeAIProvider` — fails on confirmed high-severity findings
+- OWASP ZAP baseline against test environment — fails on confirmed high-severity findings
 
 ### Pre-internet-deployment Checklist
 A manual security checklist must be completed before the first internet-facing deployment. Penetration testing is deferred to post-MVP.

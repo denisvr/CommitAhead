@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # EffectiveScore computed on-the-fly; no denormalisation for MVP
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 The study queue must rank StudyItems by EffectiveScore. Score depends on three inputs: Importance (persisted), Mastery (derived from recent StudyReviews), and Demand (derived from confirmed EvidenceLink weights). The question was whether to persist the computed score or derive it at query time.

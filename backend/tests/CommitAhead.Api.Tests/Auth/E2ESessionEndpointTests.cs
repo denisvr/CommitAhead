@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using CommitAhead.Api.Security;
-using CommitAhead.Infrastructure.AI;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.Extensions;
 using Microsoft.AspNetCore.Hosting;
@@ -34,8 +33,6 @@ public sealed class E2ESessionEndpointTests
         ["Supabase:Url"] = E2EConfigurationGuard.SupabaseUrlSentinel,
         ["Supabase:AnonKey"] = E2EConfigurationGuard.SupabaseAnonKeySentinel,
         ["Auth:CallbackUrl"] = E2EConfigurationGuard.AuthCallbackUrlSentinel,
-        ["AI:Providers:Anthropic:BaseUrl"] = AnthropicBaseAddress.E2ESentinel,
-        ["AI:Providers:Anthropic:ApiKey"] = E2EConfigurationGuard.AnthropicApiKeySentinel,
     };
 
     [Theory]

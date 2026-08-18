@@ -1,100 +1,56 @@
 # CommitAhead — Use Cases
 
-Key user journeys. Each maps to one or more application use case classes in the `Features/` folder structure. Every journey below operates entirely within the authenticated request's own data (ADR-0015) — StudyItems, the ProfessionalProfile, evidence sources, and drafts referenced anywhere in this document belong to that one user; there is no journey that reads or writes another user's data.
+Key user journeys. Each maps to one or more application use case classes in the `Features/` folder structure. Every journey below operates entirely within the authenticated request's own data (ADR-0015) — the ProfessionalProfile and CVPresentations referenced anywhere in this document belong to that one user; there is no journey that reads or writes another user's data.
 
 ---
 
-## 1. Daily Preparation
+## 1. Authenticate
 
-**Goal:** Open the app and know what to study next.
+**Goal:** Sign in and establish a session.
 
-1. Load the ranked study queue (`GetRankedStudyQueue`) — filtered to Active items, ordered by EffectiveScore descending.
-2. Select a StudyItem from the top of the queue.
-3. Study the item (read notes, attempt the problem, review the STAR story).
-4. Submit a StudyReview (`SubmitStudyReview`) with a confidence rating (1–5). Mastery updates on the next queue load.
-
----
-
-## 2. Create and Manage StudyItems
-
-**Goal:** Add a new topic to the study queue.
-
-1. Choose a category (Theory, LeetCode, SystemDesign, Behavioral).
-2. Fill in core fields (title, importance, initialMastery, tags).
-3. Fill in category-specific details (typed form per category).
-4. Save (`CreateStudyItem`). Item appears in the Active queue.
-
-**Archival:** Mark an item as Archived (`ArchiveStudyItem`). It disappears from the queue; history is preserved.
-
-**Deletion:** Delete an item (`DeleteStudyItem`) — only permitted when no StudyReviews exist and no EvidenceLinks target it. Otherwise, archival is the only option.
+1. Request a magic link (`LoginUseCase`, `/auth/login`) — only a provisioned, enabled `User` ever reaches Supabase; an unknown or disabled email gets the same generic response.
+2. Follow the link back to the app (`CallbackUseCase`, `/auth/callback`) to establish the session.
+3. The frontend transparently refreshes an expiring session (`RefreshUseCase`, `/auth/refresh`) via a single-flight refresh-and-retry on 401.
+4. Sign out (`LogoutUseCase`, `/auth/logout`) — cookies are always cleared, even if the external Supabase revoke call fails.
 
 ---
 
-## 3. Analyse a Job Posting
-
-**Goal:** Extract requirements, identify gaps, and link relevant StudyItems.
-
-1. Create a JobAnalysis with a title and a JobSource — pasted text (`CreateJobAnalysisFromPastedTextUseCase`) or an uploaded PDF (`CreateJobAnalysisFromUploadUseCase`, the only use case trusted to construct an UploadedFile).
-2. For PDF uploads: text is extracted immediately; the user sees the extracted text for verification.
-3. Trigger `AnalyzeJobAnalysis` (explicit user action). AI receives: job posting text + minimal profile skills summary + compact StudyItem catalogue.
-4. Review the AnalysisDraft; choices remain editable in the UI until Apply:
-   - **StructuredSuggestions** — accept to add JobRequirements or JobGaps via domain commands; reject to discard.
-   - **LinkProposals** — accept to create EvidenceLinks from this JobAnalysis to existing StudyItems.
-   - **StudyItemProposals** — accept to create new StudyItems not yet in the queue.
-5. Apply the draft (`ApplyAnalysisDraft`) with exactly one Accepted/Rejected decision per proposal and a complete final payload for every accepted actionable proposal. Original AI payloads remain immutable; accepted payloads, effects, final statuses, and the draft transition execute atomically. Alternatively, discard the entire draft (`DiscardAnalysisDraft`, Pending → Discarded only) — this also resolves a draft with zero proposals, which Apply can otherwise leave with nothing to decide.
-6. Re-fetch the draft at any time (`GetAnalysisDraft`) — works for a Pending draft mid-review, or an Applied/Discarded one as a read-only audit record. If a lost navigation state or a refresh loses track of a still-Pending draft, retrying the analyze trigger on the same source returns that draft's Id in the conflict response instead of a dead end.
-
----
-
-## 4. Record an Interview
-
-**Goal:** Capture what happened in a real interview and link it to preparation.
-
-1. Create an InterviewNote (`CreateInterviewNote`) with: company, role, round, sequence number, date, questions asked, gaps observed, lessons learned.
-2. Optionally link to a JobAnalysis.
-3. Optionally trigger `AnalyzeInterviewNote`. AI receives the structured note plus the compact StudyItem catalogue to propose EvidenceLinks with valid IDs and identify missing StudyItems.
-4. Review and apply the AnalysisDraft.
-
----
-
-## 5. Manage the Professional Profile
+## 2. Manage the Professional Profile
 
 **Goal:** Keep the canonical CV data up to date.
 
-1. Edit ProfessionalProfile sections: add/edit/remove ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry, ProfileLink.
-2. Manage independent CVPresentation aggregates: create a presentation for a target market (`CreateCVPresentation`), select and order canonical entries, set format rules (locale, template, photo, personal-details visibility, date format, page limit, summary override).
-3. Trigger `AnalyzeCVPresentation`. The application resolves the selected canonical entries into a minimised presentation projection and includes the compact StudyItem catalogue; contact values, photo keys, reviews, private notes, and hidden solutions are excluded.
-4. Review and apply the AnalysisDraft.
-5. Export / preview the CVPresentation (`ExportCVPresentation`).
+1. Create or fetch the one-per-user ProfessionalProfile.
+2. Edit its sections: add/edit/remove ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry, ProfileLink.
+3. Deleting a canonical entry (e.g. a Skill) removes it from any CVPresentation selection that referenced it (`DanglingSelectionCleanup`, run from every `Replace*UseCase`); a Skill still referenced by an Experience or Project entry cannot be deleted until that reference is removed or reassigned.
 
 ---
 
-## 6. Adjust Priority
+## 3. Manage CVPresentations
 
-**Goal:** Manually override a StudyItem's computed ranking.
+**Goal:** Curate the canonical profile into an independently editable, locale-specific CV.
 
-1. Set a PriorityOverride on a StudyItem (`SetPriorityOverride`) with a score (0–100) and a required reason.
-2. The item is ranked by the override score instead of the computed EffectiveScore.
-3. Clear the override (`ClearPriorityOverride`) to restore computed ranking.
-
----
-
-## 7. Configure Scoring Weights
-
-**Goal:** Adjust how Importance, Demand, and Mastery gap contribute to EffectiveScore.
-
-1. Open scoring configuration.
-2. Edit weights (`UpdateScoringConfig`). Validation: all non-negative, sum = 100.
-3. Save. The ranked-list query uses the new weights on the next load.
-4. Reset to defaults (`ResetScoringConfig`) — removes the override row; code defaults (40/35/25) apply.
+1. Create a CVPresentation for a target market (`CreateCVPresentation`), referencing the caller's own ProfessionalProfile.
+2. Select and order canonical entries into the CVPresentation's seven selection collections (Experience, Education, Skill, Language, Certification, Project, ProfileLink); every selected ID must exist in the referenced ProfessionalProfile (invariant 4).
+3. Set format rules: locale (validated against the runtime's own culture list), template, photo/email/phone/address visibility, date format, and page limit.
+4. Update or delete a CVPresentation (`UpdateCVPresentationUseCase`/`DeleteCVPresentationUseCase`) — delete is a plain single-aggregate delete; it has no cross-aggregate cleanup to perform.
+5. Fetch a CVPresentation (`GetCVPresentationUseCase`) for editing or preview.
 
 ---
 
-## 8. E2E Journeys (Playwright)
+## 4. Export a CVPresentation
 
-These four flows are validated end-to-end after every merge to main:
+**Goal:** Produce a downloadable PDF from a curated CVPresentation.
 
-1. **Authenticated access** — open the app, authenticate via magic link (test auth scheme), land on the study queue.
-2. **Create → Review → Rank** — create a StudyItem, submit a StudyReview, verify it appears in the correct position in the ranked queue.
-3. **Job analysis draft flow** — create a JobAnalysis, trigger analysis through the real Anthropic adapter pointed at the deterministic local E2E stub, review proposals, accept some, reject others, apply, verify EvidenceLinks created and draft status = Applied.
-4. **CVPresentation edit + export** — select canonical entries, set format rules, save, export, verify exported content includes required fields and respects locale formatting.
+1. Trigger export (`ExportCVPresentationUseCase`, `GET /api/cv-presentations/{id}/export`).
+2. The use case resolves every selection in order against the owner's ProfessionalProfile, applies visibility flags (`IncludeEmail`/`IncludePhone`/`IncludeAddress`), formats `YearMonth` dates locale-aware, and rejects explicitly rather than silently ignoring: an unsupported `TemplateKey` (`UnsupportedTemplate` — only `"modern-one-page"` renders), `IncludePhoto=true` (`UnsupportedPhoto` — no photo upload/storage path exists), or a rendered page count over `PageLimit` (`PageLimitExceeded`).
+3. `QuestPdfCVExportRenderer` renders the one supported A4 template, including restricted-Markdown content (`RestrictedMarkdownParser` — no images, no raw HTML, links limited to https/http/mailto).
+4. The frontend triggers a Blob download on success, or shows an inline message for `PresentationNotFound`/`PageLimitExceeded`/`UnsupportedTemplate`/`UnsupportedPhoto`.
+
+---
+
+## 5. E2E Journeys (Playwright)
+
+These two flows are validated end-to-end when explicitly invoked (never automatically, never part of ordinary PR validation):
+
+1. **Authenticated access** (`001-authenticated-access.spec.ts`) — open the app, authenticate via magic link (test auth scheme), land on the app shell, confirm `GET /api/me` is authorized, and that logout ends the session.
+2. **CVPresentation edit + export** (`004-cv-presentation-export.spec.ts`) — seed a ProfessionalProfile with an Experience entry via API, create a CVPresentation, select and order canonical entries, set format rules, and export — verified via a real Playwright `download` event (`%PDF-` magic bytes); the parsed-output half (required text, exclusions, ordering, locale, page limit) is proven separately at Layers 1–4 via PdfPig.

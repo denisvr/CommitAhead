@@ -1,21 +1,9 @@
-using CommitAhead.Domain.AIUsage;
-using CommitAhead.Domain.AnalysisDrafts;
 using CommitAhead.Domain.CVPresentations;
-using CommitAhead.Domain.EvidenceLinks;
 using CommitAhead.Domain.Identity;
-using CommitAhead.Domain.InterviewNotes;
-using CommitAhead.Domain.JobAnalyses;
 using CommitAhead.Domain.ProfessionalProfiles;
-using CommitAhead.Domain.StudyItems;
-using CommitAhead.Infrastructure.AIUsage;
-using CommitAhead.Infrastructure.AnalysisDrafts;
 using CommitAhead.Infrastructure.CVPresentations;
-using CommitAhead.Infrastructure.EvidenceLinks;
 using CommitAhead.Infrastructure.Identity;
-using CommitAhead.Infrastructure.InterviewNotes;
-using CommitAhead.Infrastructure.JobAnalyses;
 using CommitAhead.Infrastructure.ProfessionalProfiles;
-using CommitAhead.Infrastructure.StudyItems;
 using Microsoft.EntityFrameworkCore;
 
 namespace CommitAhead.Infrastructure.Persistence;
@@ -29,31 +17,13 @@ public sealed class CommitAheadDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
 
-    public DbSet<StudyItem> StudyItems => Set<StudyItem>();
-
-    public DbSet<EvidenceLink> EvidenceLinks => Set<EvidenceLink>();
-
     public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
 
     public DbSet<CVPresentation> CVPresentations => Set<CVPresentation>();
 
-    public DbSet<JobAnalysis> JobAnalyses => Set<JobAnalysis>();
-
-    public DbSet<InterviewNote> InterviewNotes => Set<InterviewNote>();
-
-    public DbSet<AnalysisDraft> AnalysisDrafts => Set<AnalysisDraft>();
-
-    public DbSet<AIUsageRecord> AIUsageRecords => Set<AIUsageRecord>();
-
-    internal DbSet<ScoringConfigOverrideRow> ScoringConfigOverrides => Set<ScoringConfigOverrideRow>();
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new UserConfiguration());
-        modelBuilder.ApplyConfiguration(new StudyItemConfiguration());
-        modelBuilder.ApplyConfiguration(new StudyReviewConfiguration());
-        modelBuilder.ApplyConfiguration(new ScoringConfigOverrideRowConfiguration());
-        modelBuilder.ApplyConfiguration(new EvidenceLinkConfiguration());
         modelBuilder.ApplyConfiguration(new ProfessionalProfileConfiguration());
         modelBuilder.ApplyConfiguration(new ExperienceEntryConfiguration());
         modelBuilder.ApplyConfiguration(new EducationEntryConfiguration());
@@ -63,14 +33,5 @@ public sealed class CommitAheadDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ProjectEntryConfiguration());
         modelBuilder.ApplyConfiguration(new ProfileLinkConfiguration());
         modelBuilder.ApplyConfiguration(new CVPresentationConfiguration());
-        modelBuilder.ApplyConfiguration(new JobAnalysisConfiguration());
-        modelBuilder.ApplyConfiguration(new JobRequirementConfiguration());
-        modelBuilder.ApplyConfiguration(new JobGapConfiguration());
-        modelBuilder.ApplyConfiguration(new InterviewNoteConfiguration());
-        modelBuilder.ApplyConfiguration(new AnalysisDraftConfiguration());
-        modelBuilder.ApplyConfiguration(new SuggestionProposalConfiguration());
-        modelBuilder.ApplyConfiguration(new LinkProposalConfiguration());
-        modelBuilder.ApplyConfiguration(new StudyItemProposalConfiguration());
-        modelBuilder.ApplyConfiguration(new AIUsageRecordConfiguration());
     }
 }

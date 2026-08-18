@@ -5,7 +5,7 @@
 # (docker-compose.e2e.yml) never lets `app` start against a half-migrated database. This container
 # never runs a second time against the same data directory in the normal lifecycle — the E2E
 # database has no persistent volume — but 001_roles.sql's own idempotent CREATE ROLE guard and
-# 002-007's DROP POLICY IF EXISTS/CREATE POLICY pattern make a manual re-run safe regardless.
+# 002/004's DROP POLICY IF EXISTS/CREATE POLICY pattern make a manual re-run safe regardless.
 set -euo pipefail
 
 : "${PGHOST:?PGHOST is required}"
@@ -26,7 +26,7 @@ sed \
 echo "db-init: running the EF migration bundle as commitahead_migrator..."
 /efbundle --connection "Host=$PGHOST;Port=5432;Database=$PGDATABASE;Username=commitahead_migrator;Password=$COMMITAHEAD_MIGRATOR_PASSWORD"
 
-for script in 002_rls_users.sql 003_rls_phase1.sql 004_rls_phase2.sql 005_rls_phase3.sql 007_rls_phase4.sql; do
+for script in 002_rls_users.sql 004_rls_phase2.sql; do
   echo "db-init: applying $script as postgres..."
   psql -v ON_ERROR_STOP=1 -h "$PGHOST" -U postgres -d "$PGDATABASE" -f "/sql/$script"
 done

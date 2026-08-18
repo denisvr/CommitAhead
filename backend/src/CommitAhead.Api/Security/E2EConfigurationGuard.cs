@@ -1,5 +1,3 @@
-using CommitAhead.Infrastructure.AI;
-
 namespace CommitAhead.Api.Security;
 
 /// <summary>
@@ -12,14 +10,13 @@ namespace CommitAhead.Api.Security;
 /// URL or credential is rejected because it differs from the one approved value, not because it
 /// fails some pattern match. Exception messages name only the configuration key and its expected
 /// E2E category — never the configured value or the sentinel itself — so a real secret pasted
-/// into <c>AI:Providers:Anthropic:ApiKey</c> by mistake never reaches startup logs or test output.
+/// into one of these keys by mistake never reaches startup logs or test output.
 /// </summary>
 public static class E2EConfigurationGuard
 {
     public const string SupabaseUrlSentinel = "http://external-stub:8080/";
     public const string SupabaseAnonKeySentinel = "e2e-anon-key";
     public const string AuthCallbackUrlSentinel = "http://localhost:8081/auth/callback";
-    public const string AnthropicApiKeySentinel = "e2e-stub-key";
 
     private const string E2EEnvironmentName = "E2E";
 
@@ -45,8 +42,6 @@ public static class E2EConfigurationGuard
             RejectSentinelOutsideE2E(configuration, environmentName, "Supabase:Url", "Supabase URL", SupabaseUrlSentinel);
             RejectSentinelOutsideE2E(configuration, environmentName, "Supabase:AnonKey", "Supabase anonymous key", SupabaseAnonKeySentinel);
             RejectSentinelOutsideE2E(configuration, environmentName, "Auth:CallbackUrl", "auth callback URL", AuthCallbackUrlSentinel);
-            RejectSentinelOutsideE2E(configuration, environmentName, $"{AnthropicOptions.SectionName}:BaseUrl", "Anthropic base URL", AnthropicBaseAddress.E2ESentinel);
-            RejectSentinelOutsideE2E(configuration, environmentName, $"{AnthropicOptions.SectionName}:ApiKey", "Anthropic API key", AnthropicApiKeySentinel);
 
             return;
         }
@@ -75,8 +70,6 @@ public static class E2EConfigurationGuard
         RequireExactSentinel(configuration, "Supabase:Url", "Supabase URL", SupabaseUrlSentinel);
         RequireExactSentinel(configuration, "Supabase:AnonKey", "Supabase anonymous key", SupabaseAnonKeySentinel);
         RequireExactSentinel(configuration, "Auth:CallbackUrl", "auth callback URL", AuthCallbackUrlSentinel);
-        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:BaseUrl", "Anthropic base URL", AnthropicBaseAddress.E2ESentinel);
-        RequireExactSentinel(configuration, $"{AnthropicOptions.SectionName}:ApiKey", "Anthropic API key", AnthropicApiKeySentinel);
     }
 
     private static void RequireExactSentinel(IConfiguration configuration, string key, string category, string expectedValue)

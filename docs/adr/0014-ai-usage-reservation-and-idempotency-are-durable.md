@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # AI usage reservation and idempotency are durable
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 AI commands need protection from double-clicks, retried HTTP requests, concurrent tabs, process restarts, and daily/monthly cost overruns. An in-memory rate limiter alone cannot provide durable deduplication or atomically reserve budget before a provider call.

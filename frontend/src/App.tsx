@@ -3,20 +3,8 @@ import { apiClient, ensureFreshSession } from './api/client'
 import { AppShell } from './design-system/components/AppShell'
 import { BookmarkMark } from './design-system/components/Brand'
 import { Button } from './design-system/components/Button'
-import { AnalysisDraftReviewPage } from './features/analysis-drafts/AnalysisDraftReviewPage'
 import { LoginForm } from './features/auth/LoginForm'
-import { InterviewNoteDetailPage } from './features/interview-notes/InterviewNoteDetailPage'
-import { InterviewNoteForm } from './features/interview-notes/InterviewNoteForm'
-import { InterviewNotesListPage } from './features/interview-notes/InterviewNotesListPage'
-import { JobAnalysisDetailPage } from './features/job-analyses/JobAnalysisDetailPage'
-import { JobAnalysesListPage } from './features/job-analyses/JobAnalysesListPage'
-import { NewJobAnalysisPage } from './features/job-analyses/NewJobAnalysisPage'
 import { ProfileHubPage } from './features/professional-profile/ProfileHubPage'
-import { ScoringSettingsPage } from './features/settings/ScoringSettingsPage'
-import { NewStudyItemPage } from './features/study-items/NewStudyItemPage'
-import { StudyItemDetailPage } from './features/study-items/StudyItemDetailPage'
-import { StudyItemsListPage } from './features/study-items/StudyItemsListPage'
-import { StudyQueuePage } from './features/study-items/StudyQueuePage'
 import styles from './App.module.css'
 
 // 'connection-error' is distinct from 'anonymous' on purpose — a network failure while checking
@@ -24,70 +12,11 @@ import styles from './App.module.css'
 // confirmed logged-out state (that would show the login form over what might be a live session).
 type AuthState = 'loading' | 'authenticated' | 'anonymous' | 'connection-error'
 
-// "from" remembers which list a detail/creation flow was opened from, so Back/Delete/Created
-// return there instead of always assuming the ranked queue.
-type Origin = 'queue' | 'items'
-
-type View =
-  | { name: 'queue' }
-  | { name: 'items' }
-  | { name: 'profile' }
-  | { name: 'settings' }
-  | { name: 'detail'; id: string; from: Origin }
-  | { name: 'new'; from: Origin }
-  | { name: 'jobAnalyses' }
-  | { name: 'jobAnalysisDetail'; id: string }
-  | { name: 'newJobAnalysis' }
-  | { name: 'analysisDraftReview'; id: string; returnToJobAnalysisId: string }
-  | { name: 'interviewNotes' }
-  | { name: 'interviewNoteDetail'; id: string }
-  | { name: 'newInterviewNote' }
-
-function originView(origin: Origin): View {
-  return origin === 'items' ? { name: 'items' } : { name: 'queue' }
-}
-
-type Destination = 'queue' | 'items' | 'profile' | 'settings' | 'jobAnalyses' | 'interviewNotes'
-
-// A switch (not `{ name: key as Destination }`) because `{ name: Destination }` — a single object
-// whose `name` is the whole union — isn't assignable to `View`'s union of narrow `{ name: '...' }`
-// variants, even though every individual case is.
-function viewForDestination(key: Destination): View {
-  switch (key) {
-    case 'queue':
-      return { name: 'queue' }
-    case 'items':
-      return { name: 'items' }
-    case 'profile':
-      return { name: 'profile' }
-    case 'settings':
-      return { name: 'settings' }
-    case 'jobAnalyses':
-      return { name: 'jobAnalyses' }
-    case 'interviewNotes':
-      return { name: 'interviewNotes' }
-  }
-}
-
-function describeActiveDestination(view: View): Destination {
-  if (view.name === 'items' || view.name === 'profile' || view.name === 'settings' || view.name === 'jobAnalyses' || view.name === 'interviewNotes') {
-    return view.name
-  }
-
-  if (view.name === 'detail' || view.name === 'new') {
-    return view.from === 'items' ? 'items' : 'queue'
-  }
-
-  if (view.name === 'jobAnalysisDetail' || view.name === 'newJobAnalysis' || view.name === 'analysisDraftReview') {
-    return 'jobAnalyses'
-  }
-
-  if (view.name === 'interviewNoteDetail' || view.name === 'newInterviewNote') {
-    return 'interviewNotes'
-  }
-
-  return 'queue'
-}
+// Professional profile & CVs is the only feature in the app (Study, Job Analyses, Interview
+// Notes, and the AI Analyze pipeline were removed — see docs/roadmap.md). AppShell still expects
+// a destinations list even with a single entry; onNavigate is a no-op since there's nowhere else
+// to navigate to.
+const DESTINATIONS = [{ key: 'profile', label: 'Professional profile & CVs' }]
 
 function AuthHeading() {
   return (
@@ -106,11 +35,7 @@ function App() {
   const [email, setEmail] = useState<string | null>(null)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [view, setView] = useState<View>({ name: 'queue' })
 
-  // Inlined rather than sharing a callback with retryConnection — see the study-items pages for
-  // why (the set-state-in-effect lint rule treats any call to a state-setting function reference
-  // as synchronous, regardless of the await inside it).
   useEffect(() => {
     apiClient
       .GET('/api/me')
@@ -206,92 +131,17 @@ function App() {
     )
   }
 
-  const activeDestination = describeActiveDestination(view)
-
   return (
     <AppShell
-      destinations={[
-        { key: 'queue', label: 'Study queue' },
-        { key: 'items', label: 'Study items' },
-        { key: 'profile', label: 'Professional profile & CVs' },
-        { key: 'jobAnalyses', label: 'Job analyses' },
-        { key: 'interviewNotes', label: 'Interview notes' },
-        { key: 'settings', label: 'Settings' },
-      ]}
-      activeDestination={activeDestination}
-      onNavigate={(key) => setView(viewForDestination(key as Destination))}
+      destinations={DESTINATIONS}
+      activeDestination="profile"
+      onNavigate={() => {}}
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
     >
       {logoutError && <p role="alert">{logoutError}</p>}
-      {view.name === 'queue' && (
-        <StudyQueuePage onSelectItem={(id) => setView({ name: 'detail', id, from: 'queue' })} onCreateNew={() => setView({ name: 'new', from: 'queue' })} />
-      )}
-      {view.name === 'items' && (
-        <StudyItemsListPage onSelectItem={(id) => setView({ name: 'detail', id, from: 'items' })} onCreateNew={() => setView({ name: 'new', from: 'items' })} />
-      )}
-      {view.name === 'profile' && <ProfileHubPage />}
-      {view.name === 'settings' && <ScoringSettingsPage />}
-      {view.name === 'detail' && (
-        <StudyItemDetailPage
-          key={view.id}
-          itemId={view.id}
-          backLabel={view.from === 'items' ? 'Back to study items' : 'Back to queue'}
-          onBack={() => setView(originView(view.from))}
-          onDeleted={() => setView(originView(view.from))}
-        />
-      )}
-      {view.name === 'new' && (
-        <NewStudyItemPage onCreated={(id) => setView({ name: 'detail', id, from: view.from })} onCancel={() => setView(originView(view.from))} />
-      )}
-      {view.name === 'jobAnalyses' && (
-        <JobAnalysesListPage
-          onSelectAnalysis={(id) => setView({ name: 'jobAnalysisDetail', id })}
-          onCreateNew={() => setView({ name: 'newJobAnalysis' })}
-        />
-      )}
-      {view.name === 'jobAnalysisDetail' && (
-        <JobAnalysisDetailPage
-          key={view.id}
-          analysisId={view.id}
-          onBack={() => setView({ name: 'jobAnalyses' })}
-          onDeleted={() => setView({ name: 'jobAnalyses' })}
-          onAnalyzed={(draftId) => setView({ name: 'analysisDraftReview', id: draftId, returnToJobAnalysisId: view.id })}
-        />
-      )}
-      {view.name === 'newJobAnalysis' && (
-        <NewJobAnalysisPage onCreated={(id) => setView({ name: 'jobAnalysisDetail', id })} onCancel={() => setView({ name: 'jobAnalyses' })} />
-      )}
-      {view.name === 'analysisDraftReview' && (
-        <AnalysisDraftReviewPage
-          key={view.id}
-          draftId={view.id}
-          onApplied={() => setView({ name: 'jobAnalysisDetail', id: view.returnToJobAnalysisId })}
-          onBack={() => setView({ name: 'jobAnalysisDetail', id: view.returnToJobAnalysisId })}
-        />
-      )}
-      {view.name === 'interviewNotes' && (
-        <InterviewNotesListPage
-          onSelectNote={(id) => setView({ name: 'interviewNoteDetail', id })}
-          onCreateNew={() => setView({ name: 'newInterviewNote' })}
-        />
-      )}
-      {view.name === 'interviewNoteDetail' && (
-        <InterviewNoteDetailPage
-          key={view.id}
-          noteId={view.id}
-          onBack={() => setView({ name: 'interviewNotes' })}
-          onDeleted={() => setView({ name: 'interviewNotes' })}
-        />
-      )}
-      {view.name === 'newInterviewNote' && (
-        <InterviewNoteForm
-          mode="create"
-          onCreated={(id) => setView({ name: 'interviewNoteDetail', id })}
-          onCancel={() => setView({ name: 'interviewNotes' })}
-        />
-      )}
+      <ProfileHubPage />
     </AppShell>
   )
 }

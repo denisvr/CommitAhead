@@ -10,6 +10,27 @@
 -- regardless of RLS — only commitahead_app (used exclusively by the backend) is granted access.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
+-- Shared owner-scoping helper every business-domain table's RLS policy calls (see
+-- 004_rls_phase2.sql) — defined once here rather than per-phase-script, since every later phase
+-- depends on it. A NULL comparison is never true, so a request with no owner context matches
+-- zero rows on every owner-scoped table, by construction — not by a default-deny policy that has
+-- to be remembered. The application sets the underlying value once per request,
+-- transaction-locally, via RlsSessionContext.RunInOwnerScopeAsync
+-- (SELECT set_config('app.current_user_id', <id>, true)) — never a session/connection-level SET,
+-- which could leak into a later request that reuses the same pooled physical connection. See
+-- docs/architecture/persistence.md "Supabase RLS". `true` in current_setting's second argument
+-- means "missing_ok" — an unscoped request hits exactly this on its next unscoped use, so every
+-- policy goes through this helper instead of casting current_setting(...) directly.
+CREATE OR REPLACE FUNCTION app_current_owner_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT NULLIF(current_setting('app.current_user_id', true), '')::uuid;
+$$;
+
+GRANT EXECUTE ON FUNCTION app_current_owner_user_id() TO commitahead_app;
+
 -- SELECT only: the running application resolves `sub` -> User for every request (ADR-0015) but
 -- never creates, enables, or edits a user row itself — provisioning a new invited user is a
 -- privileged, out-of-band operation (see docs/tbd.md "Invited-user provisioning"), run with a
@@ -26,10 +47,9 @@ GRANT SELECT ON users TO commitahead_app;
 -- The `users` table itself is the identity table the backend resolves `sub` against (ADR-0015),
 -- not a user-owned business resource — so commitahead_app can read every row here (there is no
 -- owner_user_id column to scope by), but only SELECT, per the grant above. FOR SELECT makes that
--- explicit at the policy level too, not just via the grant. Future business-domain tables
--- (StudyItem, ProfessionalProfile, ...) instead scope their policies by an owner_user_id column,
--- e.g.:
---   CREATE POLICY owner_isolation ON study_items
+-- explicit at the policy level too, not just via the grant. Business-domain tables (see
+-- 004_rls_phase2.sql) instead scope their policies by an owner_user_id column, e.g.:
+--   CREATE POLICY owner_isolation ON professional_profiles
 --     USING (owner_user_id = current_setting('app.current_user_id')::uuid);
 -- DROP + CREATE (not CREATE POLICY IF NOT EXISTS, which Postgres doesn't support) makes this
 -- script safe to re-run — the reproducible setup flow (backend/scripts/setup-local-db.ps1) may

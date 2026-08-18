@@ -5,8 +5,9 @@ export type CVPresentationResponse = components['schemas']['CVPresentationRespon
 export type CreateCVPresentationRequest = components['schemas']['CreateCVPresentationRequest']
 export type UpdateCVPresentationRequest = components['schemas']['UpdateCVPresentationRequest']
 
-// See study-items/api.ts for why this widening-narrow exists — every response here always sends a
-// real JSON number, this just narrows openapi-typescript's widened `number | string` back.
+// openapi-typescript widens .NET's numeric formats (int32/double) to `number | string` since
+// JSON Schema's "format" annotation doesn't guarantee the wire value is never quoted — every
+// response from this API always sends real JSON numbers, so this narrows back at the boundary.
 export function toNumber(value: number | string): number {
   return typeof value === 'number' ? value : Number(value)
 }
@@ -22,12 +23,16 @@ async function csrfHeaders(): Promise<{ 'X-CSRF-TOKEN': string }> {
 
 async function describeError(response: Response, fallback: string): Promise<string> {
   try {
-    const body = (await response.clone().json()) as { message?: string }
+    const body = (await response.clone().json()) as { message?: string; detail?: string }
+    if (body?.detail) {
+      return body.detail
+    }
+
     if (body?.message) {
       return body.message
     }
   } catch {
-    // Response body wasn't JSON (or had no message) — fall back below.
+    // Response body wasn't JSON (or had no message/detail) — fall back below.
   }
 
   return fallback

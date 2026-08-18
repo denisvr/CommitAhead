@@ -5,6 +5,8 @@ date: 2026-08-07
 
 # Supabase Storage authentication forwards the current user's JWT, not a service-role key
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 The secure PDF-upload flow (ADR-0010) needs the backend to upload and, on rejection or deletion,

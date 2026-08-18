@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # Evidence sources are not StudyItems
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 The system covers six preparation areas. Three of them — job analyses, interview notes, and CV presentations — are documents that inform preparation priorities. The other four (Theory, LeetCode, SystemDesign, Behavioral) are topics to actively study. An early design question was whether all six should share the same entity and queue.

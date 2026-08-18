@@ -7,7 +7,7 @@
 # what makes the two workflows share one db/network/volume instead of silently forking into two.
 #
 # Usage: see README.md "Local Development (Fully Containerized, Hot-Reload)". In short:
-#   cp backend/.env.example backend/.env   # then edit real values (Supabase/Anthropic optional)
+#   cp backend/.env.example backend/.env   # then edit real values (Supabase optional)
 #   docker compose -f backend/docker-compose.yml -f docker-compose.dev.yml up -d --build
 #
 # No host .NET SDK and no host Node.js required at all — db-init builds and runs a self-contained
@@ -58,14 +58,13 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__CommitAheadDb: "Host=db;Port=5432;Database=commitahead;Username=commitahead_app;Password=${COMMITAHEAD_APP_PASSWORD}"
       # Optional — same as running on the host. Leave unset and the app still starts; every
-      # AnalyzeX/login/refresh use case fails closed with a clear error instead of a silent
-      # fallback, exactly like an unconfigured host `dotnet run` today. For local Supabase
-      # (ADR-0023, `supabase start`), SUPABASE_URL must be http://host.docker.internal:54321, not
-      # 127.0.0.1 — that address means this container itself, not the host running Supabase's own
-      # containers. See README.md "Local Supabase (Development)".
+      # login/refresh use case fails closed with a clear error instead of a silent fallback,
+      # exactly like an unconfigured host `dotnet run` today. For local Supabase (ADR-0023,
+      # `supabase start`), SUPABASE_URL must be http://host.docker.internal:54321, not 127.0.0.1 —
+      # that address means this container itself, not the host running Supabase's own containers.
+      # See README.md "Local Supabase (Development)".
       Supabase__Url: ${SUPABASE_URL:-}
       Supabase__AnonKey: ${SUPABASE_ANON_KEY:-}
-      AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     ports:
       # Same port host `dotnet run` already uses (launchSettings.json), so the callback URL
       # already registered in Supabase's redirect allow-list (README.md) needs no change.

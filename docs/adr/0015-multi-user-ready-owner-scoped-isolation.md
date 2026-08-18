@@ -25,7 +25,7 @@ This ADR supersedes item 4 of ADR-0006 (the `sub == OWNER_USER_ID` check) and th
 ## Consequences
 
 - `OWNER_USER_ID` is removed as a concept; there is no such environment variable or protected configuration value to provision.
-- Every future aggregate that is user-owned (StudyItem, ProfessionalProfile, JobAnalysis, InterviewNote, ScoringConfig, etc.) carries an `OwnerUserId` column from the start, once those aggregates are implemented — this ADR does not implement them.
+- Every future aggregate that is user-owned (ProfessionalProfile, CVPresentation, etc.) carries an `OwnerUserId` column from the start, once those aggregates are implemented — this ADR does not implement them.
 - `docs/architecture/solution.md`, `docs/security/threat-model.md`, `docs/architecture/persistence.md`, and `docs/deployment/strategy.md` are updated to remove `OWNER_USER_ID` references and describe owner-scoped authorization instead.
 - Nothing in Phase 0A changes as a result: there is no auth, persistence, or domain layer yet. This decision governs how those layers must be built when their phases begin.
 - How invited users are actually provisioned (Supabase Admin API, manual `User` row insertion, an admin CLI) is a new open decision recorded in `docs/tbd.md` — not resolved here.

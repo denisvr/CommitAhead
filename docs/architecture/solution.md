@@ -14,47 +14,40 @@ ASP.NET Core 10 Web API  ──────────────────�
   │                                                         │
   │ Application layer                                       │
   │   Feature-folder use case classes                       │
-  │   Repository interfaces (IStudyItemRepository, …)      │
-  │   IAIProvider interface                                 │
+  │   Repository interfaces (IProfessionalProfileRepository,│
+  │   ICVPresentationRepository)                            │
   │                                                         │
   │ Domain layer                                            │
   │   Aggregates, value objects, invariants                 │
-  │   EffectiveScorePolicy (pure formula + invariants)      │
   │                                                         │
   │ Infrastructure layer                                    │
   │   EF Core 10 + Npgsql (CommitAheadDbContext)           │
   │   Repository implementations                            │
-  │   ProviderAIAdapter : IAIProvider  (Anthropic, ADR-0019)│
-  │   PDF text extractor                                    │
-  │   Supabase Storage client                               │
+  │   QuestPdfCVExportRenderer : IExportRenderer (ADR-0020) │
   └──────────────────────────────────────────────────────┘
-        │                    │                    │                    │
-   PostgreSQL          Supabase Auth        Supabase Storage     Anthropic API
-   (Supabase)          (JWKS + magic        (private bucket;     (Claude Haiku 4.5,
-                        link + PKCE)         backend-only)         ADR-0019)
+        │                    │
+   PostgreSQL          Supabase Auth
+   (Supabase)          (JWKS + magic
+                        link + PKCE)
 ```
 
 ## Layer Responsibilities
 
 ### Domain (`CommitAhead.Domain`)
 - Aggregates, value objects, enums, domain invariants
-- `EffectiveScorePolicy`: pure formula and validation over already-resolved ScoringWeights; it performs no persistence or configuration lookup
 - No dependencies on frameworks, EF Core, ASP.NET, or Supabase
 - Contains repository interfaces? **No** — repository interfaces live in Application
 
 ### Application (`CommitAhead.Application`)
-- One use case class per operation (`CreateStudyItemUseCase`, `ApplyAnalysisDraftUseCase`, …)
-- Repository interfaces (`IStudyItemRepository`, `IJobAnalysisRepository`, …)
-- `IAIProvider` interface
+- One use case class per operation (`CreateProfessionalProfileUseCase`, `ExportCVPresentationUseCase`, …)
+- Repository interfaces (`IProfessionalProfileRepository`, `ICVPresentationRepository`)
 - Orchestrates domain objects and repositories; contains no EF Core or HTTP concerns
 - Returns result objects (not domain aggregates) to the API layer
 
 ### Infrastructure (`CommitAhead.Infrastructure`)
 - `CommitAheadDbContext` (EF Core 10 + Npgsql)
 - Repository implementations
-- `ProviderAIAdapter : IAIProvider` (renamed after provider selection; see `docs/tbd.md`)
-- PDF text extraction (text-only library; no rendering)
-- Supabase Storage client (file upload, quarantine key generation, delete)
+- `QuestPdfCVExportRenderer : IExportRenderer` (CV PDF export, ADR-0020)
 - ASP.NET Data Protection key ring configuration
 
 ### API (`CommitAhead.Api`)
@@ -73,36 +66,22 @@ ASP.NET Core 10 Web API  ──────────────────�
   custom-property tokens (ADR-0016)
 - Reading Room + Bookmark design contract from `docs/design/design-system/`
 - MSW for component test isolation
-- No Supabase SDK; no direct AI calls; all API calls go through the generated client
+- No Supabase SDK; all API calls go through the generated client
 - No UI framework, CSS-in-JS, inline style attributes, CDN assets, runtime-injected SVG sprites,
   or design-prototype code
 - Production assets are built by Vite and served by Kestrel from the same origin as the API; the local Vite development origin is explicitly allowlisted only in Development
 
 ## Key Flows
 
-### Ranked Study Queue Load
-1. Controller calls `GetRankedStudyQueueUseCase`.
-2. Application resolves ScoringWeights from the optional override or code defaults and passes them to `IRankedStudyQueueQuery`.
-3. The Infrastructure query joins `StudyReview` and `EvidenceLink`, applies the domain-defined formula using the supplied weights, and orders by EffectiveScore plus the configured deterministic tiebreaker.
-4. Returns ordered list of StudyItem projections with computed fields.
+### Professional Profile Update
+1. Controller calls the relevant use case (e.g. `ReplaceExperienceUseCase`), scoped to the authenticated request's `OwnerUserId`.
+2. Use case loads the owner's `ProfessionalProfile`, applies the domain-validated replacement, and persists it via `IProfessionalProfileRepository`.
+3. `DanglingSelectionCleanup` removes any now-invalid entry ID from every `CVPresentation`'s selection arrays for that owner, so canonical edits never leave a presentation referencing a deleted entry.
+4. Returns the updated projection to the controller.
 
-### AI Analysis Command (e.g. AnalyzeJobAnalysis)
-1. Controller validates CSRF + auth; checks idempotency key.
-2. Use case acquires the global AI-call slot, checks the pending-draft guard, then atomically creates a Reserved AIUsageRecord after checking daily/monthly budget and the unique idempotency key.
-3. Prepares input: extracts `JobSource.extractedText`; fetches minimal ProfessionalProfile skills summary + compact StudyItem catalogue.
-4. Calls `IAIProvider.AnalyzeJobAnalysisAsync(input)` with configured token limits.
-5. Provider returns structured proposals; use case validates IDs, enums, weights, and lengths.
-6. In one database transaction, creates the `AnalysisDraft` (Pending) and reconciles the AIUsageRecord to Completed with actual provider usage and `analysisDraftId`; provider failures transition the reservation to Failed.
-7. Returns the draft to the controller. Repeating a completed idempotency key returns the existing draft without another provider call.
-
-### Apply AnalysisDraft
-1. Controller calls `ApplyAnalysisDraftUseCase(draftId, decisions[])`, providing exactly one Accepted/Rejected decision per proposal and a complete user-finalised payload for every accepted actionable proposal.
-2. Use case loads draft; asserts status = Pending.
-3. Within a single DB transaction:
-   - Validate that every proposal appears exactly once and that accepted final payloads are valid.
-   - Preserve immutable proposed payloads and persist final Accepted/Rejected statuses plus separate accepted payloads.
-   - Accepted `LinkProposal`s → create `EvidenceLink`s (validates uniqueness).
-   - Accepted `StudyItemProposal`s → create `StudyItem`s.
-   - Accepted `StructuredSuggestion`s → fire the typed domain command (e.g. `AddJobRequirement`).
-   - Mark draft status = Applied.
-4. Returns applied draft.
+### CV Presentation Export
+1. Controller calls `ExportCVPresentationUseCase(id)`.
+2. Use case loads the `CVPresentation` and its owning `ProfessionalProfile`; rejects unsupported templates or an unsupported photo request before rendering.
+3. Resolves the presentation's ordered selections against the profile's canonical entries into a `CVExportDocument` (locale-formatted dates, sanitised Markdown, visibility flags applied).
+4. Calls `IExportRenderer.Render(document)` (`QuestPdfCVExportRenderer` in Infrastructure); rejects the result if the rendered page count exceeds `PageLimit`.
+5. Returns the PDF bytes to the controller for download.

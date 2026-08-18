@@ -2,7 +2,7 @@
 
 ## Purpose
 
-CommitAhead is a private, invite-only web application for structured technical interview preparation. It maintains a ranked study queue, a professional profile, and an evidence layer (job analyses, interview notes) that together answer the question: *what should I study next, and why?*
+CommitAhead is a private, invite-only web application for maintaining one canonical professional profile and curating it into locale-specific, exportable CV presentations. It answers the question: *what does my CV look like for this market, and can I get a document out of it?*
 
 ## Users
 
@@ -10,31 +10,23 @@ Public signup is disabled; accounts are provisioned out-of-band (see `docs/tbd.m
 
 ## Design Principles
 
-1. **Explicit AI.** AI is triggered only by deliberate user action on a specific evidence source. Nothing runs automatically or on a schedule.
-2. **Human confirmation.** Every AI proposal requires explicit per-proposal acceptance before any domain state changes.
-3. **Transparent prioritisation.** EffectiveScore is derived from three visible, understandable inputs — Importance, Demand, and Mastery gap — not a black box.
-4. **Minimal complexity.** Defer everything not needed for the first production-ready cycle. If a feature requires explaining why it belongs in MVP, it probably does not.
-5. **Private by default.** No product analytics or third-party telemetry. Minimal metadata-only operational logs and AI usage/cost records are retained under the security policy. No external data sharing occurs beyond the chosen AI provider, which must meet EU privacy requirements.
+1. **Minimal complexity.** Defer everything not needed for the first production-ready cycle. If a feature requires explaining why it belongs in MVP, it probably does not.
+2. **Private by default.** No product analytics or third-party telemetry. Minimal metadata-only operational logs are retained under the security policy. No external data sharing occurs.
 
 ## MVP Scope
 
-The MVP delivers one production-ready cycle across all six preparation areas:
+The MVP delivers one production-ready cycle for professional profile management:
 
 | Area | What it covers |
 |---|---|
-| **Technical Theory** | Concepts, CAP theorem, SOLID, design patterns, etc. |
-| **LeetCode** | Problems with approach notes, complexity analysis, optional C# solutions |
-| **System Design** | Structured prompts, requirements, evaluation checklists, reference solutions |
-| **Behavioral** | STAR stories mapped to competencies and question variants |
-| **Professional Profile** | CV presentations for multiple target markets and locales |
-| **Evidence Analysis** | Job postings and interview notes → EvidenceLinks → prioritised study queue |
+| **Professional Profile** | One canonical record — experience, education, skills, languages, certifications, projects, and links |
+| **CV Presentations** | Curated, ordered, locale-specific views over the profile for multiple target markets, exported as PDF |
 
 ## MVP Completion Criteria
 
 The MVP is complete when:
-- The study queue ranks items correctly using the EffectiveScore formula.
-- All three AI analysis commands produce valid AnalysisDrafts and apply accepted proposals correctly.
-- At least one CVPresentation can be edited and exported.
+- A ProfessionalProfile and its canonical collections can be fully maintained (create, edit, delete).
+- At least one CVPresentation can be created, have its selections curated and ordered, edited, and exported to a PDF that reflects its formatting rules (visibility flags, locale, page limit).
 - The security controls described in `docs/security/threat-model.md` are in place.
 - All CI quality gates pass (see `CLAUDE.md`).
 - A pre-internet-deployment security checklist has been completed.

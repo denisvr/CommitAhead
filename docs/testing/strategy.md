@@ -5,25 +5,12 @@
 | Layer | Tools |
 |---|---|
 | Domain unit | xUnit, built-in assertions |
-| Use-case | xUnit, handwritten repository fakes, `FakeAIProvider` |
+| Use-case | xUnit, handwritten repository fakes |
 | Repository / integration | xUnit, Testcontainers.PostgreSql, Respawn (serial execution) |
-| API | xUnit, WebApplicationFactory, shared Testcontainers DB, `FakeAIProvider` |
+| API | xUnit, WebApplicationFactory, shared Testcontainers DB |
 | Architecture | NetArchTest |
 | Frontend component | Vitest, React Testing Library, MSW |
-| E2E | Playwright, Chromium only (foundation implemented and verified; all four journeys implemented and passing — Layer 7 is the normative contract) |
-| AI adapter | xUnit, stubbed HTTP/SDK responses |
-
-**Absolute rule**: zero real *external* AI calls in any automated test — no test, at any layer, may
-reach a real provider endpoint. How that rule is satisfied differs by layer, and both forms are
-compliant:
-
-- **Layers 1–6** use `FakeAIProvider` (use-case and API tests) or stubbed HTTP responses (the AI
-  adapter's own tests). No real `IAIProvider` implementation makes a network call.
-- **Layer 7 (E2E)** is the deliberate exception to the *mechanism*, not to the rule: it runs the
-  real `AnthropicAIProvider` against a **deterministic local HTTP stub** inside the E2E stack.
-  `FakeAIProvider` lives in test assemblies and cannot be reached from the production image, and
-  E2E's whole purpose is to exercise the real deployable artifact — so the provider is redirected,
-  not replaced. Nothing leaves the machine. See Layer 7 §7.6.
+| E2E | Playwright, Chromium only (foundation implemented and verified; both approved journeys implemented and passing — Layer 7 is the normative contract) |
 
 ---
 
@@ -32,42 +19,27 @@ compliant:
 **What**: Pure domain logic — no DB, no HTTP, no I/O.
 
 **Coverage:**
-- EffectiveScore formula (representative boundaries: min=8, max=100, override=0, override=100)
-- Demand clamping: `min(Σ weights, 5)`
-- Mastery derivation: `initialMastery` before first review; average of up to 3 most recent ratings
-- StudyItem deletion guard (blocked when reviews exist — EvidenceLink check is integration)
-- Tag normalisation: trim → lowercase → kebab-case; deduplication
-- `AnalysisDraft` status transitions: `Pending → Applied`, `Pending → Discarded`; re-applying non-Pending throws
-- Apply decision-set validation: every proposal represented exactly once; duplicates/omissions rejected; accepted actionable proposals require complete final payloads; accepted StudyItemProposal requires user-selected InitialMastery
-- Proposal statuses become Accepted/Rejected during Apply and cannot change afterward
-- `PriorityOverride` validation: score ∈ [0,100], reason non-empty
-- `StudyReview` confidence rating bounds: ∈ [1,5]
-- `ScoringConfig` validation: all weights non-negative, sum = 100
+- `User` invariants
+- `ProfessionalProfile` and its canonical entries (`ContactInfo`, `ExperienceEntry`, `EducationEntry`, `Skill`, `LanguageEntry`, `CertificationEntry`, `ProjectEntry`, `ProfileLink`): construction validation, `Replace*` collection-replacement semantics, and skill-reference invariants (invariant 21/22 — an Experience/Project entry may reference only Skills that exist in the same profile)
+- `CVPresentation`: construction validation (non-empty label, recognised locale, positive page limit), `Update` replacing every field atomically (throwing and leaving state unchanged on an invalid value), and `Replace*Selections` preserving given order while rejecting empty or duplicate entry IDs
 - `YearMonth` ordering and equality
-- `JobGap` invariant: no gap for a fully matched requirement
-- `InterviewNote.otherLabel` required when `round = Other`
-- Typed detail invariants (e.g. `LeetCodeDetails` problem number > 0 when present)
 
-**Not tested here**: persistence, HTTP, AI calls, use case orchestration, EF Core mappings.
+**Not tested here**: persistence, HTTP, use case orchestration, EF Core mappings.
 
 ---
 
 ## Layer 2: Application Use-Case Tests
 
-**What**: Non-trivial orchestration with handwritten fakes. No real DB; no real AI.
+**What**: Non-trivial orchestration with handwritten fakes. No real DB.
 
 **Coverage:**
-- `CreateStudyItem`, `SubmitStudyReview`, `ArchiveStudyItem`
-- `ApplyAnalysisDraft`: original payloads preserved, accepted payloads and complete decisions persisted; accepted LinkProposals → EvidenceLinks; accepted StudyItemProposals → StudyItems; rejected proposals remain; omissions/duplicates and applying non-Pending throw
-- `AnalyzeJobAnalysis` via `FakeAIProvider` (success scenario): draft created with correct proposals; source entity not mutated
-- `AnalyzeJobAnalysis` via `FakeAIProvider` (failure scenarios): timeout, provider failure, malformed proposals, duplicates, empty output
-- One-Pending-draft-per-source guard: attempting a second analysis while a Pending draft exists is rejected
-- CVPresentation reference validation: selectedExperienceIds must reference valid canonical entries
-- AnalyzeCVPresentation resolves only selected canonical content and the compact StudyItem catalogue; AnalyzeInterviewNote also receives the compact catalogue
-- `UpdateScoringConfig`: weights validated before persisting
-- `SetPriorityOverride` / `ClearPriorityOverride`
-- `CreateJobAnalysisFromUpload`: happy path; empty/oversized/wrong-MIME/wrong-filename/wrong-magic-bytes content rejected before any Storage call; an extraction or Storage failure triggers cleanup with the exact known key and either a safe validation error or the original infrastructure exception, depending on which failed; a genuine caller cancellation still runs cleanup but propagates unchanged; both the fake Storage client and the fake extractor receive the exact same complete bytes
-- `DeleteJobAnalysis`: an `UploadedFile` source's Storage object is deleted after the DB delete commits; a `PastedText` source never calls Storage; a Storage-delete failure still reports success (the DB row is already gone)
+- `CreateProfessionalProfile`, `GetProfessionalProfile`, `UpdateProfessionalProfile`
+- `Replace*UseCase` for each ProfessionalProfile canonical collection (Experience, Education, Skills, Languages, Certifications, Projects, ProfileLinks): validation before persisting, and `DanglingSelectionCleanup` removing a deleted entry's ID from every CVPresentation's selection arrays
+- `CreateCVPresentation`, `GetCVPresentation(s)`, `UpdateCVPresentation`, `DeleteCVPresentation`
+- CVPresentation reference validation: every selected entry ID must belong to the same ProfessionalProfile the presentation references (invariant 23)
+- `Replace*SelectionsUseCase` for each CVPresentation selection: order preserved, cross-profile references rejected
+- `ExportCVPresentation`: unsupported template and unsupported-photo rejected before rendering; PageLimit enforced against the renderer's actual reported page count
+- Auth use cases (`Login`, `Callback`, `Refresh`, `Logout`) against a fake Supabase Auth client
 
 **Not tested here**: DB constraints, cascade behaviour, transaction atomicity (→ integration tests).
 
@@ -78,51 +50,35 @@ compliant:
 **What**: Real PostgreSQL via Testcontainers. Migrations applied once per session; Respawn resets data between tests. Tests run **serially** against the shared container.
 
 **Coverage:**
-- EF Core mapping round-trips for all aggregates (write → read → assert equality)
-- `JobSource` discriminated union round-trips: PastedText and UploadedFile
-- Typed detail variants round-trips: all four categories
-- DB unique constraint on `(source_type, source_id, target_study_item_id)` for `EvidenceLink`
-- Partial unique index: one-Pending-draft-per-source
-- Non-cascade FK: StudyItem delete blocked when EvidenceLinks exist
-- Cascade (application-managed): source deletion → EvidenceLinks plus AnalysisDraft/proposal children deleted atomically; content-free AIUsageRecords retained
-- JobAnalysis deletion sets optional `InterviewNote.jobAnalysisId` references to null without deleting InterviewNotes
-- `ApplyAnalysisDraft` atomicity: partial failure rolls back entirely
-- CVPresentation ordered selection tables: FK enforcement, same-presentation position uniqueness, order round-trip, application rejection of entries from another profile, and canonical-entry deletion removing only affected selections
+- EF Core mapping round-trips for all aggregates (write → read → assert equality): `User`, `ProfessionalProfile` and its seven canonical child tables, `CVPresentation`
+- CVPresentation ordered selection arrays: order round-trip, application rejection of entries from another profile, and canonical-entry deletion removing only affected selections (`DanglingSelectionCleanup`)
 - ProfessionalProfile skill references: Experience/Project may reference only Skills in the same profile; referenced Skill deletion is blocked
-- Ranked-list query: correct ordering with mixed override and computed scores
-- `ScoringConfig` resolve: override row used when present; code defaults when absent
-- Mastery derivation in query: initialMastery before first review; avg of up to 3 most recent
-- AIUsageRecord: unique idempotency key, atomic Reserved insertion, daily/monthly budget calculation, Completed reconciliation, Failed release, lazy expiration of stale reservations, and replay returning the existing draft
-- **RLS/runtime-role isolation** (Phase 1, `RlsIsolationTests`): a dedicated fixture bootstraps its own Testcontainers instance the same way `setup-local-db.ps1` bootstraps a real one (roles → migrations → RLS scripts) and connects as the real, least-privileged `commitahead_app` role — never the Testcontainers-owner connection every other test in this layer uses. Proves: an owner can CRUD their own StudyItems; cannot read or mutate another owner's rows even via a raw `UPDATE` with no `WHERE owner_user_id` clause; a connection with no owner context set sees zero business rows; the runtime role cannot perform DDL; the setup scripts remain safe when applied a second time.
-- **RLS/runtime-role isolation** (Phase 2, `RlsIsolationPhase2Tests`): the same bootstrap and proof shape, extended through `004_rls_phase2.sql`, against `professional_profiles`/`cv_presentations` (owner-scoped directly) and a representative transitively-scoped child table (`skills`, via `professional_profile_id`).
-- **RLS/runtime-role isolation** (Phase 3, `RlsIsolationPhase3Tests`): the same bootstrap and proof shape, extended through `005_rls_phase3.sql`, against `job_analyses`/`interview_notes` (owner-scoped directly) and a representative transitively-scoped child table (`job_requirements`, via `job_analysis_id`).
-- **RLS/runtime-role isolation** (Phase 4, `RlsIsolationPhase4Tests`): the same bootstrap and proof shape, extended through `007_rls_phase4.sql`, against `analysis_drafts`/`ai_usage_records` (owner-scoped directly) and a representative transitively-scoped child table (`link_proposals`, via `analysis_draft_id`).
-- **JobAnalysis-upload adapters** (`PdfPigTextExtractorTests`, `SupabaseStorageClientTests`): the real PdfPig library against hand-crafted minimal PDF fixtures (never authored with PdfPig itself), and the real Storage HTTP client against a stubbed handler (never a live Supabase call) — see "PDF and CV Verification" below for exactly what each proves.
+- `CVPresentation`'s composite FK against `professional_profiles (id, owner_user_id)`: a cross-owner reference is rejected by the database itself, independent of the application-level check
+- `SupabaseAuthClient` (real HTTP client against a stubbed handler, never a live Supabase call): exact `redirect_to` query parameter and request body for magic-link initiation; refresh and logout request/response handling
+- **RLS/runtime-role isolation** (`RlsIsolationPhase2Tests`): a dedicated fixture bootstraps its own Testcontainers instance the same way `setup-local-db.ps1` bootstraps a real one (roles → migrations → `004_rls_phase2.sql`) and connects as the real, least-privileged `commitahead_app` role — never the Testcontainers-owner connection every other test in this layer uses. Proves: an owner can CRUD their own `professional_profiles`/`cv_presentations` rows and the seven transitively-scoped child tables (via a representative table, `skills`); cannot read or mutate another owner's rows even via a raw `UPDATE` with no `WHERE owner_user_id` clause; a connection with no owner context set sees zero business rows; the runtime role cannot perform DDL; the setup scripts remain safe when applied a second time.
 
 ---
 
 ## Layer 4: API Tests
 
-**What**: Full ASP.NET Core pipeline via WebApplicationFactory with shared Testcontainers PostgreSQL and `FakeAIProvider`. State verified through HTTP responses, not DbContext.
+**What**: Full ASP.NET Core pipeline via WebApplicationFactory with shared Testcontainers PostgreSQL. State verified through HTTP responses, not DbContext.
 
 **Coverage:**
-- Routing and serialisation for representative happy and error paths per controller
+- Routing and serialisation for representative happy and error paths per controller (`ProfessionalProfileController`, `CVPresentationController`, auth endpoints, `/api/me`, `/api/health`)
 - Malformed JSON / missing required fields caught by automatic `[ApiController]` model binding → 400
 - Semantic/domain validation (out-of-range values, invalid enums, invariant violations — thrown as `ArgumentException` and mapped centrally by `DomainValidationExceptionFilter`) → 422
-- Missing resources → 404; invalid related IDs → 422; conflict (e.g. duplicate link) → 409
+- Missing resources → 404; invalid related IDs → 422
 - **Auth**: unauthenticated → 401; unknown/disabled-user JWT → 403 (fallback authorization policy, ADR-0015) — never blocks the `[AllowAnonymous]` auth endpoints themselves
 - Dedicated locally-signed JWT tests for token validation (issuer, audience, signature, expiry, sub)
 - **CSRF**: state-changing requests without token → 400/403
 - **Security headers**: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` on API responses
 - **CORS**: unapproved preflights denied and no response grants `Access-Control-Allow-Origin` to another origin; state-changing requests remain CSRF-protected
-- **Malicious uploads**: invalid PDF, encrypted PDF, image-only PDF, wrong MIME, oversized → 422 with error
 - **Markdown storage boundary**: Markdown is accepted as raw text within length limits and returned as JSON without server-side HTML rendering
-- AI schema validation: malformed `FakeAIProvider` scenario → draft not created; error returned
-- Idempotency: duplicate AI command with same key → same draft returned, not duplicated
-- Rate limit: 11th AI call within the window → 429 with `Retry-After`
-- Budget enforcement: call that would exceed daily/monthly limit → 429 with safe error code `AI_BUDGET_EXCEEDED`
+- CV export endpoint: successful export returns the PDF; unsupported template/photo and page-limit-exceeded map to their documented error responses
 - Log redaction: assert sensitive fields (tokens, cookies, bodies) absent from structured logs
 - OpenAPI contract drift: regenerate TypeScript client + compile — compilation failure = contract broken
+- `E2ESessionController`: unreachable (404) under `Development`, `Docker`, and `Production`; reachable and correct only under `E2E`; absent from the generated OpenAPI document; minted token claims/lifetime exactly as specified (see Layer 7 §7.3)
+- `E2EConfigurationGuard`: throws on any `E2E:*` value present outside `E2E`, on a missing required value inside `E2E`, and on a non-sentinel `Supabase:Url`/`Supabase:AnonKey`/`Auth:CallbackUrl` value inside `E2E`
 
 ---
 
@@ -136,56 +92,19 @@ Five assembly-level rules (see `CLAUDE.md` for full list).
 
 Vitest + React Testing Library + MSW cover:
 
-- Typed StudyItem forms and validation
-- AnalysisDraft review, complete proposal decisions, editable accepted payloads, and Apply submission
-- SystemDesign reference solution reveal (transient UI state)
+- ProfessionalProfile editing forms and validation, for the profile itself and each canonical collection (Experience, Education, Skills, Languages, Certifications, Projects, ProfileLinks)
 - CVPresentation editing and ordered selections
-- JobAnalysis pasted-text and upload flows
 - Restricted Markdown rendering: embedded HTML is escaped/ignored; `javascript:` and `data:` links, images, and iframes never reach the DOM
 - Production design primitives: keyboard interaction, visible focus behaviour, accessible names,
   disabled/loading states, and representative mobile/desktop layouts
 - Frontend source guard: production components use CSS Modules/tokens and do not introduce inline
   style attributes or runtime-injected design markup
 
-Score, Demand, and Mastery are rendered from API responses and are never recomputed in React. MSW provides representative success, loading, validation, unauthorised, and server-error variants per flow.
+Values computed by the backend (e.g. CV export eligibility) are rendered from API responses and are never recomputed in React. MSW provides representative success, loading, validation, unauthorised, and server-error variants per flow.
 
 ---
 
-## FakeAIProvider Scenarios
-
-Six deterministic fixture responses, one set per AI command:
-
-| Scenario | Description |
-|---|---|
-| `Success` | Realistic proposals: 2 LinkProposals, 1 StudyItemProposal, 1 StructuredSuggestion, 1 AdvisorySuggestion |
-| `EmptyOutput` | Provider returns valid response with zero proposals |
-| `MalformedProposals` | Invalid IDs, out-of-range weights, missing required fields |
-| `Duplicates` | Same source–target link proposed twice in one response |
-| `Timeout` | Provider call times out after configured limit |
-| `ProviderFailure` | Provider returns a 5xx error |
-
----
-
-## AI Adapter Tests
-
-The real adapter (`ProviderAIAdapter`, renamed after provider selection) is tested with stubbed HTTP/SDK responses:
-- Request construction: correct model, token limits, system/user message separation
-- Response deserialisation: all proposal types correctly mapped
-- Error mapping: 429 → rate limit error; 5xx → provider failure; timeout → timeout error
-- Token limit enforcement: oversized inputs are rejected before calling the provider; no silent truncation
-
----
-
-## PDF and CV Verification
-
-**PDF ingestion (runs on every PR):**
-- Normalised text extraction from a hand-crafted minimal valid PDF fixture (`PdfPigTextExtractorTests`, `JobAnalysesEndpointTests`)
-- Malformed/non-PDF bytes, image-only PDF (no extractable text), too many pages (>20), extracted text exceeding the 50,000-character cap, and words from adjacent pages never merging at the page boundary → each proven explicitly against the *real* PdfPig extractor, not truncated (`PdfPigTextExtractorTests`)
-- An encrypted PDF — a small, real, password-protected PDF (RC4-128, generated once with the independent `pypdf` library) committed as a binary fixture (`JobAnalyses/Fixtures/encrypted.pdf`, embedded into `CommitAhead.Infrastructure.Tests`) — → PdfPig, opened without that password, fails authentication and throws for real (`PdfPigTextExtractorTests`); not a claim resting on the source's catch clause alone
-- Wrong declared MIME type, non-`.pdf` filename, missing `%PDF-` magic bytes, empty file, and content over 5 MB (enforced by actually counting bytes while copying, never by a trusted `Content-Length`) → 422, before any Storage call (`CreateJobAnalysisFromUploadUseCaseTests`, `JobAnalysesEndpointTests`)
-- A Storage upload/extraction failure after a successful upload triggers a best-effort delete of the exact known quarantine key before the rejection is reported, and either kind of Storage cleanup failure (this one, or the one after a JobAnalysis deletion) logs the orphaned object's key — never the exception itself — for manual remediation (`CreateJobAnalysisFromUploadUseCaseTests`, `DeleteJobAnalysisUseCaseTests`)
-- A JobGap referencing a nonexistent requirement, or a requirement that belongs to a different JobAnalysis, is rejected by a real PostgreSQL composite foreign key even when the in-memory invariant is bypassed directly — defense-in-depth, not just application-level validation (`JobAnalysisRepositoryTests`)
-- **Not covered by a fixture-driven test**: a genuine parser timeout — there is no deterministic way to force PdfPig (synchronous, uncancellable) past its 10-second best-effort budget without a pathological file; the use case's own handling of a `TimedOut` failure is covered via a fake extractor instead, which proves nothing about PdfPig's real timing. The 10-second budget itself is best-effort only: PdfPig has no cancellable API, so a slow parse can keep running on its own thread after the budget elapses or the caller cancels — container memory/CPU limits are the actual backstop, not an in-process guarantee.
+## CV Export Verification
 
 **CV export (runs on every PR — parsed content assertions):**
 - Required text present (name, role, key entries)
@@ -203,21 +122,13 @@ The real adapter (`ProviderAIAdapter`, renamed after provider selection) is test
 
 ## Layer 7: E2E Tests (Playwright — post-merge or manual)
 
-**Foundation implemented; all four journeys implemented and passing.** The Playwright project,
+**Foundation implemented; both approved journeys implemented and passing.** The Playwright project,
 configuration, fixtures, scripts, local `external-stub`, and the isolated E2E Docker stack all
-exist and are verified (§7.11). `tests/journeys/001-authenticated-access.spec.ts`,
-`tests/journeys/002-study-queue-ranking.spec.ts`, `tests/journeys/003-job-analysis-draft.spec.ts`,
-and `tests/journeys/004-cv-presentation-export.spec.ts` are written and pass — each verified
+exist and are verified (§7.11). `tests/journeys/001-authenticated-access.spec.ts` and
+`tests/journeys/004-cv-presentation-export.spec.ts` are written and pass — each verified
 standalone (confirming journey independence, per §7.1) and together via the guaranteed-teardown
 `npm run e2e:full`, with the external stub recording zero unexpected requests and the stack fully
-removed afterward. Journey 3 also surfaced and fixed a real, previously-undetected defect in
-`AnthropicStructuredOutputSchema` (Infrastructure): the schema declared the fields *inside* every
-StructuredSuggestion payload and StudyItemProposal details object in camelCase, while every actual
-consumer (`AiStructuredSuggestionValidator`, `AiSimpleSuggestionValidator`,
-`StudyItemDetailsJsonParser`, the frontend's `payloadFields.ts`) has always required the canonical
-PascalCase those opaque JSON strings use everywhere else — Layer 7 is the only place the real
-provider round-trips a schema-conformant response through those validators, so no earlier layer
-could have caught it. Everything below is the **normative contract** all four files satisfy.
+removed afterward. Everything below is the **normative contract** both files satisfy.
 `e2e/README.md` is the operational runbook for the same contract; this document owns the *rules*,
 that one owns the *commands*. Both must be read before changing E2E code.
 
@@ -225,15 +136,15 @@ Research basis: Playwright's official documentation, current release `1.62.x`, r
 2026-08-12. Where this contract departs from official guidance, the deviation is stated and
 justified — see "Sources and project decisions" at the end of this layer.
 
-### 7.1 Exactly four journeys
+### 7.1 Exactly two journeys
 
-Four journeys, no more. Each maps to a stated MVP completion criterion
+Two journeys, no more. Each maps to a stated MVP completion criterion
 (`docs/product/brief.md`). **No new journey is created without an explicit product decision** —
-a fifth journey is a request to change the approved list, recorded here and in
+a third journey is a request to change the approved list, recorded here and in
 `docs/roadmap.md` before any spec file is written, never something added in passing because a
 gap looked easy to cover. Coverage below the journey level belongs to Layers 1–6.
 
-The numeric filename prefixes are **organizational only — never load-bearing**. They keep the four
+The numeric filename prefixes are **organizational only — never load-bearing**. They keep the
 journeys in a readable order that matches this table; they carry no dependency. Every journey must
 pass **on its own and in any order**, with no state inherited from another. `workers: 1` (§7.7) is
 a concurrency limit protecting a shared database, not an ordering contract — a journey that only
@@ -243,8 +154,6 @@ never change the result.
 | # | File | Journey | MVP criterion it proves |
 |---|---|---|---|
 | 1 | `001-authenticated-access.spec.ts` | An unauthenticated visitor gets the login screen and cannot reach protected content; a test-issued session is consumed and authorizes the app shell and `GET /api/me`; logout ends the session | Security controls in place |
-| 2 | `002-study-queue-ranking.spec.ts` | Create a StudyItem → submit a StudyReview → the study queue reflects the new ranking | The study queue ranks items correctly |
-| 3 | `003-job-analysis-draft.spec.ts` | Create a pasted-text JobAnalysis → Analyze → review the draft → accept some proposals and reject others → Apply → the accepted effects are visible on the source | AI commands produce valid AnalysisDrafts and apply accepted proposals |
 | 4 | `004-cv-presentation-export.spec.ts` | Edit a CVPresentation's selections → export → a PDF is downloaded | At least one CVPresentation can be edited and exported |
 
 **What journey 1 does and does not prove.** It verifies four things: that an unauthenticated
@@ -256,10 +165,6 @@ covered by `SupabaseAuthClientTests` (Layer 3, asserting the exact `redirect_to`
 and request body) and the callback/PKCE exchange by Layer 4 API tests, with real end-to-end
 delivery confirmed by manual verification against the live Supabase project. E2E must not be read
 as evidence that login works for a real user.
-
-Journey 3 uses a **pasted-text** JobAnalysis, never a PDF upload. Upload goes through Supabase
-Storage, which §7.6 forbids; the upload path is already covered end-to-end by Layer 3/4 tests
-against the real extractor and a stubbed Storage client.
 
 ### 7.2 The E2E environment is a separate, disposable stack
 
@@ -340,10 +245,10 @@ The contract:
   pipeline is built.** Throws if any `E2E:*` value is present while the environment is anything
   other than `E2E` (inert-unless-enabled is not sufficient — presence outside `E2E` is itself a
   misconfiguration and must be loud); throws if `E2E` is missing any required `E2E:*` value; and,
-  inside `E2E`, throws unless `Supabase:Url`, `Supabase:AnonKey`, `Auth:CallbackUrl`, and the
-  Anthropic base address/API key each equal their one exact approved sentinel value — checked by
-  string equality, never a prefix heuristic like `sk-ant-`, so a real-looking credential is
-  rejected for not matching the sentinel, not for looking suspicious.
+  inside `E2E`, throws unless `Supabase:Url`, `Supabase:AnonKey`, and `Auth:CallbackUrl` each equal
+  their one exact approved sentinel value — checked by string equality, never a prefix heuristic,
+  so a real-looking credential is rejected for not matching the sentinel, not for looking
+  suspicious.
 - Covered by API tests asserting it is unreachable (404) under `Development`, `Docker`, and
   `Production`, reachable and correct only under `E2E`, absent from the generated OpenAPI document,
   and that the minted token's claims and lifetime are exactly as specified above.
@@ -441,35 +346,22 @@ scratch-equivalent state via truncate-and-reseed, with the persistence layer's o
 
 ### 7.6 Zero real external calls
 
-No E2E run may make a real call to Supabase Auth, Supabase Storage, or any AI provider. This is the
-same absolute rule as the rest of the suite, applied to a stack that — unlike
-`WebApplicationFactory` — has real network access.
+No E2E run may make a real call to Supabase Auth. This is the same absolute rule as the rest of
+the suite, applied to a stack that — unlike `WebApplicationFactory` — has real network access.
 
-- **AI — the E2E exception, stated plainly.** The absolute rule is *zero real external AI calls*,
-  and E2E honours it. But E2E does **not** use `FakeAIProvider`: that class exists only in test
-  assemblies, unreachable from the production image, and swapping in a test double would leave the
-  one layer that runs the real deployable artifact untested precisely where it matters. Instead,
-  **E2E runs the real `AnthropicAIProvider` against `external-stub`**, a deterministic Node
-  stdlib-only service inside the E2E Compose stack. The adapter's base address is configurable
-  (`AnthropicOptions.BaseUrl`, resolved and validated by `AnthropicBaseAddress.Resolve` — absolute
-  URI, HTTPS required outside `E2E`, and inside `E2E` it must equal `http://external-stub:8080/`
-  exactly); it defaults to the real `https://api.anthropic.com/` everywhere else. Nothing leaves
-  the machine, responses are fixed, and the adapter's real request construction, headers, and
-  response deserialisation are exercised end to end — coverage no fake can provide.
-- **`external-stub` also serves the two Supabase Auth endpoints the app cannot avoid calling even
-  in a pasted-text-only journey**: `POST /auth/v1/token?grant_type=refresh_token` and
+- **`external-stub` serves the two Supabase Auth endpoints the app cannot avoid calling even in an
+  unattended journey**: `POST /auth/v1/token?grant_type=refresh_token` and
   `POST /auth/v1/logout`. Both are real HTTP calls the production `SupabaseAuthClient` makes
   during any authenticated session — refresh happens automatically, and logout is explicit — so
   they need a real target, not merely an absent one. `external-stub` supports **exactly** these
-  four endpoints (the two above plus the two Anthropic ones); anything else gets `501` and is
-  recorded, so a foundation-verification run can assert the unexpected-request count is zero. The
-  refresh response contains a locally HS256-signed access token for the seeded E2E user (`iss`,
-  `aud`, `sub`, `iat`, `nbf`, `exp` within the 15-minute cap) and a rotated refresh token, so the
-  real `RefreshUseCase`/`LogoutUseCase` run unmodified. No Supabase Storage behaviour is provided —
-  journey 3 uses pasted text, never a PDF upload (§7.1), so Storage is never called.
+  two endpoints; anything else gets `501` and is recorded, so a foundation-verification run can
+  assert the unexpected-request count is zero. The refresh response contains a locally
+  HS256-signed access token for the seeded E2E user (`iss`, `aud`, `sub`, `iat`, `nbf`, `exp`
+  within the 15-minute cap) and a rotated refresh token, so the real `RefreshUseCase`/`LogoutUseCase`
+  run unmodified.
 - **Enforce it, don't assert it.** `app`, `db`, `db-init`, and `external-stub` sit only on an
   `internal: true` Compose network with no route off it — verified empirically (an exec'd `curl`
-  to a raw IP or to `api.anthropic.com` fails to connect at all, not merely without credentials),
+  to a raw IP or to a real hostname fails to connect at all, not merely without credentials),
   not merely configured. "We didn't configure a real key" is not evidence; an unroutable network
   is. `proxy` is the sole exception, dual-homed onto both the internal network and an ordinary
   bridge network so the host can reach `app` through it; `proxy` forwards only to `app` and holds
@@ -478,7 +370,7 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
 ### 7.7 Execution, parallelism, and CI
 
 - **`workers: 1`, serial, from the start.** Playwright's CI guidance already recommends a single
-  worker for stability; here it is also a correctness requirement, because all four journeys share
+  worker for stability; here it is also a correctness requirement, because both journeys share
   one database, one seeded owner, and one truncate-based reset. It bounds *concurrency* only — it
   is not an ordering guarantee and must never be relied on as one (§7.1). Playwright's docs
   discourage `test.describe.serial` in favour of isolated tests, and that preference is honoured
@@ -487,7 +379,7 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
   `parallelIndex` (stable across worker restarts, unlike `workerIndex`), mint each worker's session
   through the same in-memory fixture, and replace the global truncate with per-owner cleanup. Until
   that exists, raising `workers` above 1 will produce cross-journey interference that looks like
-  flakiness. Sharding is out of scope: it is a fix for suites far larger than four journeys.
+  flakiness. Sharding is out of scope: it is a fix for suites far larger than two journeys.
 - **Chromium only for the MVP** (`devices['Desktop Chrome']`). Cross-browser rendering risk is
   covered by the design-system component tests; this is a single-user, invite-only application, and
   a browser matrix would multiply E2E runtime for a risk this project does not carry. Revisit only
@@ -518,7 +410,7 @@ same absolute rule as the rest of the suite, applied to a stack that — unlike
 
 ### 7.8 Restraint in fixtures, helpers, and Page Objects
 
-Four journeys do not justify a framework.
+Two journeys do not justify a framework.
 
 - Start with **no Page Objects**. Introduce one only when the same interaction is duplicated across
   at least two journeys and the duplication is actually causing churn. Playwright's docs describe
@@ -536,8 +428,8 @@ Four journeys do not justify a framework.
 ### 7.9 API-assisted setup
 
 `APIRequestContext` is used **only to prepare state that is not the behaviour under test**.
-Preparing the very thing a journey exists to prove makes the journey vacuous — journey 2 must
-create its StudyItem through the UI, journey 4 must edit selections through the UI.
+Preparing the very thing a journey exists to prove makes the journey vacuous — journey 4 must
+edit selections through the UI.
 
 Legitimate: seeding a ProfessionalProfile with canonical entries so journey 4 has something to
 select; creating prerequisite records a journey depends on but does not exercise.
@@ -559,7 +451,7 @@ number.
 
 It deliberately stops there. Parsed-content assertions — required text, entry ordering, exclusions,
 locale dates, page limit — already run on every PR against the real renderer via PdfPig
-("PDF and CV Verification" above). Re-asserting them here would mean adding a second, independent
+("CV Export Verification" above). Re-asserting them here would mean adding a second, independent
 PDF-parsing stack in TypeScript whose disagreements with PdfPig would be noise, not signal.
 
 ### 7.11 Canonical project structure and file ownership
@@ -585,7 +477,7 @@ CommitAhead/
     │   ├── db-init/                 ← one-shot: roles → EF migration bundle → RLS
     │   │   ├── Dockerfile
     │   │   └── db-init.sh
-    │   ├── external-stub/           ← deterministic local Anthropic + Supabase Auth stub
+    │   ├── external-stub/           ← deterministic local Supabase Auth stub
     │   │   ├── Dockerfile
     │   │   └── server.mjs
     │   └── proxy/
@@ -595,8 +487,6 @@ CommitAhead/
         │   └── e2e-test.ts         ← reset-before-auth + authenticated fixture
         └── journeys/
             ├── 001-authenticated-access.spec.ts
-            ├── 002-study-queue-ranking.spec.ts
-            ├── 003-job-analysis-draft.spec.ts
             └── 004-cv-presentation-export.spec.ts
 ```
 
@@ -610,8 +500,8 @@ CommitAhead/
 | `e2e/scripts/reset-db.mjs` | **The single executable reset path**: validating the target (the `commitahead-e2e` Compose project via the running container's own label, and the `commitahead_e2e` database, refusing the legacy `commitahead` name) before piping `reset.sql` to `psql` over stdin as `commitahead_migrator`. Exports `resetDatabase()` for the fixture **and** runs directly from the command line, so `npm run db:reset` is the same code (§7.4) | The SQL itself; stack lifecycle |
 | `e2e/scripts/run-full.mjs` | The one-command run: bring the stack up, wait for health, invoke Playwright, and **always attempt `down -v`** — in a `finally`, and on `SIGINT`/`SIGTERM`. Cannot guarantee cleanup after `SIGKILL`, a Docker daemon crash, or a host failure; the fallback there is `npm run stack:down`. Propagates Playwright's exit code | Test logic; **reset logic of its own**; being a substitute for `playwright test` during iteration |
 | `e2e/scripts/verify-foundation.mjs` | Foundation-only checks: health through the proxy, the session/refresh/logout round trip against `external-stub`, reset idempotence with migrations/RLS surviving it, zero unexpected stub requests, and that only `proxy` publishes a host port. May call `resetDatabase()` only to prove idempotence, never as a substitute for the fixture's per-test reset | Journey behaviour; stack lifecycle |
-| `e2e/tests/journeys/` | Exactly the four approved journeys of §7.1, one file each | A fifth journey, helper modules, or shared state between files |
-| `e2e/support/external-stub/` | Deterministic canned responses for exactly four endpoints — the real `AnthropicAIProvider`'s two Messages API calls, plus the two Supabase Auth calls (`refresh_token`, `logout`) the production `SupabaseAuthClient` makes during any authenticated session regardless of journey. Anything else gets `501` and is recorded (§7.6) | Any real outbound call; Supabase Storage behaviour (unneeded — journey 3 uses pasted text) |
+| `e2e/tests/journeys/` | Exactly the two approved journeys of §7.1, one file each | A third journey, helper modules, or shared state between files |
+| `e2e/support/external-stub/` | Deterministic canned responses for exactly two endpoints — the Supabase Auth calls (`refresh_token`, `logout`) the production `SupabaseAuthClient` makes during any authenticated session regardless of journey. Anything else gets `501` and is recorded (§7.6) | Any real outbound call |
 
 **Planned but not yet created: the `/devalente-e2e` skill.** `.claude/skills/devalente-e2e/` is a
 project-specific, **version-controlled** Claude Code skill capturing the day-to-day E2E workflow.

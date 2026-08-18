@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # JobSource PDF text is extracted once at upload; AI receives text only
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 A `JobAnalysis` can be created from a pasted job description or an uploaded PDF. AI analysis needs the posting content as text. The question was when and where to extract text from PDFs, and whether the AI provider should fetch files directly.

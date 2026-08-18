@@ -3,11 +3,11 @@
 Operational guide for the Playwright end-to-end suite: how to install it, bring the stack up, run
 the journeys, reset data, and read the artifacts when something fails.
 
-> **Status: foundation implemented; all four journeys implemented and passing.** The Docker stack,
-> the E2E-only auth endpoint, the reset path, the orchestration scripts, and the Playwright/fixture
-> skeleton all exist and are verified (`npm run verify:foundation`). `001-authenticated-access.spec.ts`,
-> `002-study-queue-ranking.spec.ts`, `003-job-analysis-draft.spec.ts`, and
-> `004-cv-presentation-export.spec.ts` each pass standalone and together via `npm run e2e:full`.
+> **Status: foundation implemented; both approved journeys implemented and passing.** The Docker
+> stack, the E2E-only auth endpoint, the reset path, the orchestration scripts, and the
+> Playwright/fixture skeleton all exist and are verified (`npm run verify:foundation`).
+> `001-authenticated-access.spec.ts` and `004-cv-presentation-export.spec.ts` each pass standalone
+> and together via `npm run e2e:full`.
 
 **Read [`docs/testing/strategy.md`](../docs/testing/strategy.md) Layer 7 first.** It is the
 normative contract — journeys, isolation, auth, locators, and the rules about what E2E may and may
@@ -37,15 +37,13 @@ CommitAhead/
     ├── support/
     │   ├── reset.sql                ← the SQL only; never drops migrations or RLS
     │   ├── db-init/                 ← one-shot: roles → EF migration bundle → RLS
-    │   ├── external-stub/           ← deterministic local Anthropic + Supabase Auth stub
+    │   ├── external-stub/           ← deterministic local Supabase Auth stub
     │   └── proxy/                   ← the only host-facing service's nginx config
     └── tests/
         ├── fixtures/
         │   └── e2e-test.ts         ← resetDb (auto) → e2eSession (lazy) → authenticatedPage (lazy)
         └── journeys/
             ├── 001-authenticated-access.spec.ts   (implemented, passing)
-            ├── 002-study-queue-ranking.spec.ts     (implemented, passing)
-            ├── 003-job-analysis-draft.spec.ts      (implemented, passing)
             └── 004-cv-presentation-export.spec.ts  (implemented, passing)
 ```
 
@@ -191,20 +189,20 @@ npm run verify:foundation
 ```
 
 This is the right first thing to run after touching anything under `docker-compose.e2e.yml`,
-`e2e/support/`, or the E2E-only backend code (`E2ESessionController`, `E2EConfigurationGuard`,
-`AnthropicBaseAddress`) — it needs no journey spec to exist.
+`e2e/support/`, or the E2E-only backend code (`E2ESessionController`, `E2EConfigurationGuard`)
+— it needs no journey spec to exist.
 
 ---
 
 ## Running the journeys
 
-All commands run from `e2e/`. All four journey files exist now.
+All commands run from `e2e/`. Both journey files exist now.
 
 ```bash
 npm test
 ```
 
-Runs all four journeys serially (`workers: 1`).
+Runs both journeys serially (`workers: 1`).
 
 **Headed** — watch a real browser window:
 
@@ -235,19 +233,19 @@ Add `await page.pause()` in a test to break at a specific line.
 ### Running one journey
 
 ```bash
-npm run test:journey -- 003-job-analysis-draft.spec.ts
+npm run test:journey -- 004-cv-presentation-export.spec.ts
 ```
 
 By file and line, straight into the debugger:
 
 ```bash
-npx playwright test 003-job-analysis-draft.spec.ts:42 --debug
+npx playwright test 004-cv-presentation-export.spec.ts:42 --debug
 ```
 
 By title (regex):
 
 ```bash
-npx playwright test -g "applies accepted proposals"
+npx playwright test -g "exports the presentation"
 ```
 
 Re-run only what failed last time:
@@ -256,7 +254,7 @@ Re-run only what failed last time:
 npx playwright test --last-failed
 ```
 
-Each journey must pass **on its own and in any order**. The `001`–`004` prefixes are organizational
+Each journey must pass **on its own and in any order**. The `001`/`004` prefixes are organizational
 only — they keep the files in a readable order and carry no execution-order dependency. If a
 journey only passes as part of the full run, that is a defect in the journey, not a way to run the
 suite.
@@ -326,7 +324,7 @@ npx playwright show-trace test-results/<path-to>/trace.zip
 Traces exist only for retried tests. To force one while investigating locally:
 
 ```bash
-npx playwright test 002-study-queue-ranking.spec.ts --trace on
+npx playwright test 001-authenticated-access.spec.ts --trace on
 ```
 
 **Screenshots and videos** land alongside the failing test's folder under `test-results/`. The
@@ -359,9 +357,8 @@ exec app printenv ASPNETCORE_ENVIRONMENT`.
 **The `app` container refuses to start with a configuration error.** That is the intended
 fail-closed guard (`E2EConfigurationGuard`, called from `Program.cs` before the pipeline is built):
 it throws if any `E2E:*` value is missing inside `E2E`, or if `Supabase:Url`/`Supabase:AnonKey`/
-`Auth:CallbackUrl`/the Anthropic base address or key differ from their exact approved sentinel
-values. Check the container's logs for exactly which check failed — the message names the
-offending key.
+`Auth:CallbackUrl` differ from their exact approved sentinel values. Check the container's logs
+for exactly which check failed — the message names the offending key.
 
 **A test 401s or can't find its data when run alone.** The reset→authenticate ordering is broken.
 `resetDb` must run first and `e2eSession` must depend on it — a real fixture dependency
@@ -374,17 +371,10 @@ and that no test depends on another's data. Do not "fix" it by raising `workers`
 replace it with a web-first assertion on the thing you were really waiting for (an element becoming
 visible, text changing) so Playwright retries properly.
 
-**Journey 3 hangs or fails at the Analyze step.** `external-stub` is not reachable, or its
-credentials don't match. E2E runs the real `AnthropicAIProvider` pointed at `external-stub` — not
-`FakeAIProvider` (`docs/testing/strategy.md` §7.6) — so check the stub container is up and that
-`AI__Providers__Anthropic__BaseUrl`/`ApiKey` on `app` match `external-stub`'s
-`ANTHROPIC_API_KEY_SENTINEL`. It must never point at a real provider; `app` has no route to the
-public internet by design — confirm with `npm run verify:foundation`.
-
 **`GET /__stub/unexpected` on `external-stub` shows a nonzero count.** Something called an endpoint
 the stub does not support. It responds `501` and records the method/path — read that response to
 see which call needs to be added to the stub or fixed in the caller; the stub is deliberately
-narrow (exactly four endpoints), not a general-purpose mock.
+narrow (exactly two endpoints), not a general-purpose mock.
 
 **Chromium crashes or dies mid-run in Docker.** Missing `--ipc=host` on the container running
 Playwright itself (not the E2E stack, which runs no browser). Playwright documents this as a cause

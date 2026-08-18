@@ -56,10 +56,11 @@ describe('App', () => {
     expect(await screen.findByLabelText('Email')).toBeInTheDocument()
   })
 
-  it('shows the study queue and the signed-in email once authenticated', async () => {
+  it('shows the professional profile and the signed-in email once authenticated', async () => {
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Study queue' })).toBeInTheDocument()
+    // Professional profile & CVs is the only feature in the app (see App.tsx's DESTINATIONS).
+    expect(await screen.findByRole('heading', { name: /professional profile/i })).toBeInTheDocument()
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
   })
 
@@ -96,7 +97,10 @@ describe('App', () => {
     await clickLogout()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i)
-    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+    // Not `queryByLabelText('Email')` — the default landing view (Professional profile) has its
+    // own contact-info field with that same accessible label, so it's not a reliable signal that
+    // the *login* form specifically is absent. The "Send sign-in link" submit button is unique to it.
+    expect(screen.queryByRole('button', { name: 'Send sign-in link' })).not.toBeInTheDocument()
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
   })
 

@@ -59,7 +59,6 @@ services:
       # in the Supabase project's own redirect allow-list alongside the dev callback URL, see
       # README.md "Production (Local Docker)".
       Auth__CallbackUrl: http://localhost:8080/auth/callback
-      AI__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
       # Mounted onto the dataprotection-keys volume below — survives `docker compose down`/restart,
       # so existing sessions/cookies stay valid across a redeploy of this stack (ADR-0021). Not
       # encrypted at rest: that needs a cloud KMS, still an open decision (docs/tbd.md) for whenever

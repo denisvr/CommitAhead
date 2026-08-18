@@ -1,9 +1,6 @@
-using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Security;
-using CommitAhead.Application.AI;
 using CommitAhead.Application.CVPresentations;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.Features.CVPresentations;
 
@@ -24,7 +21,6 @@ public sealed class CVPresentationController : ControllerBase
     private readonly ReplaceCertificationSelectionsUseCase _replaceCertificationSelectionsUseCase;
     private readonly ReplaceProjectSelectionsUseCase _replaceProjectSelectionsUseCase;
     private readonly ReplaceProfileLinkSelectionsUseCase _replaceProfileLinkSelectionsUseCase;
-    private readonly AnalyzeCVPresentationUseCase _analyzeUseCase;
     private readonly ExportCVPresentationUseCase _exportUseCase;
 
     public CVPresentationController(
@@ -40,7 +36,6 @@ public sealed class CVPresentationController : ControllerBase
         ReplaceCertificationSelectionsUseCase replaceCertificationSelectionsUseCase,
         ReplaceProjectSelectionsUseCase replaceProjectSelectionsUseCase,
         ReplaceProfileLinkSelectionsUseCase replaceProfileLinkSelectionsUseCase,
-        AnalyzeCVPresentationUseCase analyzeUseCase,
         ExportCVPresentationUseCase exportUseCase)
     {
         _getUseCase = getUseCase;
@@ -56,7 +51,6 @@ public sealed class CVPresentationController : ControllerBase
         _replaceProjectSelectionsUseCase = replaceProjectSelectionsUseCase;
         _replaceProfileLinkSelectionsUseCase = replaceProfileLinkSelectionsUseCase;
         _exportUseCase = exportUseCase;
-        _analyzeUseCase = analyzeUseCase;
     }
 
     [HttpGet]
@@ -155,29 +149,8 @@ public sealed class CVPresentationController : ControllerBase
         return result == CVPresentationMutationResult.NotFound ? NotFound() : NoContent();
     }
 
-    // Not [UsesOwnerScopedData] — AnalysisCommandOrchestrator/AnalyzeCVPresentationUseCase open
-    // their own short, independently-committed owner-scoped transactions around each DB phase
-    // (ADR-0014), so no transaction is held open for the duration of the external Anthropic call.
-    [HttpPost("{id:guid}/analyze")]
-    [EnableRateLimiting("ai-analysis")]
-    public async Task<ActionResult<AnalyzeCommandResponse>> Analyze(Guid id, [FromBody] AnalyzeCommandRequest request, CancellationToken cancellationToken)
-    {
-        var result = await _analyzeUseCase.ExecuteAsync(id, request.IdempotencyKey, cancellationToken);
-        var response = new AnalyzeCommandResponse(result.Outcome, result.AnalysisDraftId);
-
-        return result.Outcome switch
-        {
-            AnalyzeCommandOutcome.SourceNotFound => NotFound(),
-            AnalyzeCommandOutcome.Created => StatusCode(StatusCodes.Status201Created, response),
-            AnalyzeCommandOutcome.AlreadyCompleted => Ok(response),
-            AnalyzeCommandOutcome.DailyBudgetExceeded or AnalyzeCommandOutcome.MonthlyBudgetExceeded => AiOutcomeResponses.BudgetExceeded(result.Outcome, Response),
-            AnalyzeCommandOutcome.DraftAlreadyPending => AiOutcomeResponses.Conflict(result.Outcome.ToString(), result.AnalysisDraftId),
-            _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
-        };
-    }
-
-    // A plain read plus in-process PDF rendering — never calls the AI provider, so no rate-limit
-    // policy, same as GetById/Apply elsewhere in this codebase.
+    // A plain read plus in-process PDF rendering — never calls an external service, so no
+    // rate-limit policy, same as GetById/Put elsewhere in this codebase.
     [HttpGet("{id:guid}/export")]
     [UsesOwnerScopedData]
     public async Task<IActionResult> Export(Guid id, CancellationToken cancellationToken)
@@ -188,9 +161,23 @@ public sealed class CVPresentationController : ControllerBase
         {
             ExportCVPresentationOutcome.Exported => File(result.PdfBytes!, "application/pdf", $"{id}.pdf"),
             ExportCVPresentationOutcome.PresentationNotFound => NotFound(),
-            _ => AiOutcomeResponses.Conflict(result.Outcome.ToString()),
+            _ => Conflict(result.Outcome.ToString()),
         };
     }
+
+    /// <summary>
+    /// A stable, machine-readable "outcomeCode" in ProblemDetails.Extensions (never text embedded
+    /// in Detail, so the frontend never has to parse prose). ASP.NET Core serializes
+    /// ProblemDetails.Extensions entries as root-level JSON properties, not nested under an
+    /// "extensions" object.
+    /// </summary>
+    private static ObjectResult Conflict(string outcomeCode) => new(new ProblemDetails
+    {
+        Status = StatusCodes.Status409Conflict,
+        Title = "The request could not be completed in the presentation's current state.",
+        Extensions = { ["outcomeCode"] = outcomeCode },
+    })
+    { StatusCode = StatusCodes.Status409Conflict };
 }
 
 public sealed record CVPresentationCreatedResponse(Guid Id);

@@ -114,9 +114,8 @@ export function ProfessionalProfilePage() {
     }
   }
 
-  // Inlined rather than calling load() directly — see study-items pages for why (the
-  // set-state-in-effect lint rule treats any call to a state-setting function reference as
-  // synchronous, regardless of the await inside it).
+  // Inlined rather than calling load() directly — the set-state-in-effect lint rule treats any
+  // call to a state-setting function reference as synchronous, regardless of the await inside it.
   useEffect(() => {
     fetchProfessionalProfile()
       .then((data) => {

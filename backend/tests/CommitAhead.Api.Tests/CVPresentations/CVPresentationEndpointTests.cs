@@ -1,20 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
-using CommitAhead.Api.Features.AnalysisDrafts;
 using CommitAhead.Api.Features.CVPresentations;
 using CommitAhead.Api.Features.ProfessionalProfiles;
-using CommitAhead.Api.Tests.StudyItems;
-using CommitAhead.Application.AI;
+using CommitAhead.Api.Tests.TestInfrastructure;
 using UglyToad.PdfPig;
 
 namespace CommitAhead.Api.Tests.CVPresentations;
 
-[Collection(StudyItemsApiCollection.Name)]
+[Collection(PostgresApiCollection.Name)]
 public class CVPresentationEndpointTests
 {
-    private readonly StudyItemsTestWebApplicationFactory _factory;
+    private readonly PostgresApiTestFactory _factory;
 
-    public CVPresentationEndpointTests(StudyItemsTestWebApplicationFactory factory)
+    public CVPresentationEndpointTests(PostgresApiTestFactory factory)
     {
         _factory = factory;
     }
@@ -31,7 +29,7 @@ public class CVPresentationEndpointTests
     {
         var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/professional-profile", accessCookie, ValidProfileRequest());
-        var created = await postResponse.Content.ReadFromJsonAsync<ProfessionalProfileCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<ProfessionalProfileCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
         return (client, accessCookie, created!.Id);
     }
 
@@ -51,7 +49,7 @@ public class CVPresentationEndpointTests
         var (client, accessCookie) = await _factory.CreateAuthenticatedClientAsync(Guid.NewGuid());
 
         var response = await client.SendGetAsync("/api/cv-presentations", accessCookie);
-        var results = await response.Content.ReadFromJsonAsync<List<CVPresentationResponse>>(StudyItemsApiTestHelpers.JsonOptions);
+        var results = await response.Content.ReadFromJsonAsync<List<CVPresentationResponse>>(PostgresApiTestHelpers.JsonOptions);
 
         Assert.Empty(results!);
     }
@@ -75,10 +73,10 @@ public class CVPresentationEndpointTests
 
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
         Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var getResponse = await client.SendGetAsync($"/api/cv-presentations/{created!.Id}", accessCookie);
-        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(PostgresApiTestHelpers.JsonOptions);
         Assert.Equal("UK — Senior Backend Engineer", presentation!.Label);
         Assert.Equal(profileId, presentation.ProfessionalProfileId);
         Assert.Equal([link.Id], presentation.ProfileLinkSelections);
@@ -99,7 +97,7 @@ public class CVPresentationEndpointTests
     {
         var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var putResponse = await client.SendMutatingAsync(
             HttpMethod.Put, $"/api/cv-presentations/{created!.Id}", accessCookie,
@@ -107,7 +105,7 @@ public class CVPresentationEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
         var getResponse = await client.SendGetAsync($"/api/cv-presentations/{created.Id}", accessCookie);
-        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(PostgresApiTestHelpers.JsonOptions);
         Assert.Equal("Germany — Backend Engineer", presentation!.Label);
     }
 
@@ -128,7 +126,7 @@ public class CVPresentationEndpointTests
     {
         var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var deleteResponse = await client.SendMutatingAsync(HttpMethod.Delete, $"/api/cv-presentations/{created!.Id}", accessCookie);
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
@@ -146,14 +144,14 @@ public class CVPresentationEndpointTests
             new YearMonthDto(2020, 1), null, null, Domain.ProfessionalProfiles.WorkMode.Remote, "Summary", [], []);
         await client.SendMutatingAsync(HttpMethod.Put, "/api/professional-profile/experience", accessCookie, new[] { entry });
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var putResponse = await client.SendMutatingAsync(
             HttpMethod.Put, $"/api/cv-presentations/{created!.Id}/experience-selections", accessCookie, new[] { entry.Id });
         Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
         var getResponse = await client.SendGetAsync($"/api/cv-presentations/{created.Id}", accessCookie);
-        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var presentation = await getResponse.Content.ReadFromJsonAsync<CVPresentationResponse>(PostgresApiTestHelpers.JsonOptions);
         Assert.Equal([entry.Id], presentation!.ExperienceSelections);
     }
 
@@ -162,7 +160,7 @@ public class CVPresentationEndpointTests
     {
         var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var response = await client.SendMutatingAsync(
             HttpMethod.Put, $"/api/cv-presentations/{created!.Id}/experience-selections", accessCookie, new[] { Guid.NewGuid() });
@@ -179,21 +177,6 @@ public class CVPresentationEndpointTests
             HttpMethod.Put, $"/api/cv-presentations/{Guid.NewGuid()}/experience-selections", accessCookie, Array.Empty<Guid>());
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Analyze_WithAValidPresentation_ReturnsCreatedWithADraftId()
-    {
-        var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
-        var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
-
-        var response = await client.SendMutatingAsync(
-            HttpMethod.Post, $"/api/cv-presentations/{created!.Id}/analyze", accessCookie, new AnalyzeCommandRequest($"key-{Guid.NewGuid()}"));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<AnalyzeCommandResponse>(StudyItemsApiTestHelpers.JsonOptions);
-        Assert.Equal(AnalyzeCommandOutcome.Created, body!.Outcome);
     }
 
     [Fact]
@@ -221,7 +204,7 @@ public class CVPresentationEndpointTests
     {
         var (client, accessCookie, profileId) = await CreateAuthenticatedClientWithProfileAsync();
         var postResponse = await client.SendMutatingAsync(HttpMethod.Post, "/api/cv-presentations", accessCookie, ValidCreateRequest(profileId));
-        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var created = await postResponse.Content.ReadFromJsonAsync<CVPresentationCreatedResponse>(PostgresApiTestHelpers.JsonOptions);
 
         var response = await client.SendGetAsync($"/api/cv-presentations/{created!.Id}/export", accessCookie);
 

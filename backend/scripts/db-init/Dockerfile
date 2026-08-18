@@ -41,14 +41,9 @@ FROM postgres:17
 COPY --from=bundle-build /out/efbundle /efbundle
 RUN chmod +x /efbundle
 
-# 006_storage_job_postings.sql is deliberately NOT copied — it provisions a Supabase Storage
-# bucket policy against the real project, which has no local analogue.
 COPY backend/scripts/database/001_roles.sql /sql/001_roles.sql
 COPY backend/scripts/database/002_rls_users.sql /sql/002_rls_users.sql
-COPY backend/scripts/database/003_rls_phase1.sql /sql/003_rls_phase1.sql
 COPY backend/scripts/database/004_rls_phase2.sql /sql/004_rls_phase2.sql
-COPY backend/scripts/database/005_rls_phase3.sql /sql/005_rls_phase3.sql
-COPY backend/scripts/database/007_rls_phase4.sql /sql/007_rls_phase4.sql
 
 COPY backend/scripts/db-init/db-init.sh /db-init.sh
 RUN chmod +x /db-init.sh

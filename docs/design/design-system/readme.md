@@ -27,8 +27,8 @@ mock.
 
 ## Product character
 
-CommitAhead is a private, invite-only study application for experienced software developers. It
-answers one question: **what should I study next, and why?**
+CommitAhead is a private, invite-only application for experienced software developers to maintain
+their professional profile and produce tailored CV presentations from it.
 
 Reading Room treats the application as a calm study desk rather than a DevOps console:
 
@@ -68,8 +68,8 @@ The exact values and semantic aliases are in `tokens/colors.css`.
 - Accent: ink navy `#24405C` light and `#8FB4D9` dark.
 - Semantic colours: brick (critical), ochre (caution), moss (good).
 
-Accent is used for links, primary actions, active navigation, focus and a pending AI-draft marker.
-Semantic colours are always paired with text. StudyItem categories are never colour-coded.
+Accent is used for links, primary actions, active navigation and focus.
+Semantic colours are always paired with text.
 
 Do not introduce gradients, glass, blur, texture, decorative backgrounds or page-local colour
 values. Every text/background combination must retain WCAG AA contrast.
@@ -77,7 +77,7 @@ values. Every text/background combination must retain WCAG AA contrast.
 ## Typography
 
 - Public Sans: all interface and prose.
-- IBM Plex Mono: numeric columns, EffectiveScore figures and tracked uppercase micro-labels only.
+- IBM Plex Mono: numeric columns and tracked uppercase micro-labels only.
 - Minimum readable text: 12.5px.
 - 11px is permitted only for uppercase, tracked, non-essential labels whose meaning appears
   elsewhere.
@@ -127,7 +127,7 @@ with `innerHTML`. `assets/icons/icons.js` exists only so the two static identity
 can display their icon examples; it is not a production asset.
 
 Icons are allowed in navigation and in familiar action controls where they improve recognition
-(back, add, edit, download, theme, accept/reject, delete). They are not decoration: never place
+(back, add, edit, download, theme, delete). They are not decoration: never place
 them beside headings, as list bullets, inside body copy or in empty states without an action.
 Buttons keep visible text unless the control is universally understood and has an accessible
 name.
@@ -144,22 +144,9 @@ the CVPresentation explicitly includes it.
 - Address the user as “you”; the product does not say “I” or “we”.
 - No gamification, praise, streaks or personality.
 - No emoji.
-- Explain the reason behind ranking and state changes.
-- AI output is always a draft or proposal. Use “propose”, not “recommend” or “know”.
-- AI actions are explicit and show relevant cost/budget context.
+- Explain the reason behind state changes.
 - Errors are literal and blameless: what happened and what the user can do next.
 - Do not invent identifiers, telemetry or domain values to decorate a layout.
-
-## AI and computed values
-
-AI is contextual to a CVPresentation, JobAnalysis or InterviewNote. It is never global navigation
-and never automatic. A Pending AnalysisDraft blocks another analysis for the same source. Every
-proposal requires one Accepted/Rejected decision before Apply; applying accepted effects is
-atomic.
-
-EffectiveScore, Demand and Mastery are backend-owned. React renders values and explanations from
-API responses and never recomputes them. Sample UI values must either be formula-valid fixtures or
-be clearly non-numeric placeholders.
 
 ## Production restrictions
 
@@ -167,7 +154,7 @@ be clearly non-numeric placeholders.
 - No CDN fonts, scripts, icons or images.
 - No runtime-generated style tags or injected SVG/HTML markup.
 - No `window` globals.
-- No direct Supabase or AI calls.
+- No direct Supabase calls.
 - No imports from `docs/design/`.
 - No copying reference HTML or prototype code into production.
 - No page-local substitute for an existing production design-system primitive.
@@ -185,4 +172,4 @@ rendering boundaries.
 - Works at representative desktop and mobile widths.
 - Introduces no inline style, external resource or CSP exception.
 - Adds representative React Testing Library coverage.
-- Does not weaken auth, CSRF, Markdown or AI trust boundaries.
+- Does not weaken auth, CSRF or Markdown trust boundaries.

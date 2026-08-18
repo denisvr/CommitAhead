@@ -1,17 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using CommitAhead.Api.Features.ProfessionalProfiles;
-using CommitAhead.Api.Tests.StudyItems;
+using CommitAhead.Api.Tests.TestInfrastructure;
 using CommitAhead.Domain.ProfessionalProfiles;
 
 namespace CommitAhead.Api.Tests.ProfessionalProfiles;
 
-[Collection(StudyItemsApiCollection.Name)]
+[Collection(PostgresApiCollection.Name)]
 public class ProfessionalProfileEndpointTests
 {
-    private readonly StudyItemsTestWebApplicationFactory _factory;
+    private readonly PostgresApiTestFactory _factory;
 
-    public ProfessionalProfileEndpointTests(StudyItemsTestWebApplicationFactory factory)
+    public ProfessionalProfileEndpointTests(PostgresApiTestFactory factory)
     {
         _factory = factory;
     }
@@ -49,7 +49,7 @@ public class ProfessionalProfileEndpointTests
         Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
 
         var getResponse = await client.SendGetAsync("/api/professional-profile", accessCookie);
-        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(PostgresApiTestHelpers.JsonOptions);
         Assert.Equal("Ada Lovelace", profile!.ContactInfo.Name);
         Assert.Equal("Backend engineer.", profile.SummaryMarkdown);
         Assert.Empty(profile.Experience);
@@ -88,7 +88,7 @@ public class ProfessionalProfileEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
         var getResponse = await client.SendGetAsync("/api/professional-profile", accessCookie);
-        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(PostgresApiTestHelpers.JsonOptions);
         Assert.Equal("Grace Hopper", profile!.ContactInfo.Name);
         Assert.Equal("New summary.", profile.SummaryMarkdown);
     }
@@ -116,7 +116,7 @@ public class ProfessionalProfileEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
         var getResponse = await client.SendGetAsync("/api/professional-profile", accessCookie);
-        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(StudyItemsApiTestHelpers.JsonOptions);
+        var profile = await getResponse.Content.ReadFromJsonAsync<ProfessionalProfileResponse>(PostgresApiTestHelpers.JsonOptions);
         var roundTripped = Assert.Single(profile!.Experience);
         Assert.Equal("Acme", roundTripped.Company);
         Assert.Equal(2020, roundTripped.StartDate.Year);

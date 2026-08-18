@@ -56,50 +56,12 @@ no decorative illustration, celebration or generic filler.
 Owns the desktop sidebar, responsive mobile navigation, content surface and theme control. Primary
 destinations:
 
-1. Study queue
-2. Study items
-3. Professional profile & CVs
-4. Job analyses
-5. Interview notes
-6. Settings
-
-StudyItem categories are filters, never navigation destinations. AI is contextual, never a
-destination.
+1. Professional profile & CVs
 
 ### PageHeader
 
 Contains page title, concise explanatory summary and optional actions. It does not duplicate
 breadcrumbs or add decorative icons.
-
-## Domain components
-
-### RatingScale
-
-The 1–5 control for Importance, InitialMastery and StudyReview confidence. It uses a radiogroup
-model, supports arrow keys, exposes the selected value and meets the 44px mobile target.
-
-### ScoreNumeral and ScoreBreakdown
-
-Display the API-provided EffectiveScore and its Importance, Demand and Mastery-gap contributions.
-They explain ranking; they do not calculate it. The visualisation has an equivalent accessible
-text description.
-
-### QueueRow
-
-Represents one StudyItem in the ranked queue. Use a semantic link when the row navigates. It shows
-title, category, EffectiveScore and a concise API-backed reason. Rows are not cards.
-
-### ProposalDecision
-
-Shows one immutable AI proposal, rationale and transient Accepted/Rejected choice. Accepted
-actionable proposals expose their complete editable final payload. Apply remains unavailable until
-every proposal has exactly one decision.
-
-### AnalyticalTable
-
-Used only for truly comparative data such as job requirements or AI usage. It uses the dense
-region scale on desktop, preserves real table semantics and changes to an accessible stacked
-presentation when columns cannot fit on mobile.
 
 ## Implementation rules
 

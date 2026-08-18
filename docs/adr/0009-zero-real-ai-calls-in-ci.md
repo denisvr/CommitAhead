@@ -5,6 +5,8 @@ date: 2026-07-28
 
 # Zero real AI calls in automated CI; live smoke tests are manual-only
 
+**Status: superseded — this feature was removed from the app (see docs/roadmap.md). Kept for historical record.**
+
 ## Context
 
 Three AI commands are core MVP features. They must be testable in CI without incurring real provider costs or introducing non-determinism. At the same time, the real provider adapter must be verified to deserialise and validate responses correctly.

@@ -1,6 +1,6 @@
 # CommitAhead E2E stack (E2E Foundation Plan; docs/testing/strategy.md Layer 7) — the real
-# production image, a real ephemeral PostgreSQL, and a deterministic local stub for the two
-# external services (Anthropic, Supabase Auth). Completely isolated from both the dev stack
+# production image, a real ephemeral PostgreSQL, and a deterministic local stub for the one
+# external service (Supabase Auth). Completely isolated from both the dev stack
 # (backend/docker-compose.yml) and the local-production stack (docker-compose.prod.yml): distinct
 # Compose project name, distinct database name, no shared ports, no shared volumes.
 #
@@ -98,7 +98,6 @@ services:
       E2E_SIGNING_KEY: e2e-signing-key-for-local-stack-only-not-a-real-secret
       E2E_ISSUER: https://e2e.commitahead.local/auth/v1
       E2E_SUPABASE_USER_ID: e2e-user
-      ANTHROPIC_API_KEY_SENTINEL: e2e-stub-key
       SUPABASE_ANON_KEY_SENTINEL: e2e-anon-key
     restart: "no"
 
@@ -116,10 +115,6 @@ services:
       Supabase__Url: http://external-stub:8080/
       Supabase__AnonKey: e2e-anon-key
       Auth__CallbackUrl: http://localhost:8081/auth/callback
-      AI__Provider: Anthropic
-      AI__Providers__Anthropic__Model: claude-haiku-4-5-20251001
-      AI__Providers__Anthropic__BaseUrl: http://external-stub:8080/
-      AI__Providers__Anthropic__ApiKey: e2e-stub-key
       E2E__SigningKey: e2e-signing-key-for-local-stack-only-not-a-real-secret
       E2E__Issuer: https://e2e.commitahead.local/auth/v1
       E2E__SupabaseUserId: e2e-user

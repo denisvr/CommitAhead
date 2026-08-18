@@ -1,12 +1,8 @@
 using System.Reflection;
-using CommitAhead.Application.AI;
 using CommitAhead.Application.CVPresentations;
 using CommitAhead.Application.Identity;
-using CommitAhead.Application.InterviewNotes;
-using CommitAhead.Application.JobAnalyses;
 using CommitAhead.Application.Persistence;
 using CommitAhead.Application.ProfessionalProfiles;
-using CommitAhead.Application.StudyItems;
 using NetArchTest.Rules;
 
 namespace CommitAhead.Api.Tests.Architecture;
@@ -110,15 +106,9 @@ public class ArchitectureTests
     private static readonly Type[] PersistencePorts =
     [
         typeof(IUserRepository),
-        typeof(IStudyItemRepository),
-        typeof(IScoringConfigRepository),
-        typeof(IRankedStudyQueueQuery),
-        typeof(IEvidenceLinkQuery),
         typeof(IRlsSessionContext),
         typeof(IProfessionalProfileRepository),
         typeof(ICVPresentationRepository),
-        typeof(IJobAnalysisRepository),
-        typeof(IInterviewNoteRepository),
     ];
 
     [Fact]
@@ -145,30 +135,6 @@ public class ArchitectureTests
 
             Assert.NotEmpty(infrastructureImplementations);
         }
-    }
-
-    /// <summary>CLAUDE.md rule 5's IAIProvider half — AnthropicAIProvider (ADR-0019) is the only production implementation; test fakes like FakeAIProvider live in test-only assemblies this check never inspects.</summary>
-    [Fact]
-    public void AIProviderImplementations_ShouldOnlyExistInInfrastructure()
-    {
-        var nonInfrastructureAssemblies = new[] { DomainAssembly, ApplicationAssembly, ApiAssembly };
-
-        foreach (var assembly in nonInfrastructureAssemblies)
-        {
-            var matchingTypes = Types.InAssembly(assembly)
-                .That()
-                .ImplementInterface(typeof(IAIProvider))
-                .GetTypes();
-
-            Assert.Empty(matchingTypes);
-        }
-
-        var infrastructureImplementations = Types.InAssembly(InfrastructureAssembly)
-            .That()
-            .ImplementInterface(typeof(IAIProvider))
-            .GetTypes();
-
-        Assert.NotEmpty(infrastructureImplementations);
     }
 
     private static string Describe(TestResult result)

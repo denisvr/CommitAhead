@@ -1,27 +1,18 @@
 # CommitAhead
 
-Private, invite-only interview preparation app — data is isolated per user by `OwnerUserId` from the start (see ADR-0015); public signup stays disabled. Today there is exactly one real user. Before planning work, read `docs/current-state.md` for the current status, priority, and explicit deferrals. Read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives.
+Private, invite-only professional profile and CV presentation app — data is isolated per user by `OwnerUserId` from the start (see ADR-0015); public signup stays disabled. Today there is exactly one real user. Before planning work, read `docs/current-state.md` for the current status, priority, and explicit deferrals. Read `CONTEXT.md` for terminology and `docs/adr/` for why key decisions were made before suggesting alternatives.
 
 ## Stack
 - **Frontend:** React 19 + TypeScript + Vite; OpenAPI-generated TypeScript client
 - **Backend:** ASP.NET Core 10 Web API — Controllers, feature-folder use cases, no MediatR, no Minimal APIs
 - **ORM:** EF Core 10 + Npgsql
 - **Database:** PostgreSQL in Docker for development and the Phase 6a local runtime; Supabase PostgreSQL is the deferred Phase 6c internet target
-- **Auth/Storage:** Supabase (backend-mediated — no Supabase keys in the browser); local via the Supabase CLI (`supabase start`) in development, Cloud only in production (ADR-0023)
-- **AI:** `IAIProvider` abstraction; Anthropic, Claude Haiku 4.5 (ADR-0019); never called from frontend or domain layer
+- **Auth:** Supabase (backend-mediated — no Supabase keys in the browser); local via the Supabase CLI (`supabase start`) in development, Cloud only in production (ADR-0023)
 - **Hosting:** TBD — see `docs/tbd.md`
 
 ## Hard constraints
 - No MediatR, no Minimal APIs, no generic `IUseCase<T>` interfaces
-- AI commands produce `AnalysisDraft`s requiring per-proposal human confirmation — AI never writes to domain entities directly
-- Zero real *external* AI calls in any automated test (absolute rule). Layers 1–6 use
-  `FakeAIProvider` or stubbed HTTP. **Layer 7 (E2E) is the one documented exception to the
-  mechanism, not the rule**: it runs the real `AnthropicAIProvider` against a deterministic local
-  HTTP stub inside the E2E stack, because `FakeAIProvider` lives in test assemblies and cannot be
-  reached from the production image. Nothing leaves the machine either way — see
-  `docs/testing/strategy.md` §7.6
-- All Supabase keys and the AI provider key are backend-only
-- `EffectiveScore` is computed on-the-fly in the ranked-list query — not persisted on `StudyItem`
+- All Supabase keys are backend-only
 
 ## Clean Architecture layers
 
@@ -29,14 +20,14 @@ Private, invite-only interview preparation app — data is isolated per user by 
 |---|---|---|
 | Domain | `CommitAhead.Domain` | None (no framework, no EF Core, no Supabase) |
 | Application | `CommitAhead.Application` | Domain only — no EF Core, no Npgsql, no ASP.NET Core, no Supabase |
-| Infrastructure | `CommitAhead.Infrastructure` | Domain + Application; owns EF Core, Npgsql, Supabase SDK, AI provider adapter |
+| Infrastructure | `CommitAhead.Infrastructure` | Domain + Application; owns EF Core, Npgsql, Supabase SDK |
 | API | `CommitAhead.Api` | Application plus Infrastructure only at the composition root (`Program.cs` / DI registration); controllers depend on Application only |
 | Frontend | `frontend/` | Backend via OpenAPI-generated client only |
 
 **Layer responsibilities:**
-- **Domain** — aggregates, value objects, domain invariants, pure domain policies (e.g. `EffectiveScorePolicy`)
-- **Application** — one use case class per operation (`CreateStudyItemUseCase`, `ApplyAnalysisDraftUseCase`, …); orchestrates domain + repositories; contains `IAIProvider` and repository interfaces
-- **Infrastructure** — EF Core `DbContext`, repository implementations, AI provider adapter (`ProviderAIAdapter`, Anthropic Claude Haiku 4.5 — ADR-0019), Supabase Storage client, PDF text extractor
+- **Domain** — aggregates, value objects, domain invariants
+- **Application** — one use case class per operation (`CreateProfessionalProfileUseCase`, `ExportCVPresentationUseCase`, …); orchestrates domain + repositories; contains repository interfaces
+- **Infrastructure** — EF Core `DbContext`, repository implementations, the CV export renderer (`QuestPdfCVExportRenderer`, ADR-0020)
 - **API** — thin controllers calling use cases directly; middleware for auth, CSRF, error mapping, logging; no business logic. The composition root may call Infrastructure DI registration, but controllers may not reference Infrastructure types.
 
 **NetArchTest enforces** (5 rules):
@@ -44,7 +35,7 @@ Private, invite-only interview preparation app — data is isolated per user by 
 2. Application has no dependency on Infrastructure, API, EF Core, Npgsql, ASP.NET Core, or Supabase.
 3. Infrastructure has no dependency on API.
 4. Controllers depend on Application only — not Infrastructure, repositories, `DbContext`, or domain services. The API composition root is the explicit exception for Infrastructure registration.
-5. Repository and `IAIProvider` production implementations exist only in Infrastructure (test fakes excluded). Both halves are active: Phase 1 declared `IStudyItemRepository`/`IScoringConfigRepository`/etc.; `AnthropicAIProvider` (ADR-0019) is `IAIProvider`'s real implementation.
+5. Repository production implementations exist only in Infrastructure (test fakes excluded) — checked against an explicit, named list of every persistence port declared in Application: `IUserRepository`, `IRlsSessionContext`, `IProfessionalProfileRepository`, `ICVPresentationRepository` (`ArchitectureTests.PersistencePorts`).
 
 ## Project structure (target)
 ```
@@ -91,12 +82,12 @@ CommitAhead/
 ├── supabase/config.toml               ← local Supabase instance config (ADR-0023); `supabase start`
 │                                         runs it entirely via Docker, no Cloud project needed in dev
 ├── docker-compose.e2e.yml             ← isolated E2E stack; only `proxy` is host-facing
-└── e2e/                               ← Playwright suite — foundation implemented, all four
+└── e2e/                               ← Playwright suite — foundation implemented, both approved
     ├── playwright.config.ts             journeys written and passing; own package.json, never in
     ├── scripts/                          the app dependency tree
     │   run-full.mjs (lifecycle), reset-db.mjs (only reset path), verify-foundation.mjs
     ├── support/                       ← reset.sql, db-init/ (roles→bundle→RLS), external-stub/
-    └── tests/                         ← fixtures/e2e-test.ts, journeys/001–004
+    └── tests/                         ← fixtures/e2e-test.ts, journeys/001, 004
 ```
 
 `frontend/dist` is never committed and never copied into `backend/src`. It is copied into the
@@ -121,9 +112,9 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - Reuse production design-system components and tokens. Do not introduce page-local colour
   palettes, spacing scales, radii, shadows, or duplicate primitives.
 - Preserve semantic HTML, complete keyboard operation, visible focus, responsive behaviour and
-  the CSP in `docs/security/threat-model.md`. Values computed by the backend, including
-  EffectiveScore, Demand and Mastery, are rendered from API responses and never recomputed in
-  React.
+  the CSP in `docs/security/threat-model.md`. Values computed by the backend, including CV
+  export eligibility (template, photo, page limit), are rendered from API responses and never
+  recomputed in React.
 
 ## E2E testing contract
 
@@ -131,8 +122,8 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 - Run it only when explicitly requested, or when directly changing something under `e2e/`.
 - Before touching `e2e/` or the E2E Docker stack, read `docs/testing/strategy.md` Layer 7 (the
   normative contract) and `e2e/README.md` (the operational runbook) first.
-- Zero real Supabase or Anthropic calls, ever — the isolated stack replaces both.
-- Exactly four approved journey files under `e2e/tests/journeys/` — no more, no fewer.
+- Zero real Supabase calls, ever — the isolated stack replaces it.
+- Exactly two approved journey files under `e2e/tests/journeys/` — no more, no fewer.
 
 ## CI quality gates (every PR — all blocking)
 
@@ -148,22 +139,19 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 **Security scans:**
 - `dotnet list package --vulnerable` + `npm audit --audit-level=high` (direct + transitive)
 - Gitleaks secret scanning
-- **Zero real AI calls** — `FakeAIProvider` enforced (PR gates cover layers 1–6 only; Layer 7's
-  local-AI-stub exception is post-merge)
 
 **Tests:**
 - Domain unit tests
 - Application use-case tests (handwritten fakes)
-- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial) — includes applying `001_roles.sql`/`002_rls_users.sql`/`003_rls_phase1.sql`/`004_rls_phase2.sql` against a disposable database and proving RLS isolation end to end (`RlsIsolationTests`, `RlsIsolationPhase2Tests`, `RlsHttpIsolationTests`); those scripts are never run by the production application itself, but CI does run them
-- API tests (WebApplicationFactory + shared Testcontainers DB + `FakeAIProvider`)
+- Repository / integration tests (Testcontainers PostgreSql + Respawn, serial) — includes applying `001_roles.sql`/`002_rls_users.sql`/`004_rls_phase2.sql` against a disposable database and proving RLS isolation end to end (`RlsIsolationPhase2Tests`); those scripts are never run by the production application itself, but CI does run them
+- API tests (WebApplicationFactory + shared Testcontainers DB)
 - NetArchTest architecture rules
-- Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, malicious uploads, AI schema validation, idempotency, rate/budget limits, log redaction)
+- Security API tests (auth, CSRF, CSP, CORS, `Cache-Control: no-store`, log redaction)
 - Frontend/export security tests for restricted Markdown rendering and dangerous-link protocols
-- Parsed PDF/CV assertions
+- Parsed CV export assertions
 
 **Post-merge / manual only:**
-- Playwright E2E — foundation implemented and all four journeys passing (see "E2E testing contract" above and `docs/roadmap.md` Phase 6b) — still post-merge/manual only, never a blocking PR gate
+- Playwright E2E — foundation implemented and both approved journeys passing (see "E2E testing contract" above and `docs/roadmap.md` Phase 6b) — still post-merge/manual only, never a blocking PR gate
 - Visual regression fixtures (per CV template) — implemented (`QuestPdfCVExportRendererVisualRegressionTests`); regenerating a baseline after an intentional template change is a separate, explicitly-run test, never automatic
 - SBOM generation + Trivy container scan (high/critical blocks deployment)
-- OWASP ZAP baseline (FakeAIProvider, fail on confirmed high-severity)
-- Live AI smoke tests (manual trigger, explicit cost ceiling, never scheduled)
+- OWASP ZAP baseline (fail on confirmed high-severity)
