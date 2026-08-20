@@ -55,6 +55,7 @@ export function ProfessionalProfilePage() {
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null)
   const [highlighted, setHighlighted] = useState<HighlightedAchievement>(null)
   const focusToken = useRef(0)
+  const previewDialogRef = useRef<HTMLDialogElement>(null)
 
   const load = async () => {
     try {
@@ -162,9 +163,19 @@ export function ProfessionalProfilePage() {
     <>
       <header className={styles.pageHeader}>
         <h1 className={styles.title}>Professional profile</h1>
-        <Button type="button" variant="secondary" disabled title="Coming later">
-          Import from LinkedIn
-        </Button>
+        <div className={styles.pageHeaderActions}>
+          {/* Below 1280px the preview column (ProfilePreview) is no longer stacked inline — this is
+              the one control that reaches it instead, per docs/design/design-system/page-patterns.md
+              "Responsive baseline" ("exactly one preview control is visible at any width"). */}
+          <span className={styles.previewTrigger}>
+            <Button type="button" variant="secondary" onClick={() => previewDialogRef.current?.showModal()}>
+              Preview
+            </Button>
+          </span>
+          <Button type="button" variant="secondary" disabled title="Coming later">
+            Import from LinkedIn
+          </Button>
+        </div>
       </header>
 
       <SectionNav items={buildNavItems(data)} aria-label="Profile sections" />
@@ -185,34 +196,72 @@ export function ProfessionalProfilePage() {
             </div>
           )}
 
-          <AboutYouSection contactInfo={data.contactInfo} summaryMarkdown={data.summaryMarkdown} onChange={(contactInfo, summaryMarkdown) => setProfile({ ...data, contactInfo, summaryMarkdown })} />
+          <AboutYouSection
+            contactInfo={data.contactInfo}
+            summaryMarkdown={data.summaryMarkdown}
+            onChange={(contactInfo, summaryMarkdown) => setProfile((current) => (current ? { ...current, contactInfo, summaryMarkdown } : current))}
+          />
 
           <ExperienceSection
             experience={data.experience}
             skills={data.skills}
-            onChange={(experience) => setProfile({ ...data, experience })}
+            onChange={(experience) => setProfile((current) => (current ? { ...current, experience } : current))}
             focusRequest={focusRequest}
             onHighlightAchievement={(experienceId, index) => setHighlighted(index === null ? null : { experienceId, index })}
           />
 
-          <EducationSection education={data.education} onChange={(education) => setProfile({ ...data, education })} />
+          <EducationSection education={data.education} onChange={(education) => setProfile((current) => (current ? { ...current, education } : current))} />
 
-          <SkillsSection skills={data.skills} onChange={(skills) => setProfile({ ...data, skills })} />
+          <SkillsSection skills={data.skills} onChange={(skills) => setProfile((current) => (current ? { ...current, skills } : current))} />
 
-          <LanguagesSection languages={data.languages} onChange={(languages) => setProfile({ ...data, languages })} />
+          <LanguagesSection languages={data.languages} onChange={(languages) => setProfile((current) => (current ? { ...current, languages } : current))} />
 
-          <CertificationsSection certifications={data.certifications} onChange={(certifications) => setProfile({ ...data, certifications })} />
+          <CertificationsSection
+            certifications={data.certifications}
+            onChange={(certifications) => setProfile((current) => (current ? { ...current, certifications } : current))}
+          />
 
-          <ProjectsSection projects={data.projects} skills={data.skills} onChange={(projects) => setProfile({ ...data, projects })} />
+          <ProjectsSection
+            projects={data.projects}
+            skills={data.skills}
+            onChange={(projects) => setProfile((current) => (current ? { ...current, projects } : current))}
+          />
 
-          <LinksSection profileLinks={data.profileLinks} onChange={(profileLinks) => setProfile({ ...data, profileLinks })} />
+          <LinksSection profileLinks={data.profileLinks} onChange={(profileLinks) => setProfile((current) => (current ? { ...current, profileLinks } : current))} />
         </div>
 
         <aside className={styles.aside} aria-label="Profile coverage and preview">
           <ProfileCoverage profile={data} />
-          <ProfilePreview profile={data} highlighted={highlighted} onFocusExperience={focusExperience} />
+          <div className={styles.previewInline}>
+            <ProfilePreview profile={data} highlighted={highlighted} onFocusExperience={focusExperience} />
+          </div>
         </aside>
       </div>
+
+      {/* Reuses ProfilePreview as-is inside the browser's native <dialog> — no generic overlay
+          framework, just the platform primitive: showModal() gets focus trapping, Escape-to-close,
+          and a ::backdrop for free. Always present in the DOM (a closed <dialog> paints nothing and
+          is excluded from the accessibility tree), so there's nothing to conditionally mount. */}
+      <dialog
+        ref={previewDialogRef}
+        className={styles.previewDialog}
+        aria-label="Profile preview"
+        onClick={(event) => {
+          if (event.target === previewDialogRef.current) previewDialogRef.current?.close()
+        }}
+      >
+        <button type="button" className={styles.previewDialogClose} onClick={() => previewDialogRef.current?.close()} aria-label="Close preview">
+          <Icon name="x" />
+        </button>
+        <ProfilePreview
+          profile={data}
+          highlighted={highlighted}
+          onFocusExperience={(id) => {
+            previewDialogRef.current?.close()
+            focusExperience(id)
+          }}
+        />
+      </dialog>
     </>
   )
 }

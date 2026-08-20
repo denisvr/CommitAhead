@@ -94,39 +94,41 @@ export function SkillsSection({ skills, onChange }: SkillsSectionProps) {
       {skills.length === 0 ? (
         <EmptyState title="No skills yet" description="Add what you actually use — level and category help a future CV choose what to lead with." />
       ) : (
-        <table className={styles.skillsTable}>
-          <thead>
-            <tr>
-              <th>Skill</th>
-              <th>Category</th>
-              <th>Proficiency</th>
-              <th className={styles.skillActionCell} />
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map(({ category, entries }) => (
-              <Fragment key={category}>
-                <tr className={styles.skillGroupRow}>
-                  <td colSpan={4}>
-                    <span className={styles.groupTitle}>{category}</span> <span className={styles.groupCount}>{entries.length}</span>
-                  </td>
-                </tr>
-                {entries.map((entry) => (
-                  <SkillFields
-                    key={entry.id}
-                    value={entry}
-                    isEditing={editingIds.has(entry.id)}
-                    disabled={isSaving}
-                    onChange={(next) => onChange(skills.map((item) => (item.id === entry.id ? next : item)))}
-                    onRemove={() => void removeEntry(entry.id)}
-                    onStartEdit={() => setEditing(entry.id, true)}
-                    onStopEdit={() => void stopEditingAndSave(entry.id)}
-                  />
-                ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+        <div className={styles.tableScroll}>
+          <table className={styles.skillsTable}>
+            <thead>
+              <tr>
+                <th>Skill</th>
+                <th>Category</th>
+                <th>Proficiency</th>
+                <th className={styles.skillActionCell} />
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(({ category, entries }) => (
+                <Fragment key={category}>
+                  <tr className={styles.skillGroupRow}>
+                    <td colSpan={4}>
+                      <span className={styles.groupTitle}>{category}</span> <span className={styles.groupCount}>{entries.length}</span>
+                    </td>
+                  </tr>
+                  {entries.map((entry) => (
+                    <SkillFields
+                      key={entry.id}
+                      value={entry}
+                      isEditing={editingIds.has(entry.id)}
+                      disabled={isSaving}
+                      onChange={(next) => onChange(skills.map((item) => (item.id === entry.id ? next : item)))}
+                      onRemove={() => void removeEntry(entry.id)}
+                      onStartEdit={() => setEditing(entry.id, true)}
+                      onStopEdit={() => void stopEditingAndSave(entry.id)}
+                    />
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   )

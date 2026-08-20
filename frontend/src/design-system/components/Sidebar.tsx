@@ -29,11 +29,19 @@ export function Sidebar({ items, activeKey, onNavigate, collapsed, onToggleColla
               type="button"
               className={[styles.item, item.key === activeKey ? styles.itemActive : ''].join(' ').trim()}
               aria-current={item.key === activeKey ? 'page' : undefined}
+              // The visible label is display:none whenever collapsed (desktop) OR below 767px
+              // (mobile forces icon-only regardless of the collapse preference — Sidebar.module.css's
+              // own media query) — an explicit aria-label, not `title` alone, keeps the button's
+              // accessible name correct in every one of those cases, not just the ones `collapsed`
+              // happens to know about. `title` stays as a supplementary hover tooltip only.
+              aria-label={item.label}
               title={collapsed ? item.label : undefined}
               onClick={() => onNavigate(item.key)}
             >
               <Icon name={item.icon} className={styles.itemIcon} />
-              <span className={styles.itemLabel}>{item.label}</span>
+              <span className={styles.itemLabel} aria-hidden="true">
+                {item.label}
+              </span>
             </button>
           </li>
         ))}

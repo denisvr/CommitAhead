@@ -49,8 +49,7 @@ test('editing a CVPresentation\'s selections and exporting downloads a real PDF'
 
   await test.step('a CVPresentation is created entirely through the UI', async () => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Professional profile & CVs' }).click();
-    await page.getByRole('tab', { name: 'CV presentations' }).click();
+    await page.getByRole('button', { name: 'CV presentations', exact: true }).click();
     await page.getByRole('button', { name: 'New CV presentation' }).first().click();
 
     await page.getByLabel('Label').fill(presentationLabel);

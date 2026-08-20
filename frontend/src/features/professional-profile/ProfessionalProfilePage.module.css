@@ -91,15 +91,22 @@
   scrollbar-width: thin;
 }
 
-/* The reference hides the aside entirely below 1280px — a click-through preview dialog takes
-   over instead. This slice keeps the simpler, always-visible fallback of stacking it beneath the
-   sections (never fully hidden), flagged as a known gap against the reference's own responsive
-   behaviour rather than its desktop layout. */
 @media (max-width: 1279px) {
   .aside {
     position: static;
     height: auto;
     overflow: visible;
+  }
+}
+
+/* Below 1280px the coverage panel still stacks inline (short, and useful without leaving the
+   page), but ProfilePreview does not — it moves into the dialog reached by the header's "Preview"
+   control instead (docs/design/design-system/page-patterns.md "Responsive baseline": "exactly one
+   preview control is visible at any width"). Stacking the full document preview beneath eight
+   editable sections on a phone screen would bury it below a very long scroll for no benefit. */
+@media (max-width: 1279px) {
+  .previewInline {
+    display: none;
   }
 }
 
@@ -113,6 +120,67 @@
   justify-content: space-between;
   gap: 16px;
   padding: 18px 22px 0;
+}
+
+.pageHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Hidden at the width where the aside preview column is visible inline (see .previewInline above)
+   — exactly one preview control exists at any given width, never both. */
+.previewTrigger {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .previewTrigger {
+    display: inline-flex;
+  }
+}
+
+/* The native <dialog> element, not a hand-rolled overlay — showModal() (called from the "Preview"
+   button) supplies focus trapping, Escape-to-close, and ::backdrop for free, and a closed <dialog>
+   paints nothing and is pruned from the accessibility tree without any conditional rendering. */
+.previewDialog {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  margin: auto;
+  padding: 6px 14px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+.previewDialog::backdrop {
+  background: color-mix(in srgb, black 55%, transparent);
+}
+
+.previewDialogClose {
+  align-self: flex-end;
+  display: flex;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.previewDialogClose:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.previewDialogClose:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* Used only by the create-profile bootstrap screen and the error/retry state — the approved

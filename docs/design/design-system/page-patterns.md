@@ -94,13 +94,17 @@ reason and the safe alternative instead of offering a destructive confirmation t
 Every implemented page must be reviewed at:
 
 - wide desktop, preview column in the layout (1280px and above);
-- narrow desktop/tablet, preview reached from the header control (721–1279px);
-- mobile under 720px, preview reached from the floating control;
+- everything below 1280px (tablet and phone alike), preview reached from the one "Preview" control
+  in the page header, which opens it in a dialog;
 - zoomed text without clipped controls.
 
-Exactly one preview control is visible at any width. Dense tables require a deliberate mobile
-alternative. Horizontal overflow is acceptable only for data whose comparison would be destroyed by
-stacking, and must be keyboard accessible.
+Exactly one preview control is visible at any width — below 1280px that is always the header
+button, not a second, narrower-still variant; a single simple control that works down to a phone
+screen is preferred over two different mechanisms for two sub-ranges. Dense tables require a
+deliberate mobile alternative (ProfessionalProfilePage's Skills table scrolls horizontally inside
+its own bounded strip, the same technique as SectionNav's own jump bar, rather than being clipped
+by its Card's `overflow: hidden`). Horizontal overflow is acceptable only for data whose comparison
+would be destroyed by stacking, and must be keyboard accessible.
 
 ## Theme baseline
 
