@@ -12,6 +12,13 @@
    it out of flow, so AppShell.module.css's `.body` reserves the matching width via padding-left
    instead of a flex sibling. */
 .sidebar {
+  /* border-box, not the default content-box: `width` here must be the sidebar's whole rendered
+     footprint (padding and border included), because AppShell.module.css's `.body`/.bodyCollapsed
+     reserve exactly this same pixel value as padding-left for the content next to it. Under the
+     default content-box, this 220px excluded the 24px of left/right padding and the 0.8px border,
+     so the sidebar's true footprint was ~245px while content started 25px earlier, at x=220 —
+     visually painting the sidebar over the first ~25px of every page's content. */
+  box-sizing: border-box;
   width: 220px;
   display: flex;
   flex-direction: column;

@@ -61,6 +61,18 @@ function App() {
     setPresentationsView({ name: 'new' })
   }
 
+  // Arriving at "CV presentations" from anywhere else always lands on the list — leaving a
+  // half-finished "new" or a "detail" view behind and switching tabs must not resume it later.
+  // Every entry point (Sidebar, the Home cards' "Open profile"/"View all", the create form's
+  // "Go to your professional profile") funnels through this instead of the raw setter, except
+  // startNewCV above, which explicitly wants "new" and sets it itself right after.
+  const changeHubTab = (tab: HubTab) => {
+    if (tab === 'presentations' && hubTab !== 'presentations') {
+      setPresentationsView({ name: 'list' })
+    }
+    setHubTab(tab)
+  }
+
   useEffect(() => {
     apiClient
       .GET('/api/me')
@@ -160,10 +172,10 @@ function App() {
     <AppShell
       sidebarItems={SIDEBAR_ITEMS}
       activeSidebarItem={hubTab}
-      onSidebarNavigate={(key) => setHubTab(key as HubTab)}
+      onSidebarNavigate={(key) => changeHubTab(key as HubTab)}
       sidebarCollapsed={sidebarCollapsed}
       onToggleSidebar={toggleSidebar}
-      onHomeClick={() => setHubTab('home')}
+      onHomeClick={() => changeHubTab('home')}
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
@@ -171,7 +183,7 @@ function App() {
       {logoutError && <p role="alert">{logoutError}</p>}
       <ProfileHubPage
         hubTab={hubTab}
-        onHubTabChange={setHubTab}
+        onHubTabChange={changeHubTab}
         presentationsView={presentationsView}
         onPresentationsViewChange={setPresentationsView}
         onCreateCV={startNewCV}

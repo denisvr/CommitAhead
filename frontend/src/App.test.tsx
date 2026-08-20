@@ -141,6 +141,50 @@ describe('App', () => {
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
   })
 
+  it('returning to CV presentations from another tab shows the list, not a left-open create form', async () => {
+    // The create form only renders its fields once it has a ProfessionalProfile to reference —
+    // the default handler 404s (no profile yet), which would otherwise show its own "you need a
+    // profile first" redirect instead of the "new" view this test needs to leave abandoned.
+    server.use(
+      http.get('/api/professional-profile', () =>
+        HttpResponse.json({
+          id: 'profile-1',
+          contactInfo: { name: 'Ada Lovelace', email: 'ada@example.com', phone: null, address: null, photoStorageKey: null },
+          summaryMarkdown: 'Backend engineer.',
+          experience: [],
+          education: [],
+          skills: [],
+          languages: [],
+          certifications: [],
+          projects: [],
+          profileLinks: [],
+          createdAtUtc: '2024-01-01T00:00:00Z',
+          updatedAtUtc: '2024-01-01T00:00:00Z',
+        }),
+      ),
+    )
+
+    render(<App />)
+    await screen.findByRole('heading', { name: /professional profile/i })
+
+    await userEvent.click(screen.getByRole('button', { name: 'CV presentations' }))
+    await screen.findByRole('heading', { name: 'CV presentations' })
+
+    const newButtons = await screen.findAllByRole('button', { name: 'New CV presentation' })
+    await userEvent.click(newButtons[0])
+    expect(await screen.findByLabelText('Label')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Professional profile' }))
+    await screen.findByRole('heading', { name: 'About you' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'CV presentations' }))
+
+    // The regression this guards against: presentationsView used to persist across tab switches,
+    // so returning here resumed the abandoned "new" form instead of showing the list.
+    expect(await screen.findByRole('heading', { name: 'No CV presentations yet' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Label')).not.toBeInTheDocument()
+  })
+
   it('allows retrying logout after a failure, and succeeds the second time', async () => {
     let callCount = 0
     server.use(
