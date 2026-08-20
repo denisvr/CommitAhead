@@ -120,6 +120,11 @@
   justify-content: space-between;
   gap: 16px;
   padding: 18px 22px 0;
+  /* Belt-and-suspenders: the title and both header buttons have their own min-content width and
+     none of them may truncate, so if a narrower device than this was tested against ever needs
+     more room than .importTrigger's own breakpoint frees up, this wraps to a second line instead
+     of overflowing the viewport. */
+  flex-wrap: wrap;
 }
 
 .pageHeaderActions {
@@ -127,6 +132,15 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* Disabled and not yet implemented — the first thing to give up the header's limited width on a
+   phone screen. Below this, showing "Preview" (a real, working control) matters more than a
+   disabled placeholder for a feature that doesn't exist yet. */
+@media (max-width: 600px) {
+  .importTrigger {
+    display: none;
+  }
 }
 
 /* Hidden at the width where the aside preview column is visible inline (see .previewInline above)
@@ -143,8 +157,12 @@
 
 /* The native <dialog> element, not a hand-rolled overlay — showModal() (called from the "Preview"
    button) supplies focus trapping, Escape-to-close, and ::backdrop for free, and a closed <dialog>
-   paints nothing and is pruned from the accessibility tree without any conditional rendering. */
-.previewDialog {
+   paints nothing and is pruned from the accessibility tree without any conditional rendering.
+   Layout properties must live under the `[open]` attribute selector, not the bare `.previewDialog`
+   selector — a bare `display: flex` here overrides the UA stylesheet's `dialog:not([open])
+   { display: none }` in Chromium, so a *closed* dialog becomes visible again. `[open]` only ever
+   matches while showModal()/show() has actually opened it. */
+.previewDialog[open] {
   display: flex;
   flex-direction: column;
   width: min(560px, calc(100vw - 32px));

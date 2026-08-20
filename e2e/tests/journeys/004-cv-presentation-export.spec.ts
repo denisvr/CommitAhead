@@ -47,6 +47,42 @@ test('editing a CVPresentation\'s selections and exporting downloads a real PDF'
     expect(experienceResponse.status()).toBe(204);
   });
 
+  await test.step('the Profile Preview dialog stays hidden while closed, and opens/closes correctly below 1280px', async () => {
+    // Regression coverage: `.previewDialog` once set `display: flex` unconditionally, which in
+    // Chromium overrides the browser's own `dialog:not([open]) { display: none }` — a *closed*
+    // dialog stayed visible. Only a real browser's UA stylesheet can prove this; jsdom-based
+    // component tests don't even load the CSS.
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Professional profile', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Professional profile' })).toBeVisible();
+
+    // Desktop width (this project's default viewport, 1280x720): the preview renders inline in
+    // the aside column, and the dialog must not be visible while closed.
+    await expect(page.locator('dialog')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeHidden();
+
+    // Below 1280px the inline preview column disappears and the one "Preview" control takes over.
+    await page.setViewportSize({ width: 767, height: 900 });
+    const previewButton = page.getByRole('button', { name: 'Preview' });
+    await expect(previewButton).toBeVisible();
+
+    const dialog = page.locator('dialog');
+    await previewButton.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Profile preview' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Close preview' }).click();
+    await expect(dialog).toBeHidden();
+
+    await previewButton.click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+
+    // Back to this journey's normal desktop viewport for the remaining steps.
+    await page.setViewportSize({ width: 1280, height: 720 });
+  });
+
   await test.step('a CVPresentation is created entirely through the UI', async () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'CV presentations', exact: true }).click();

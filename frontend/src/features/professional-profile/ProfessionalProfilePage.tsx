@@ -172,9 +172,13 @@ export function ProfessionalProfilePage() {
               Preview
             </Button>
           </span>
-          <Button type="button" variant="secondary" disabled title="Coming later">
-            Import from LinkedIn
-          </Button>
+          {/* Disabled and future-only — hidden below the width where it and "Preview" no longer
+              both fit next to the page title without wrapping or overflowing. */}
+          <span className={styles.importTrigger}>
+            <Button type="button" variant="secondary" disabled title="Coming later">
+              Import from LinkedIn
+            </Button>
+          </span>
         </div>
       </header>
 
