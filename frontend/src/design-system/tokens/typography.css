@@ -1,38 +1,49 @@
-/* Type — one humanist sans for everything, one mono for digits.
-   Hierarchy is size, weight and space. There is no second display family and
-   no colour-as-hierarchy. Minimum type size in the product is 12.5px, and every
-   size at or below 15px is paired only with --text, --text-muted or
-   --text-faint, all of which clear 4.5:1 in both themes. */
+/* Generated from docs/design/design-system/tokens/ — the design reference is the source
+   of truth. Change a value there and copy it here in the same PR (readme.md, "Required
+   source files"). Do not edit only one side. */
+
+/* Type — Studio.
+
+   One humanist sans for everything, one mono for figures. Hierarchy is size,
+   weight and space — never colour, and never a second display family.
+
+   Minimum size for anything a user has to read is 12px. 11.5px is permitted only
+   for uppercase tracked labels whose meaning also appears elsewhere. Every size at
+   or below 15px is paired only with --text, --text-muted or --text-faint, all of
+   which clear 4.5:1 on every ground they are used on, in both themes. */
 :root {
   --font-sans: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
-  --text-numeral: 52px;   /* the single effective-score figure */
-  --text-display: 42px;   /* wordmark, login */
-  --text-title: 30px;     /* page title */
-  --text-headline: 25px;  /* the "next" item */
-  --text-lead: 19px;
-  --text-lg: 16.5px;      /* prose */
-  --text-md: 15.5px;      /* list row title */
-  --text-base: 15px;      /* default UI */
-  --text-sm: 13.5px;      /* secondary UI, dense rows */
-  --text-xs: 12.5px;      /* metadata — floor for body text */
-  --text-micro: 11px;     /* mono uppercase labels only, tracked +0.14em */
+  --text-display: 31px;   /* login, the profile page title */
+  --text-title: 22px;     /* dialog title, preview sheet name */
+  --text-lead: 19px;      /* section heading inside a card */
+  --text-lg: 16px;        /* prose */
+  --text-md: 15.5px;      /* collapsible row title */
+  --text-base: 14.5px;    /* default UI */
+  --text-sm: 13.5px;      /* secondary UI, dense rows, buttons */
+  --text-xs: 12.5px;      /* metadata, hints, badges — floor for body text */
+  --text-micro: 11.5px;   /* uppercase tracked labels only, +0.07em */
 
-  --leading-display: 1.05;
   --leading-title: 1.15;
   --leading-ui: 1.5;
-  --leading-prose: 1.65;
+  --leading-prose: 1.6;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --weight-black: 800;    /* the mark only */
 
-  --track-display: -0.035em;
-  --track-title: -0.03em;
-  --track-headline: -0.02em;
-  --track-label: 0.14em;
+  --track-display: -0.02em;
+  --track-title: -0.015em;
+  --track-label: 0.07em;
 
   --numeric-tabular: tabular-nums; /* @kind other */
 }
+
+/* Mono is for figures the user compares or scans — counts, percentages, years,
+   date ranges, CEFR levels, ordinal positions in a list. It is not a "technical"
+   flavour: never set prose, labels or entity names in mono. Anything numeric that
+   sits in a column or updates in place also takes --numeric-tabular so the digits
+   do not shift as values change. */

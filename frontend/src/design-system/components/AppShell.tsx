@@ -1,68 +1,62 @@
 import type { ReactNode } from 'react'
-import { Brand } from './Brand'
+import { AccountMenu } from './AccountMenu'
+import { BookmarkMark } from './Brand'
+import { Sidebar, type SidebarItem } from './Sidebar'
+import { ThemeToggle } from './ThemeToggle'
 import styles from './AppShell.module.css'
 
-export type NavDestination = {
-  key: string
-  label: string
-}
-
 type AppShellProps = {
-  destinations: NavDestination[]
-  activeDestination: string
-  onNavigate: (key: string) => void
+  sidebarItems: SidebarItem[]
+  activeSidebarItem: string | null
+  onSidebarNavigate: (key: string) => void
+  sidebarCollapsed: boolean
+  onToggleSidebar: () => void
+  // Clicking the brand mark/wordmark returns to Home, same destination as the Sidebar's own
+  // "Home" item — a second, redundant entry point, not the only one, since DevOps's own header
+  // brand behaves the same way alongside its nav rail.
+  onHomeClick: () => void
   email: string
   onLogout: () => void
   isLoggingOut: boolean
   children: ReactNode
 }
 
-// Owns the desktop sidebar and the mobile top bar + bottom nav (components.md "AppShell",
-// page-patterns.md "mobile replaces the sidebar below 768px; it does not merely squeeze it").
-// Renders the same destinations twice — once for the desktop sidebar, once for the mobile bottom
-// nav — each hidden by the other viewport's media query rather than by JS breakpoint detection.
-// Only lists destinations this slice actually built — StudyItem categories are filters, never nav
-// destinations, and the remaining product areas (profile, job analyses, ...) aren't built yet.
-export function AppShell({ destinations, activeDestination, onNavigate, email, onLogout, isLoggingOut, children }: AppShellProps) {
-  const renderNavButton = (destination: NavDestination) => (
-    <button
-      key={destination.key}
-      type="button"
-      className={[styles.navLink, destination.key === activeDestination ? styles.navLinkActive : ''].join(' ').trim()}
-      aria-current={destination.key === activeDestination ? 'page' : undefined}
-      onClick={() => onNavigate(destination.key)}
-    >
-      {destination.label}
-    </button>
-  )
-
+// Owns the sticky header, the primary navigation rail, the theme control and the content surface
+// (components.md "AppShell", page-patterns.md "Application shell").
+export function AppShell({
+  sidebarItems,
+  activeSidebarItem,
+  onSidebarNavigate,
+  sidebarCollapsed,
+  onToggleSidebar,
+  onHomeClick,
+  email,
+  onLogout,
+  isLoggingOut,
+  children,
+}: AppShellProps) {
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <Brand />
-        <nav className={styles.nav} aria-label="Primary">
-          {destinations.map(renderNavButton)}
-        </nav>
-        <div className={styles.footer}>
-          <p className={styles.email}>{email}</p>
-          <button type="button" className={styles.navLink} onClick={onLogout} disabled={isLoggingOut}>
-            Log out
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <button type="button" className={styles.brand} onClick={onHomeClick} aria-label="CommitAhead home">
+            <span className={styles.markBox}>
+              <BookmarkMark className={styles.mark} size={17} />
+            </span>
+            <span className={styles.wordmark}>CommitAhead</span>
           </button>
-        </div>
-      </aside>
 
-      <header className={styles.mobileHeader}>
-        <Brand className={styles.mobileBrand} />
-        <button type="button" className={styles.mobileLogout} onClick={onLogout} disabled={isLoggingOut}>
-          Log out
-        </button>
+          <span className={styles.spacer} />
+
+          <ThemeToggle />
+          <AccountMenu email={email} onLogout={onLogout} isLoggingOut={isLoggingOut} />
+        </div>
       </header>
 
-      <main className={styles.content}>{children}</main>
-
-      <nav className={styles.mobileNav} aria-label="Primary">
-        {destinations.map(renderNavButton)}
-      </nav>
+      <div className={[styles.body, sidebarCollapsed ? styles.bodyCollapsed : ''].filter(Boolean).join(' ')}>
+        <Sidebar items={sidebarItems} activeKey={activeSidebarItem} onNavigate={onSidebarNavigate} collapsed={sidebarCollapsed} onToggleCollapsed={onToggleSidebar} />
+        <main className={styles.content}>{children}</main>
+      </div>
     </div>
   )
 }

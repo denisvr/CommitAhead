@@ -1,32 +1,45 @@
+/* Literal values from cv-3-studio-v2.1.html ".chip" — see AppShell.module.css's header comment
+   for why this file doesn't route them through the generic scale. */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  height: var(--control-height-sm);
-  padding: 0 var(--space-6);
-  font-size: var(--text-sm);
-  color: var(--text);
+  gap: 7px;
   background: var(--surface-alt);
   border: var(--border-hairline) solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
+  padding: 5px 6px 5px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.chip[role='button'] {
+  cursor: pointer;
+}
+
+.chip[role='button']:hover {
+  border-color: var(--border);
+}
+
+.chip[role='button']:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--space-16);
-  height: var(--space-16);
-  padding: 0;
-  color: var(--text-muted);
-  background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  background: transparent;
   cursor: pointer;
+  color: var(--critical);
+  padding: 2px 3px;
+  border-radius: 4px;
+  font-size: 11px;
 }
 
 .remove:hover {
-  color: var(--critical);
   background: var(--critical-wash);
 }
 

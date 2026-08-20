@@ -1,20 +1,44 @@
-/* There is effectively no elevation. Paper does not float. The only shadow in
-   the system belongs to things that genuinely sit above the page: dialogs,
-   popovers, the mobile sheet. */
+/* Elevation — Studio.
+
+   Cards sit above the page. That is the core structural idea of this identity, and
+   in light mode the shadow is what says so.
+
+   Dark mode cannot rely on it: a black shadow on a near-black ground is invisible.
+   So in dark the same separation is carried by the card border (--card-border
+   resolves to a stronger line there — see colors.css) and the shadows become
+   deeper and darker, doing a supporting job rather than the whole job.
+
+   Never introduce a shadow to signal state. Hover changes colour or surface, focus
+   draws a ring; neither lifts. */
 :root {
-  --shadow-flat: none;
-  --shadow-overlay: 0 12px 32px rgba(27, 26, 23, 0.16), 0 2px 6px rgba(27, 26, 23, 0.10);
-  --scrim: rgba(27, 26, 23, 0.32);
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, .05);
+  --shadow-sm: 0 4px 6px -2px rgba(16, 24, 40, .04), 0 12px 24px -8px rgba(16, 24, 40, .10);
+  --shadow-lg: 0 24px 48px -16px rgba(16, 24, 40, .22);
+  --shadow-overlay: 0 32px 72px -24px rgba(16, 24, 40, .38), 0 4px 12px -4px rgba(16, 24, 40, .18);
+  --scrim: rgba(16, 24, 40, .55);
 }
 
 :root[data-theme="dark"] {
-  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
-  --scrim: rgba(0, 0, 0, 0.55);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-sm: 0 4px 6px -2px rgba(0, 0, 0, .36), 0 12px 24px -8px rgba(0, 0, 0, .52);
+  --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, .70);
+  --shadow-overlay: 0 32px 72px -24px rgba(0, 0, 0, .80), 0 4px 12px -4px rgba(0, 0, 0, .60);
+  --scrim: rgba(0, 0, 0, .66);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
-    --scrim: rgba(0, 0, 0, 0.55);
+  :root:not([data-theme="light"]) {
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-sm: 0 4px 6px -2px rgba(0, 0, 0, .36), 0 12px 24px -8px rgba(0, 0, 0, .52);
+    --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, .70);
+    --shadow-overlay: 0 32px 72px -24px rgba(0, 0, 0, .80), 0 4px 12px -4px rgba(0, 0, 0, .60);
+    --scrim: rgba(0, 0, 0, .66);
   }
 }
+
+/* Where each one belongs:
+     --shadow-xs        segmented-control thumb, badge-like raised chips
+     --shadow-sm        cards, the coverage panel, sticky side panels
+     --shadow-lg        the CV preview sheet, the floating preview button
+     --shadow-overlay   dialogs and the mobile preview sheet only
+     --scrim            the backdrop behind any modal surface */

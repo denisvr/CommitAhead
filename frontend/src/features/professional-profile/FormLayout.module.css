@@ -1,14 +1,30 @@
+/* Literal values from cv-3-studio-v2.1.html ".g2" — see AppShell.module.css's header comment for
+   why this file doesn't route them through the generic scale.
+
+   The reference lays out every field of an entry as direct children of ONE CSS grid, not as
+   repeated two-up flex rows — a field only spans the full width (.w) when it genuinely needs to
+   (a paragraph, a repository, a chip list). Two adjacent short fields simply sit side by side in
+   the grid's natural flow. */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 620px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Kept for the few places that genuinely want a plain vertical stack rather than the field grid
+   (e.g. the create-profile bootstrap form, which has no card/grid context yet). */
 .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
-}
-
-.row {
-  display: flex;
-  gap: var(--space-12);
-}
-
-.row > * {
-  flex: 1;
+  gap: 12px;
 }

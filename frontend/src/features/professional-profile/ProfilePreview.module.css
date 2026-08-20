@@ -1,0 +1,208 @@
+/* Literal values from cv-3-studio-v2.1.html ".pv-*"/".paper" — see AppShell.module.css's header
+   comment for why this file doesn't route them through the generic scale.
+
+   The paper itself uses the theme-independent --paper-* tokens (colors.css) since it always
+   stays light — see ADR-0024. .flag below is the one exception: it hardcodes the reference's
+   literal caution hex rather than the theme's --caution, because --caution changes value in dark
+   mode and this surface never should. */
+.pvWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pvBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pvBar h3 {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.pvCap {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 8px 0 9px;
+}
+
+.pvCap b {
+  color: var(--text);
+}
+
+.paper {
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+}
+
+.paperScroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 28px 30px 34px;
+}
+
+.name {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 3px;
+  color: var(--paper-ink);
+}
+
+.contact {
+  font-size: 8.8px;
+  color: var(--paper-ink-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid var(--paper-ink);
+  margin: 0 0 11px;
+}
+
+.h2 {
+  font-size: 8.8px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--paper-ink);
+  margin: 13px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: var(--border-hairline) solid var(--paper-rule);
+}
+
+.summary {
+  font-size: 9.3px;
+  line-height: 1.6;
+  color: var(--paper-ink-2);
+  margin: 0;
+}
+
+.job {
+  display: block;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  margin: 0 0 8px -4px;
+  border-radius: 3px;
+  padding: 2px 4px;
+  width: calc(100% + 4px);
+  cursor: pointer;
+  transition: background-color 0.18s;
+}
+
+.job:hover {
+  background: var(--paper-highlight);
+}
+
+.job:focus-visible {
+  outline: var(--focus-width) solid var(--paper-accent);
+  outline-offset: 1px;
+}
+
+.plainEntry {
+  margin: 0 0 8px -4px;
+  padding: 2px 4px;
+}
+
+.jobHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.jobTitle {
+  font-size: 10.3px;
+  font-weight: 700;
+  color: var(--paper-ink);
+}
+
+.jobDate {
+  font-size: 8.4px;
+  color: var(--paper-ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.jobOrg {
+  display: block;
+  font-size: 9.3px;
+  color: var(--paper-ink-2);
+  font-style: italic;
+}
+
+.achievementList {
+  margin: 4px 0 0;
+  padding-left: 12px;
+  font-size: 8.9px;
+  line-height: 1.55;
+  color: var(--paper-ink-2);
+}
+
+.achievementList li {
+  margin-bottom: 2px;
+  border-radius: 2px;
+  transition: background-color 0.18s;
+}
+
+.highlighted {
+  background: var(--paper-highlight);
+  box-shadow: 0 0 0 2px var(--paper-highlight);
+}
+
+.more {
+  display: block;
+  font-size: 8.2px;
+  color: var(--paper-accent);
+  margin-top: 3px;
+  font-weight: 600;
+  padding-left: 12px;
+  border-radius: 2px;
+}
+
+/* Literal caution hex — see the file header comment. */
+.flag {
+  display: block;
+  font-size: 8.3px;
+  color: #9a5500;
+  font-style: italic;
+  border-left: 2px solid #f0d3a8;
+  padding: 2px 0 2px 7px;
+  margin-top: 4px;
+  background: #fdf6ea;
+}
+
+.tags {
+  display: block;
+  font-size: 8.3px;
+  color: var(--paper-ink-3);
+  margin: 3px 0 0;
+}
+
+.lineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  font-size: 8.9px;
+  color: var(--paper-ink-2);
+  padding: 1.5px 0;
+  margin: 0;
+}

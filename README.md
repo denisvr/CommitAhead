@@ -400,7 +400,7 @@ frontend/   React 19 + TypeScript + Vite app — a separate application, not a C
 | `e2e/README.md` | E2E operational runbook (install, Docker stack, running journeys, artifacts, safeguards) |
 | `docs/security/threat-model.md` | Assets, threats, controls, and security tests |
 | `docs/deployment/strategy.md` | Deployment topology and platform requirements |
-| `docs/design/design-system/readme.md` | Approved Reading Room/Bookmark identity and frontend design contract |
+| `docs/design/design-system/readme.md` | Approved Studio/Bookmark identity and frontend design contract (ADR-0024) |
 | `docs/roadmap.md` | Implementation phases |
 | `docs/tbd.md` | Decisions that intentionally remain open |
 | `docs/prompts/phase-0a-claude-kickoff.md` | First implementation prompt for Claude Code |

@@ -22,6 +22,7 @@ Key user journeys. Each maps to one or more application use case classes in the 
 1. Create or fetch the one-per-user ProfessionalProfile.
 2. Edit its sections: add/edit/remove ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry, ProfileLink.
 3. Deleting a canonical entry (e.g. a Skill) removes it from any CVPresentation selection that referenced it (`DanglingSelectionCleanup`, run from every `Replace*UseCase`); a Skill still referenced by an Experience or Project entry cannot be deleted until that reference is removed or reassigned.
+4. Manually reorder Experience, Education, Certification, or Project entries (invariant 8) — every add/edit/delete/reorder persists immediately, with no separate save step.
 
 ---
 

@@ -64,7 +64,7 @@ ASP.NET Core 10 Web API  ──────────────────�
 - Feature-folder component structure (mirroring backend features)
 - Custom production components implemented incrementally with CSS Modules and shared CSS
   custom-property tokens (ADR-0016)
-- Reading Room + Bookmark design contract from `docs/design/design-system/`
+- Studio + Bookmark design contract from `docs/design/design-system/` (ADR-0024)
 - MSW for component test isolation
 - No Supabase SDK; all API calls go through the generated client
 - No UI framework, CSS-in-JS, inline style attributes, CDN assets, runtime-injected SVG sprites,

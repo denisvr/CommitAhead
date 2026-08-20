@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react'
-import { restrictedUrl } from '../../design-system/components/restrictedUrlTransform'
+import { SafeLink } from '../../design-system/components/SafeLink'
 import { RestrictedMarkdown } from '../../design-system/components/RestrictedMarkdown'
 import type { ProfessionalProfileResponse } from '../professional-profile/api'
 import { formatYearMonth } from './formatYearMonth'
@@ -9,19 +8,6 @@ import styles from './CVPreview.module.css'
 type CVPreviewProps = {
   profile: ProfessionalProfileResponse
   presentation: CVPresentationResponse
-}
-
-function SafeLink({ url, children }: { url: string; children: ReactNode }) {
-  const safeUrl = restrictedUrl(url)
-  if (!safeUrl) {
-    return <>{children}</>
-  }
-
-  return (
-    <a href={safeUrl} target="_blank" rel="noopener noreferrer nofollow">
-      {children}
-    </a>
-  )
 }
 
 // Read-only assembled view built directly from already-fetched data — never duplicates canonical

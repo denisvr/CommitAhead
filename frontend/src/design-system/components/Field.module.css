@@ -1,23 +1,38 @@
+/* Literal values from cv-3-studio-v2.1.html ".f label"/".hint" — see AppShell.module.css's
+   header comment for why this file doesn't route them through the generic scale. */
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 .label {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--text);
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.required {
+  color: var(--critical);
+  font-style: normal;
+}
+
+.inlineHint {
+  font-weight: 500;
+  color: var(--text-faint);
 }
 
 .hint {
-  margin: 0;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.45;
 }
 
 .error {
-  margin: 0;
-  font-size: var(--text-xs);
+  margin: 5px 0 0;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--critical);
 }

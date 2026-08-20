@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype 1 — Ledger</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --paper:#f7f4ee; --paper-2:#fffdf9; --ink:#1c1a17; --ink-2:#57514a; --ink-3:#8b8378;
+    --rule:#e2dbd0; --rule-2:#cfc6b8;
+    --accent:#8c2f1f; --accent-soft:#f0e2de; --gold:#b08423;
+    --ok:#2f6b4f; --warn:#9a6a12;
+    --shadow:0 1px 2px rgba(28,26,23,.05), 0 8px 24px -12px rgba(28,26,23,.18);
+    --serif:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+  /* ---------- masthead ---------- */
+  .masthead{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+  .masthead-in{max-width:1320px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:24px}
+  .brand{font-family:var(--serif);font-size:19px;letter-spacing:-.01em;font-weight:600;display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+  .brand em{font-style:normal;color:var(--accent)}
+  .brand-sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .masthead-spacer{flex:1}
+  .save-state{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .save-dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+  .save-dot.busy{background:var(--gold);animation:pulse .9s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .btn{font:inherit;font-size:13.5px;border:1px solid var(--rule-2);background:var(--paper-2);color:var(--ink);padding:8px 15px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+  .btn:hover{border-color:var(--ink-3);background:#fff}
+  .btn-primary{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
+  .btn-primary:hover{background:#000;color:#fff}
+  .btn-ghost{border-color:transparent;background:transparent;color:var(--ink-2);padding:6px 9px}
+  .btn-ghost:hover{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+  /* ---------- layout ---------- */
+  .wrap{max-width:1320px;margin:0 auto;padding:34px 28px 140px;display:grid;grid-template-columns:246px minmax(0,1fr) 240px;gap:40px;align-items:start}
+  @media(max-width:1180px){.wrap{grid-template-columns:220px minmax(0,1fr);}.rail-right{display:none}}
+  @media(max-width:860px){.wrap{grid-template-columns:1fr;gap:24px;padding:20px 16px 120px}.rail-left{position:static!important;order:-1}}
+
+  /* ---------- left rail: index ---------- */
+  .rail-left{position:sticky;top:96px}
+  .rail-title{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);padding:0 0 12px 2px;border-bottom:1px solid var(--rule);margin-bottom:6px}
+  .idx{list-style:none;margin:0;padding:0;counter-reset:s}
+  .idx a{counter-increment:s;display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;padding:9px 8px 9px 4px;text-decoration:none;color:var(--ink-2);border-radius:6px;font-size:13.5px;position:relative;transition:.15s}
+  .idx a::before{content:counter(s,decimal-leading-zero);font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .idx a:hover{background:var(--paper-2);color:var(--ink)}
+  .idx a.on{background:var(--paper-2);color:var(--ink);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+  .idx a.on::before{color:var(--accent)}
+  .ring{width:16px;height:16px;border-radius:50%;background:conic-gradient(var(--ok) calc(var(--p)*1%),var(--rule) 0);position:relative}
+  .ring::after{content:"";position:absolute;inset:3.5px;border-radius:50%;background:var(--paper)}
+  .idx a.on .ring::after{background:var(--paper-2)}
+  .rail-foot{margin-top:20px;padding-top:16px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-3);line-height:1.5}
+  kbd{font-family:var(--mono);font-size:10.5px;background:var(--paper-2);border:1px solid var(--rule-2);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--ink-2)}
+
+  /* ---------- header block ---------- */
+  .identity{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:28px 30px;box-shadow:var(--shadow);display:grid;grid-template-columns:auto 1fr;gap:26px;margin-bottom:34px}
+  @media(max-width:640px){.identity{grid-template-columns:1fr;padding:22px}}
+  .portrait{width:104px;height:104px;border-radius:12px;background:linear-gradient(150deg,#d9cfc0,#b9ab98);display:grid;place-items:center;font-family:var(--serif);font-size:34px;color:#fffdf9;position:relative;overflow:hidden;cursor:pointer}
+  .portrait span{position:absolute;inset:auto 0 0 0;background:rgba(28,26,23,.72);color:#fff;font-family:var(--sans);font-size:10.5px;text-align:center;padding:4px;opacity:0;transition:.15s}
+  .portrait:hover span{opacity:1}
+  .identity h1{font-family:var(--serif);font-size:31px;line-height:1.15;margin:0 0 4px;letter-spacing:-.015em}
+  .headline{color:var(--accent);font-size:14.5px;font-weight:600;margin-bottom:12px}
+  .bio{color:var(--ink-2);font-size:14px;max-width:62ch;margin:0 0 16px}
+  .facts{display:flex;flex-wrap:wrap;gap:6px 8px;margin-bottom:16px}
+  .fact{font-size:12.5px;color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);border-radius:20px;padding:4px 11px;display:inline-flex;gap:6px;align-items:center}
+  .fact b{font-weight:600;color:var(--ink)}
+
+  /* ---------- section ---------- */
+  .sec{margin-bottom:38px;scroll-margin-top:96px}
+  .sec-head{display:flex;align-items:flex-end;gap:14px;padding-bottom:10px;margin-bottom:16px;border-bottom:2px solid var(--ink)}
+  .sec-head h2{font-family:var(--serif);font-size:22px;margin:0;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+  .sec-num{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.1em}
+  .sec-count{font-family:var(--mono);font-size:11px;color:var(--ink-3);padding-bottom:2px}
+  .sec-head .sp{flex:1}
+  .sec-hint{font-size:12.5px;color:var(--ink-3);margin:-8px 0 16px;font-style:italic}
+
+  /* ---------- entries ---------- */
+  .entries{display:flex;flex-direction:column}
+  .entry{background:transparent;border-bottom:1px solid var(--rule);position:relative;transition:.15s}
+  .entry:first-child{border-top:1px solid var(--rule)}
+  .entry.dragging{opacity:.35}
+  .entry.over{box-shadow:inset 0 2px 0 var(--accent)}
+  .entry-row{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:start;padding:15px 12px 15px 4px;cursor:pointer}
+  .entry-row:hover{background:var(--paper-2)}
+  .grip{width:20px;height:20px;display:grid;place-items:center;color:var(--rule-2);cursor:grab;margin-top:2px;border-radius:4px}
+  .entry-row:hover .grip{color:var(--ink-3)}
+  .grip:active{cursor:grabbing}
+  .e-title{font-weight:650;font-size:15.5px;letter-spacing:-.005em}
+  .e-org{color:var(--ink-2);font-size:13.5px}
+  .e-meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px;letter-spacing:.01em}
+  .e-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .tag{font-size:11px;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:2px 7px;font-weight:600}
+  .e-side{display:flex;align-items:center;gap:4px}
+  .flag{font-size:10.5px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:4px;white-space:nowrap}
+  .flag.thin{background:#fdf3e0;color:var(--warn)}
+  .flag.full{background:#e8f2ec;color:var(--ok)}
+  .caret{transition:.2s;color:var(--ink-3)}
+  .entry.open .caret{transform:rotate(180deg)}
+
+  /* ---------- inline editor ---------- */
+  .edit{display:none;padding:4px 12px 26px 36px;background:var(--paper-2);border-top:1px dashed var(--rule)}
+  .entry.open .edit{display:block}
+  .entry.open{background:var(--paper-2)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-top:18px}
+  .grid .span{grid-column:1/-1}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .f label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+  .f label .req{color:var(--accent)}
+  .f input,.f textarea,.f select{width:100%;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--rule-2);border-radius:6px;background:#fff;color:var(--ink)}
+  .f textarea{min-height:96px;resize:vertical;line-height:1.6}
+  .f input:focus,.f textarea:focus,.f select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+  .f .help{font-size:11.5px;color:var(--ink-3);margin-top:5px}
+  .bullets{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .bullets li{display:grid;grid-template-columns:16px 1fr 26px;gap:8px;align-items:center}
+  .bullets li::before{content:"—";color:var(--accent);font-weight:700}
+  .bullets input{border:none;border-bottom:1px solid var(--rule);border-radius:0;padding:6px 2px;background:transparent}
+  .bullets input:focus{outline:none;border-bottom:2px solid var(--accent)}
+  .del{border:none;background:transparent;color:var(--ink-3);cursor:pointer;border-radius:4px;padding:3px}
+  .del:hover{color:var(--accent);background:var(--accent-soft)}
+  .edit-foot{display:flex;gap:10px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--rule)}
+  .edit-foot .sp{flex:1}
+
+  .add{width:100%;margin-top:14px;border:1px dashed var(--rule-2);background:transparent;color:var(--ink-2);padding:13px;border-radius:8px;cursor:pointer;font:inherit;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s}
+  .add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+  /* skills / languages special layouts */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--paper-2);border:1px solid var(--rule-2);border-radius:22px;padding:6px 8px 6px 13px;font-size:13.5px}
+  .chip .lvl{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.06em}
+  .chip button{border:none;background:transparent;cursor:pointer;color:var(--ink-3);line-height:1;padding:2px 4px;border-radius:50%}
+  .chip button:hover{color:var(--accent);background:var(--accent-soft)}
+  .chip-new{border-style:dashed;color:var(--ink-3);cursor:pointer;padding:6px 14px}
+  .chip-new:hover{border-color:var(--accent);color:var(--accent)}
+  .langs{display:grid;gap:2px}
+  .lang{display:grid;grid-template-columns:150px repeat(4,1fr) 30px;gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--rule)}
+  .lang:first-child{border-top:1px solid var(--rule)}
+  .lang-head{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);border:none;padding-bottom:6px}
+  .lang-name{font-weight:600}
+  .cefr{display:flex;gap:3px}
+  .cefr button{flex:1;font:inherit;font-family:var(--mono);font-size:10px;border:1px solid var(--rule);background:transparent;border-radius:4px;padding:4px 0;cursor:pointer;color:var(--ink-3)}
+  .cefr button.on{background:var(--ink);border-color:var(--ink);color:var(--paper-2);font-weight:700}
+  @media(max-width:760px){.lang{grid-template-columns:1fr auto}.lang .cefr{grid-column:1/-1}.lang-head{display:none}}
+
+  /* ---------- right rail ---------- */
+  .rail-right{position:sticky;top:96px;display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--paper-2);border:1px solid var(--rule);border-radius:10px;padding:16px 17px;box-shadow:var(--shadow)}
+  .card h3{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;font-weight:600}
+  .score{font-family:var(--serif);font-size:40px;line-height:1;letter-spacing:-.02em}
+  .score small{font-size:15px;color:var(--ink-3)}
+  .meter{height:5px;background:var(--rule);border-radius:3px;overflow:hidden;margin:12px 0 10px}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--ok));width:0;transition:width .5s}
+  .todo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .todo li{display:grid;grid-template-columns:15px 1fr;gap:9px;font-size:12.5px;color:var(--ink-2);line-height:1.45}
+  .todo li b{color:var(--ink);font-weight:600}
+  .todo .mk{color:var(--warn);font-weight:700;text-align:center}
+  .todo .mk.done{color:var(--ok)}
+  .note{font-size:12px;color:var(--ink-3);line-height:1.5;font-style:italic}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <div class="brand">Commit<em>Ahead</em> <span class="brand-sub">Ledger</span></div>
+    <div class="masthead-spacer"></div>
+    <div class="save-state"><span class="save-dot" id="dot"></span><span id="saveTxt">All changes saved</span></div>
+    <button class="btn">Preview</button>
+    <button class="btn btn-primary">Create CV →</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ LEFT: INDEX ============ -->
+  <nav class="rail-left">
+    <div class="rail-title">Contents</div>
+    <ul class="idx" id="idx">
+      <li><a href="#s-identity" class="on">Identity <span class="ring" style="--p:80"></span></a></li>
+      <li><a href="#s-experience">Experience <span class="ring" style="--p:72"></span></a></li>
+      <li><a href="#s-education">Education <span class="ring" style="--p:90"></span></a></li>
+      <li><a href="#s-skills">Skills <span class="ring" style="--p:65"></span></a></li>
+      <li><a href="#s-languages">Languages <span class="ring" style="--p:100"></span></a></li>
+      <li><a href="#s-certs">Certifications <span class="ring" style="--p:40"></span></a></li>
+      <li><a href="#s-projects">Projects <span class="ring" style="--p:20"></span></a></li>
+      <li><a href="#s-links">Links <span class="ring" style="--p:100"></span></a></li>
+    </ul>
+    <div class="rail-foot">
+      Drag <b>⣿</b> to reorder. Click any row to edit in place.<br><br>
+      <kbd>⌘</kbd> <kbd>S</kbd> save · <kbd>Esc</kbd> close row
+    </div>
+  </nav>
+
+  <!-- ============ CENTER: THE LEDGER ============ -->
+  <main>
+
+    <!-- IDENTITY -->
+    <section class="sec" id="s-identity">
+      <div class="identity">
+        <div class="portrait">DS<span>Replace</span></div>
+        <div>
+          <h1 contenteditable spellcheck="false">Denis Elvis Santos da Silva</h1>
+          <div class="headline" contenteditable spellcheck="false">Senior Software Engineer · .NET / Azure</div>
+          <p class="bio" contenteditable spellcheck="false">12+ years designing and evolving backend systems in production environments, with a strong focus on cloud-based architectures on Microsoft Azure.</p>
+          <div class="facts">
+            <span class="fact">📍 <b>Lisbon, Portugal</b></span>
+            <span class="fact">✉ <b>denis@example.com</b></span>
+            <span class="fact">☎ <b>+351 900 000 000</b></span>
+            <span class="fact">🌍 <b>EU work authorisation</b></span>
+            <button class="btn btn-ghost" style="font-size:12.5px">+ Add detail</button>
+          </div>
+          <div class="f" style="max-width:640px">
+            <label>Professional summary <span style="text-transform:none;letter-spacing:0;font-family:var(--sans);color:var(--ink-3)">— the paragraph recruiters read first</span></label>
+            <textarea spellcheck="false">Backend-focused engineer specialising in .NET and Azure. I lead the design of service boundaries, own production reliability, and mentor teams through architectural change. Recent work: multi-tenant SaaS on Azure with event-driven integration and a hard focus on observability.</textarea>
+            <div class="help">248 / 600 characters · aim for 3–4 sentences, front-load your specialism.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE -->
+    <section class="sec" id="s-experience">
+      <div class="sec-head">
+        <h2><span class="sec-num">02</span> Experience</h2>
+        <span class="sec-count">6 entries · 14 yrs</span>
+        <span class="sp"></span>
+        <button class="btn btn-ghost">⇅ Sort by date</button>
+      </div>
+      <p class="sec-hint">Newest first. The top three entries carry almost all the weight — write those in detail and keep the rest to one line.</p>
+
+      <div class="entries" data-sortable>
+
+        <article class="entry open">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Senior Software Consultant</div>
+              <div class="e-org">Academic Software · Lokeren, Belgium</div>
+              <div class="e-meta">OCT 2023 — PRESENT · 1 yr 10 mo · Hybrid</div>
+              <div class="e-tags"><span class="tag">.NET 8</span><span class="tag">Azure</span><span class="tag">EF Core</span><span class="tag">React</span></div>
+            </div>
+            <div class="e-side"><span class="flag full">Complete</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit">
+            <div class="grid">
+              <div class="f"><label>Job title <span class="req">*</span></label><input value="Senior Software Consultant"></div>
+              <div class="f"><label>Employer <span class="req">*</span></label><input value="Academic Software"></div>
+              <div class="f"><label>City / Country</label><input value="Lokeren, Belgium"></div>
+              <div class="f"><label>Arrangement</label><select><option>Hybrid</option><option>On-site</option><option>Remote</option></select></div>
+              <div class="f"><label>From</label><input type="month" value="2023-10"></div>
+              <div class="f"><label>To</label><input type="month" placeholder="—" disabled value=""><div class="help"><label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:12px;color:var(--ink-2)"><input type="checkbox" checked style="width:auto"> Currently working here</label></div></div>
+              <div class="f span">
+                <label>Achievements — one line each, start with a verb, end with a number</label>
+                <ul class="bullets">
+                  <li><input value="Led the migration of 3 legacy services to .NET 8, cutting p95 latency by 41%."><button class="del">✕</button></li>
+                  <li><input value="Designed the Azure Service Bus integration now carrying 2.4M messages/month."><button class="del">✕</button></li>
+                  <li><input value="Introduced architecture decision records; adopted by 4 squads."><button class="del">✕</button></li>
+                  <li><input placeholder="Add another achievement…"><button class="del">✕</button></li>
+                </ul>
+              </div>
+              <div class="f span"><label>Technologies</label>
+                <div class="chips">
+                  <span class="chip">.NET 8 <button>✕</button></span>
+                  <span class="chip">Azure <button>✕</button></span>
+                  <span class="chip">EF Core <button>✕</button></span>
+                  <span class="chip">React <button>✕</button></span>
+                  <span class="chip chip-new">+ add</span>
+                </div>
+                <div class="help">These feed keyword matching when you generate a targeted CV later.</div>
+              </div>
+            </div>
+            <div class="edit-foot">
+              <span class="note">Saved automatically</span>
+              <span class="sp"></span>
+              <button class="btn btn-ghost">Duplicate</button>
+              <button class="btn btn-ghost">Delete</button>
+              <button class="btn" data-toggle>Collapse</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Senior Software Consultant</div>
+              <div class="e-org">Sysmatch · client: Academic Software (Belgium)</div>
+              <div class="e-meta">APR 2022 — OCT 2023 · 1 yr 7 mo · Lisbon, Portugal</div>
+              <div class="e-tags"><span class="tag">.NET</span><span class="tag">Azure DevOps</span></div>
+            </div>
+            <div class="e-side"><span class="flag thin">No achievements</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Achievements</label><ul class="bullets"><li><input placeholder="Start with a verb…"><button class="del">✕</button></li></ul></div></div></div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Senior Software Consultant / SCRUM Master</div>
+              <div class="e-org">Geometric Talks</div>
+              <div class="e-meta">JUN 2020 — APR 2022 · 1 yr 11 mo · Lisbon, Portugal</div>
+            </div>
+            <div class="e-side"><span class="flag thin">Thin</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Achievements</label><ul class="bullets"><li><input placeholder="Start with a verb…"><button class="del">✕</button></li></ul></div></div></div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Senior Software Consultant</div>
+              <div class="e-org">Hitachi Consulting</div>
+              <div class="e-meta">MAY 2019 — JUL 2020 · 1 yr 3 mo · Lisbon, Portugal</div>
+            </div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Achievements</label><ul class="bullets"><li><input placeholder="Start with a verb…"><button class="del">✕</button></li></ul></div></div></div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Senior IT Analyst</div>
+              <div class="e-org">Companhia Siderúrgica Nacional</div>
+              <div class="e-meta">APR 2014 — MAY 2019 · 5 yr 2 mo · Volta Redonda, Brazil</div>
+            </div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Achievements</label><ul class="bullets"><li><input placeholder="Start with a verb…"><button class="del">✕</button></li></ul></div></div></div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">IT Intern</div>
+              <div class="e-org">Companhia Siderúrgica Nacional — CSN</div>
+              <div class="e-meta">JAN 2012 — MAR 2014 · 2 yr 3 mo · Volta Redonda, Brazil</div>
+            </div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Achievements</label><ul class="bullets"><li><input placeholder="Start with a verb…"><button class="del">✕</button></li></ul></div></div></div>
+        </article>
+
+      </div>
+      <button class="add" data-add>＋ Add a position</button>
+    </section>
+
+    <!-- EDUCATION -->
+    <section class="sec" id="s-education">
+      <div class="sec-head">
+        <h2><span class="sec-num">03</span> Education &amp; training</h2>
+        <span class="sec-count">2 degrees · 4 courses</span>
+        <span class="sp"></span>
+        <button class="btn btn-ghost">⇅ Sort by date</button>
+      </div>
+      <div class="entries" data-sortable>
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div>
+              <div class="e-title">Postgraduate — .NET Systems Architecture &amp; Cloud Computing</div>
+              <div class="e-org">FIAP</div>
+              <div class="e-meta">MAR 2025 — MAR 2026 · in progress</div>
+            </div>
+            <div class="e-side"><span class="flag full">Complete</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid">
+            <div class="f"><label>Qualification <span class="req">*</span></label><input value=".NET Systems Architecture & Cloud Computing"></div>
+            <div class="f"><label>Institution <span class="req">*</span></label><input value="FIAP"></div>
+            <div class="f"><label>Level (EQF)</label><select><option>—</option><option selected>Level 7 — Master / Postgraduate</option></select></div>
+            <div class="f"><label>Country</label><input value="Brazil"></div>
+          </div></div>
+        </article>
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">Mastering Software Testing</div><div class="e-org">Eduardo Pires · desenvolvedor.io</div><div class="e-meta">NOV 2018 · course</div></div>
+            <div class="e-side"><span class="flag thin">Wrong text pasted</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>Subjects covered</label><textarea>- occupational techniques (making of standard breads, fancy breads…)</textarea><div class="help" style="color:var(--warn)">⚠ This looks like placeholder text from another template — worth rewriting.</div></div></div></div>
+        </article>
+      </div>
+      <button class="add" data-add>＋ Add education or a course</button>
+    </section>
+
+    <!-- SKILLS -->
+    <section class="sec" id="s-skills">
+      <div class="sec-head">
+        <h2><span class="sec-num">04</span> Skills</h2>
+        <span class="sec-count">4 groups · 23 skills</span>
+        <span class="sp"></span>
+        <button class="btn btn-ghost">+ New group</button>
+      </div>
+      <p class="sec-hint">Grouped skills survive ATS parsing far better than one long comma list. Drag a chip between groups to re-file it.</p>
+      <div class="entries" data-sortable>
+        <article class="entry open">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">Languages &amp; runtimes</div><div class="e-meta">7 skills</div></div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit">
+            <div class="chips" style="margin-top:14px">
+              <span class="chip">C# <span class="lvl">EXPERT</span><button>✕</button></span>
+              <span class="chip">.NET 8 <span class="lvl">EXPERT</span><button>✕</button></span>
+              <span class="chip">TypeScript <span class="lvl">ADVANCED</span><button>✕</button></span>
+              <span class="chip">SQL <span class="lvl">ADVANCED</span><button>✕</button></span>
+              <span class="chip">Python <span class="lvl">WORKING</span><button>✕</button></span>
+              <span class="chip">Go <span class="lvl">BASIC</span><button>✕</button></span>
+              <span class="chip">Node.js <span class="lvl">WORKING</span><button>✕</button></span>
+              <span class="chip chip-new">+ add skill</span>
+            </div>
+          </div>
+        </article>
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">Cloud &amp; platform</div><div class="e-meta">8 skills · Azure, Service Bus, Functions, AKS…</div></div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="chips" style="margin-top:14px"><span class="chip">Azure <button>✕</button></span><span class="chip">AKS <button>✕</button></span><span class="chip chip-new">+ add</span></div></div>
+        </article>
+        <article class="entry">
+          <div class="entry-row" data-toggle>
+            <span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">Ways of working</div><div class="e-meta">5 skills · SCRUM, mentoring, ADRs…</div></div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="chips" style="margin-top:14px"><span class="chip">SCRUM <button>✕</button></span><span class="chip chip-new">+ add</span></div></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- LANGUAGES -->
+    <section class="sec" id="s-languages">
+      <div class="sec-head">
+        <h2><span class="sec-num">05</span> Languages</h2>
+        <span class="sec-count">3</span>
+      </div>
+      <div class="langs">
+        <div class="lang lang-head"><span>Language</span><span>Listening</span><span>Reading</span><span>Speaking</span><span>Writing</span><span></span></div>
+        <div class="lang">
+          <span class="lang-name">Portuguese <span class="lvl" style="font-family:var(--mono);font-size:10px;color:var(--ink-3)">NATIVE</span></span>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></div>
+          <button class="del">✕</button>
+        </div>
+        <div class="lang">
+          <span class="lang-name">English</span>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button class="on">C1</button><button>C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button class="on">B2</button><button>C1</button><button>C2</button></div>
+          <div class="cefr"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button class="on">C1</button><button>C2</button></div>
+          <button class="del">✕</button>
+        </div>
+        <div class="lang">
+          <span class="lang-name">Dutch</span>
+          <div class="cefr"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button>C2</button></div>
+          <div class="cefr"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button>C2</button></div>
+          <div class="cefr"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button>C2</button></div>
+          <div class="cefr"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button>C2</button></div>
+          <button class="del">✕</button>
+        </div>
+      </div>
+      <button class="add" data-add>＋ Add a language</button>
+    </section>
+
+    <!-- CERTIFICATIONS -->
+    <section class="sec" id="s-certs">
+      <div class="sec-head"><h2><span class="sec-num">06</span> Certifications</h2><span class="sec-count">2</span></div>
+      <div class="entries" data-sortable>
+        <article class="entry">
+          <div class="entry-row" data-toggle><span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">AZ-204 — Developing Solutions for Microsoft Azure</div><div class="e-org">Microsoft</div><div class="e-meta">ISSUED FEB 2023 · no expiry · credential ID missing</div></div>
+            <div class="e-side"><span class="flag thin">Add credential URL</span><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid">
+            <div class="f"><label>Credential ID</label><input placeholder="e.g. H1234-5678"></div>
+            <div class="f"><label>Verification URL</label><input placeholder="https://learn.microsoft.com/…"></div>
+          </div></div>
+        </article>
+        <article class="entry">
+          <div class="entry-row" data-toggle><span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">Professional Scrum Master I</div><div class="e-org">Scrum.org</div><div class="e-meta">ISSUED SEP 2021</div></div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f"><label>Verification URL</label><input></div></div></div>
+        </article>
+      </div>
+      <button class="add" data-add>＋ Add a certification</button>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="sec" id="s-projects">
+      <div class="sec-head"><h2><span class="sec-num">07</span> Projects</h2><span class="sec-count">1</span></div>
+      <p class="sec-hint">Optional, but the single best section for a career change or a gap. Two or three is plenty.</p>
+      <div class="entries" data-sortable>
+        <article class="entry">
+          <div class="entry-row" data-toggle><span class="grip" draggable="true">⣿</span>
+            <div><div class="e-title">CommitAhead</div><div class="e-org">Personal · open source</div><div class="e-meta">2026 — PRESENT</div>
+            <div class="e-tags"><span class="tag">.NET 10</span><span class="tag">React 19</span><span class="tag">Postgres</span></div></div>
+            <div class="e-side"><span class="caret">⌄</span></div>
+          </div>
+          <div class="edit"><div class="grid"><div class="f span"><label>What it is, in one sentence</label><input value="Profile-and-CV app that generates role-targeted CVs from a single structured profile."></div></div></div>
+        </article>
+      </div>
+      <button class="add" data-add>＋ Add a project</button>
+    </section>
+
+    <!-- LINKS -->
+    <section class="sec" id="s-links">
+      <div class="sec-head"><h2><span class="sec-num">08</span> Links</h2><span class="sec-count">3</span></div>
+      <div class="chips">
+        <span class="chip">🔗 linkedin.com/in/denisvr <button>✕</button></span>
+        <span class="chip">🔗 github.com/denisvr <button>✕</button></span>
+        <span class="chip">🔗 denis.dev <button>✕</button></span>
+        <span class="chip chip-new">+ add link</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ RIGHT: STRENGTH ============ -->
+  <aside class="rail-right">
+    <div class="card">
+      <h3>Profile strength</h3>
+      <div class="score" id="scoreNum">71<small>/100</small></div>
+      <div class="meter"><i id="meterBar"></i></div>
+      <p class="note">Strong enough to generate a general CV. Fix the three items below before targeting a specific role.</p>
+    </div>
+    <div class="card">
+      <h3>What's missing</h3>
+      <ul class="todo">
+        <li><span class="mk">!</span><span><b>4 positions</b> have no achievement bullets — these become empty lines in every CV.</span></li>
+        <li><span class="mk">!</span><span>The <b>Mastering Software Testing</b> course still holds pasted bakery text.</span></li>
+        <li><span class="mk">!</span><span>No <b>credential URLs</b> on either certification.</span></li>
+        <li><span class="mk done">✓</span><span>Summary, contact details and languages are complete.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Coming later</h3>
+      <p class="note">Once the profile is full, "Create CV" will let you paste a job ad and pick a regional template (EU / US), then assemble a targeted CV from these sections.</p>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  // expand / collapse an entry
+  document.addEventListener('click', e=>{
+    const t = e.target.closest('[data-toggle]');
+    if(t){ t.closest('.entry').classList.toggle('open'); return; }
+    if(e.target.closest('.del') || e.target.matches('.chip button')){
+      e.preventDefault();
+      const row = e.target.closest('.bullets li, .chip, .lang');
+      if(row){ row.style.transition='.2s'; row.style.opacity=0; setTimeout(()=>row.remove(),180); }
+      touch();
+    }
+    if(e.target.closest('.cefr button')){
+      const b=e.target.closest('button');
+      b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); touch();
+    }
+    if(e.target.closest('[data-add]')){
+      const btn=e.target.closest('[data-add]');
+      const list=btn.previousElementSibling;
+      if(list && list.matches('.entries')){
+        const first=list.querySelector('.entry');
+        const clone=first.cloneNode(true);
+        clone.classList.add('open');
+        clone.querySelectorAll('.e-title').forEach(x=>x.textContent='New entry');
+        clone.querySelectorAll('.e-org,.e-meta').forEach(x=>x.textContent='');
+        clone.querySelectorAll('.e-tags,.flag').forEach(x=>x.remove());
+        clone.querySelectorAll('input,textarea').forEach(x=>{ if(x.type!=='checkbox') x.value=''; });
+        list.prepend(clone); clone.scrollIntoView({block:'center'}); touch();
+      }
+    }
+  });
+
+  // add a bullet when typing in the last empty one
+  document.addEventListener('input', e=>{
+    if(e.target.closest('.bullets')){
+      const ul=e.target.closest('.bullets'), last=ul.lastElementChild;
+      if(last.querySelector('input').value.trim()!==''){
+        const li=document.createElement('li');
+        li.innerHTML='<input placeholder="Add another achievement…"><button class="del">✕</button>';
+        ul.appendChild(li);
+      }
+    }
+    touch();
+  });
+
+  // drag to reorder
+  let dragged=null;
+  document.addEventListener('dragstart',e=>{
+    const g=e.target.closest('.grip'); if(!g) return;
+    dragged=g.closest('.entry'); dragged.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+  });
+  document.addEventListener('dragover',e=>{
+    if(!dragged) return; e.preventDefault();
+    const over=e.target.closest('.entry');
+    if(!over||over===dragged||over.parentElement!==dragged.parentElement) return;
+    document.querySelectorAll('.entry.over').forEach(x=>x.classList.remove('over'));
+    over.classList.add('over');
+    const r=over.getBoundingClientRect();
+    over.parentElement.insertBefore(dragged, e.clientY < r.top+r.height/2 ? over : over.nextSibling);
+  });
+  document.addEventListener('dragend',()=>{
+    if(dragged) dragged.classList.remove('dragging');
+    document.querySelectorAll('.entry.over').forEach(x=>x.classList.remove('over'));
+    dragged=null; touch();
+  });
+
+  // scroll spy
+  const links=[...document.querySelectorAll('#idx a')];
+  const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+  new IntersectionObserver(es=>{
+    es.forEach(en=>{ if(en.isIntersecting){
+      links.forEach(l=>l.classList.remove('on'));
+      links[secs.indexOf(en.target)].classList.add('on');
+    }});
+  },{rootMargin:'-100px 0px -70% 0px'}).observe && secs.forEach(s=>{
+    new IntersectionObserver(es=>es.forEach(en=>{ if(en.isIntersecting){
+      links.forEach(l=>l.classList.remove('on'));
+      links[secs.indexOf(en.target)].classList.add('on');
+    }}),{rootMargin:'-100px 0px -70% 0px'}).observe(s);
+  });
+
+  // autosave affordance
+  const dot=document.getElementById('dot'), txt=document.getElementById('saveTxt');
+  let timer;
+  function touch(){
+    dot.classList.add('busy'); txt.textContent='Saving…';
+    clearTimeout(timer);
+    timer=setTimeout(()=>{ dot.classList.remove('busy'); txt.textContent='All changes saved'; },700);
+  }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') document.querySelectorAll('.entry.open').forEach(x=>x.classList.remove('open'));
+    if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); touch(); }
+  });
+  setTimeout(()=>document.getElementById('meterBar').style.width='71%',200);
+</script>
+</body>
+</html>

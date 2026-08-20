@@ -1,19 +1,29 @@
+/* Literal values from cv-3-studio-v2.1.html ".f input,.f textarea,.f select" — see
+   AppShell.module.css's header comment for why this file doesn't route them through the generic
+   scale. Border uses --border-strong, not the reference's --bd-2: a control boundary needs 3:1
+   contrast (WCAG 1.4.11), which --bd-2 does not clear — see docs/design/design-system/readme.md. */
 .input {
   width: 100%;
   box-sizing: border-box;
-  min-height: var(--control-height);
-  padding: var(--space-4) var(--space-6);
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
   color: var(--text);
   background: var(--surface);
-  border: var(--border-hairline) solid var(--border);
-  border-radius: var(--radius-md);
+  border: var(--border-hairline) solid var(--border-strong);
+  border-radius: 9px;
+  transition: border-color 0.12s;
 }
 
-.input:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.input:focus-visible,
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
 }
 
 .input[aria-invalid='true'] {
@@ -21,7 +31,7 @@
 }
 
 textarea.input {
-  min-height: calc(var(--control-height) * 2);
+  min-height: 88px;
   resize: vertical;
-  line-height: var(--leading-prose);
+  line-height: 1.6;
 }

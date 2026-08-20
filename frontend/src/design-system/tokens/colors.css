@@ -1,97 +1,182 @@
-/* Colour — Reading Room.
-   Warm paper ground, ink navy accent, warm-neutral dark. Light and dark are
-   built independently. Every text/background pair below meets WCAG AA at the
-   size it is used; measured ratios are in the comments and in the approved
-   identity reference. Categories are never colour-coded — colour
-   means severity, or it means "this is the accent". */
+/* Generated from docs/design/design-system/tokens/ — the design reference is the source
+   of truth. Change a value there and copy it here in the same PR (readme.md, "Required
+   source files"). Do not edit only one side. */
+
+/* Colour — Studio.
+
+   Cool neutral ground, indigo accent, content on raised cards. Light and dark are
+   built on the SAME relationship rather than as independent palettes, and that is
+   what makes them legible in the same way:
+
+     the page ground is one step away from the card, and the card is where content
+     lives. Light puts a white card on a grey page. Dark puts a lighter slate card
+     on a near-black page.
+
+   Depth is expressed differently per theme because it has to be. In light, a card
+   separates from the page mainly through its shadow. On a dark ground a shadow
+   carries almost nothing, so the card edge does the work — which is why
+   --card-border resolves to --border-soft in light and to the stronger --border in
+   dark. Read that token as "whatever currently delimits a card", never as a fixed
+   colour.
+
+   Every text/background pair used in the product is measured, not eyeballed. The
+   ratios are listed in readme.md and are reproducible:
+
+     node docs/design/design-system/verify-contrast.mjs
+
+   Categories are never colour-coded. Colour means severity, or it means "this is
+   the accent". */
+
 :root,
 :root[data-theme="light"] {
+  color-scheme: light;
+
   /* base ramp */
-  --paper: #F6F3EC;
-  --sheet: #FFFDF8;
-  --tint: #EDE8DE;
-  --rule-soft: #E2DBCD;
-  --rule: #D3CBB9;
-  --rule-strong: #8C8578;   /* 3.4:1 on sheet — control edges */
-  --ink: #1B1A17;           /* 16.4:1 on sheet */
-  --ink-2: #55514A;         /* 7.5:1  on sheet */
-  --ink-3: #6A6659;         /* 5.7:1 on sheet · 4.7:1 on tint — AA at 12.5px on both */
-  --navy: #24405C;          /* 10.1:1 on sheet */
-  --navy-hover: #16283A;
-  --navy-wash: #E3E8EE;
-  --brick: #97362B;         /* 7.9:1 */
-  --brick-wash: #F3E4E0;
-  --ochre: #7E5A12;         /* 6.5:1 */
-  --ochre-wash: #F1E9D6;
-  --moss: #2F6B45;          /* 6.0:1 */
-  --moss-wash: #E2EDE4;
+  --ground: #EEF1F6;        /* page */
+  --card: #FFFFFF;          /* content surface */
+  --card-sunken: #F7F9FC;   /* inset regions inside a card */
+  --alt: #E7EBF2;           /* hover fills, meter tracks, segmented rails */
+  --line-soft: #DFE4EC;     /* hairline between rows */
+  --line: #C3CCDA;          /* emphasised hairline */
+  --line-strong: #848DA0;   /* 3.3:1 on card — control edges only (WCAG 1.4.11) */
+  --ink: #101828;           /* 17.8:1 on card */
+  --ink-2: #42506B;         /* 8.1:1  on card */
+  --ink-3: #5C6880;         /* 5.6:1 on card · 5.0:1 on ground — AA at 12px everywhere */
+  --indigo: #4F46E5;        /* 6.3:1 on card */
+  --indigo-hover: #4338CA;
+  --indigo-bright: #6D63FF; /* gradient partner and mark only, never text */
+  --indigo-wash: #EEECFF;
+  --indigo-line: #BDB8FA;
+  --on-indigo: #FFFFFF;     /* 6.3:1 on indigo */
+  --indigo-glow: rgba(79, 70, 229, .45);
+  --emerald: #04785C;       /* 5.5:1 */
+  --emerald-wash: #E2F3EC;
+  --amber: #9A5500;         /* 5.7:1 */
+  --amber-wash: #FCF0DE;
+  --amber-line: #F0D3A8;
+  --rose: #C2143C;          /* 6.1:1 */
+  --rose-wash: #FCE9ED;
+  --rose-line: #F3C2CD;
 
   /* semantic aliases — components use only these */
-  --bg: var(--paper);
-  --surface: var(--sheet);
-  --surface-alt: var(--tint);
-  --border-soft: var(--rule-soft);
-  --border: var(--rule);
-  --border-strong: var(--rule-strong);
+  --bg: var(--ground);
+  --surface: var(--card);
+  --surface-sunken: var(--card-sunken);
+  --surface-alt: var(--alt);
+  --border-soft: var(--line-soft);
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --card-border: var(--line-soft);
   --text: var(--ink);
   --text-muted: var(--ink-2);
   --text-faint: var(--ink-3);
-  --accent: var(--navy);
-  --accent-hover: var(--navy-hover);
-  --accent-wash: var(--navy-wash);
-  --accent-contrast: var(--sheet);
-  --critical: var(--brick);
-  --critical-wash: var(--brick-wash);
-  --caution: var(--ochre);
-  --caution-wash: var(--ochre-wash);
-  --good: var(--moss);
-  --good-wash: var(--moss-wash);
-  --focus-ring: var(--navy);
-  --selection-bg: var(--navy-wash);
+  --accent: var(--indigo);
+  --accent-hover: var(--indigo-hover);
+  --accent-bright: var(--indigo-bright);
+  --accent-wash: var(--indigo-wash);
+  --accent-line: var(--indigo-line);
+  --accent-contrast: var(--on-indigo);
+  --accent-glow: var(--indigo-glow);
+  --good: var(--emerald);
+  --good-wash: var(--emerald-wash);
+  --caution: var(--amber);
+  --caution-wash: var(--amber-wash);
+  --caution-line: var(--amber-line);
+  --critical: var(--rose);
+  --critical-wash: var(--rose-wash);
+  --critical-line: var(--rose-line);
+  --focus-ring: var(--indigo);
+  --selection-bg: var(--indigo-wash);
 }
 
+/* Dark is authored twice on purpose: once for the explicit user choice and once
+   for the system preference. Keep the two blocks identical — verify-contrast.mjs
+   does not catch drift between them, but the prototype's own console check does,
+   and any new token must be added to BOTH. */
 :root[data-theme="dark"] {
-  --paper: #171614;
-  --sheet: #1E1D1A;
-  --tint: #262421;
-  --rule-soft: #2C2A26;
-  --rule: #3A3833;
-  --rule-strong: #757066;   /* 3.2:1 on sheet */
-  --ink: #F0EDE6;           /* 15.1:1 on sheet */
-  --ink-2: #ABA69B;         /* 7.0:1  on sheet */
-  --ink-3: #938D80;         /* 5.1:1 on sheet · 4.8:1 on tint — AA at 12.5px on both */
-  --navy: #8FB4D9;          /* 7.9:1 */
-  --navy-hover: #B0CBE6;
-  --navy-wash: #1C242C;
-  --accent-contrast: #12212E;
-  --brick: #D97C6C;         /* 5.3:1 */
-  --brick-wash: #2A1A16;
-  --ochre: #C79B4E;         /* 6.5:1 */
-  --ochre-wash: #262014;
-  --moss: #71AE81;          /* 6.6:1 */
-  --moss-wash: #16241B;
+  color-scheme: dark;
+
+  --ground: #0E121A;
+  --card: #171D28;
+  --card-sunken: #1C2432;
+  --alt: #242E3E;
+  --line-soft: #2B3547;
+  --line: #3E4A5F;
+  --line-strong: #6B7A90;   /* 3.9:1 on card */
+  --ink: #E8EDF6;           /* 14.4:1 on card */
+  --ink-2: #AAB6C9;         /* 8.2:1  on card */
+  --ink-3: #8895AA;         /* 5.6:1 on card · 6.2:1 on ground */
+  --indigo: #A5AAFB;        /* 7.8:1 on card */
+  --indigo-hover: #C0C3FD;
+  --indigo-bright: #C0C3FD;
+  --indigo-wash: #1E2140;
+  --indigo-line: #3F4480;
+  --on-indigo: #0E121A;     /* 8.7:1 on indigo */
+  --indigo-glow: rgba(0, 0, 0, .55);
+  --emerald: #5FD1A4;       /* 9.0:1 */
+  --emerald-wash: #0E2A22;
+  --amber: #E5A85B;         /* 8.1:1 */
+  --amber-wash: #2C2113;
+  --amber-line: #4A3A1E;
+  --rose: #FF8FA3;          /* 7.8:1 */
+  --rose-wash: #2E1620;
+  --rose-line: #5A2B38;
+
+  /* A shadow cannot carry separation on a dark ground, so the card edge does. */
+  --card-border: var(--line);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #171614;
-    --sheet: #1E1D1A;
-    --tint: #262421;
-    --rule-soft: #2C2A26;
-    --rule: #3A3833;
-    --rule-strong: #757066;
-    --ink: #F0EDE6;
-    --ink-2: #ABA69B;
-    --ink-3: #938D80;
-    --navy: #8FB4D9;
-    --navy-hover: #B0CBE6;
-    --navy-wash: #1C242C;
-    --accent-contrast: #12212E;
-    --brick: #D97C6C;
-    --brick-wash: #2A1A16;
-    --ochre: #C79B4E;
-    --ochre-wash: #262014;
-    --moss: #71AE81;
-    --moss-wash: #16241B;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ground: #0E121A;
+    --card: #171D28;
+    --card-sunken: #1C2432;
+    --alt: #242E3E;
+    --line-soft: #2B3547;
+    --line: #3E4A5F;
+    --line-strong: #6B7A90;
+    --ink: #E8EDF6;
+    --ink-2: #AAB6C9;
+    --ink-3: #8895AA;
+    --indigo: #A5AAFB;
+    --indigo-hover: #C0C3FD;
+    --indigo-bright: #C0C3FD;
+    --indigo-wash: #1E2140;
+    --indigo-line: #3F4480;
+    --on-indigo: #0E121A;
+    --indigo-glow: rgba(0, 0, 0, .55);
+    --emerald: #5FD1A4;
+    --emerald-wash: #0E2A22;
+    --amber: #E5A85B;
+    --amber-wash: #2C2113;
+    --amber-line: #4A3A1E;
+    --rose: #FF8FA3;
+    --rose-wash: #2E1620;
+    --rose-line: #5A2B38;
+
+    --card-border: var(--line);
   }
+}
+
+/* The CV preview sheet is a picture of paper, not application chrome. It stays
+   light in both themes for the same reason the exported PDF is light: it shows
+   what a recruiter will actually read. Only these tokens are theme-independent,
+   and nothing outside the preview may use them. */
+:root {
+  --paper: #FFFFFF;
+  --paper-ink: #0B1220;
+  --paper-ink-2: #374151;
+  --paper-ink-3: #4B5563;
+  --paper-rule: #E5E7EB;
+  --paper-tint: #F3F4F6;
+  --paper-highlight: #E9E6FF;
+  --paper-accent: #4F46E5;
+}
+
+/* Softened a touch in dark so the sheet reads as paper rather than as a light leak. */
+:root[data-theme="dark"] { --paper: #F8F9FB; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #F8F9FB; }
 }

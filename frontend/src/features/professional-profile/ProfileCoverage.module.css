@@ -1,0 +1,155 @@
+/* Literal values from cv-3-studio-v2.1.html ".panel"/".cov"/".cbar"/".attn"/".checks" — see
+   AppShell.module.css's header comment for why this file doesn't route them through the generic
+   scale. */
+.panel {
+  background: var(--surface);
+  border: var(--border-hairline) solid var(--border-soft);
+  border-radius: 10px;
+  box-shadow: var(--shadow-xs);
+  padding: 11px 13px 10px;
+}
+
+.panel h3 {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.cov {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.cov b {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin: 8px 0 7px;
+  border: none;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface-alt);
+}
+
+.bar::-webkit-progress-bar {
+  background: var(--surface-alt);
+  border-radius: 2px;
+}
+
+.bar::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+  border-radius: 2px;
+}
+
+.bar::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+  border-radius: 2px;
+}
+
+.exp {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.attn {
+  margin-top: 9px;
+  border-top: var(--border-hairline) solid var(--border-soft);
+  padding-top: 8px;
+}
+
+.summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--caution);
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover {
+  color: var(--text);
+}
+
+.chev {
+  font-size: 9px;
+  color: var(--text-faint);
+  transition: transform 0.18s;
+}
+
+.attn[open] .chev {
+  transform: rotate(180deg);
+}
+
+.attn[open] .summary {
+  margin-bottom: 10px;
+}
+
+.checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.checks li {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.checks li:hover {
+  color: var(--text);
+}
+
+.mark {
+  font-weight: 800;
+  text-align: center;
+  font-size: 12px;
+}
+
+.mark.critical {
+  color: var(--critical);
+}
+
+.mark.caution {
+  color: var(--caution);
+}
+
+.checksFoot {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: var(--border-hairline) solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}

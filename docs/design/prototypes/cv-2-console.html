@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype 2 — Console</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#0c0e12; --bg-1:#12151b; --bg-2:#171b23; --bg-3:#1e232d;
+    --fg:#e7eaf0; --fg-2:#98a1b3; --fg-3:#616b7d;
+    --line:#242a35; --line-2:#323a48;
+    --cyan:#3dd6c4; --violet:#8b7cf6; --amber:#f0b429; --rose:#f2637e; --lime:#7ed957;
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+  }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--violet);color:#fff}
+
+  /* ---------- top bar ---------- */
+  .top{position:sticky;top:0;z-index:50;background:var(--bg-1);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 16px;height:46px}
+  .logo{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--fg);display:flex;align-items:center;gap:8px}
+  .logo b{color:var(--cyan)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;color:var(--fg-3);display:flex;gap:7px;align-items:center}
+  .crumbs span{color:var(--fg-2)}
+  .top .sp{flex:1}
+  .kbar{font-family:var(--mono);font-size:11.5px;color:var(--fg-3);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;display:flex;gap:8px;align-items:center;cursor:pointer}
+  .kbar:hover{border-color:var(--line-2);color:var(--fg-2)}
+  .kbd{font-family:var(--mono);font-size:10px;background:var(--bg-3);border:1px solid var(--line-2);border-radius:3px;padding:1px 5px;color:var(--fg-2)}
+  .status{font-family:var(--mono);font-size:11px;color:var(--lime);display:flex;gap:6px;align-items:center}
+  .status i{width:6px;height:6px;border-radius:50%;background:var(--lime);display:block}
+  .btn{font:inherit;font-size:12.5px;border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg-2);padding:6px 12px;border-radius:6px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;transition:.12s}
+  .btn:hover{background:var(--bg-3);color:var(--fg);border-color:#414b5c}
+  .btn-go{background:var(--cyan);border-color:var(--cyan);color:#04211f;font-weight:600}
+  .btn-go:hover{background:#54e5d3;color:#04211f}
+  .btn-x{border:none;background:transparent;color:var(--fg-3);padding:4px 6px;font-family:var(--mono);font-size:11px}
+  .btn-x:hover{color:var(--rose);background:transparent}
+
+  /* ---------- quick capture ---------- */
+  .capture{background:var(--bg-1);border-bottom:1px solid var(--line);padding:10px 16px}
+  .capture-in{max-width:1500px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .capture-in .pfx{font-family:var(--mono);font-size:13px;color:var(--cyan)}
+  .capture input{flex:1;font-family:var(--mono);font-size:13px;background:transparent;border:none;color:var(--fg);padding:6px 0}
+  .capture input:focus{outline:none}
+  .capture input::placeholder{color:var(--fg-3)}
+  .parse{font-family:var(--mono);font-size:11px;color:var(--fg-3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .parse b{color:var(--amber);font-weight:500}
+  .parse .k{color:var(--violet)}
+
+  /* ---------- layout ---------- */
+  .shell{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:200px minmax(0,1fr) 280px;gap:0;align-items:start}
+  @media(max-width:1240px){.shell{grid-template-columns:180px minmax(0,1fr)}.signal{display:none}}
+  @media(max-width:820px){.shell{grid-template-columns:1fr}.tree{display:none}}
+
+  /* ---------- tree ---------- */
+  .tree{position:sticky;top:46px;border-right:1px solid var(--line);padding:16px 0 60px;height:calc(100vh - 46px);overflow:auto}
+  .tree-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3);padding:0 16px 10px}
+  .tnode{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:6px 16px;font-family:var(--mono);font-size:12px;color:var(--fg-2);text-decoration:none;cursor:pointer;border-left:2px solid transparent}
+  .tnode:hover{background:var(--bg-1);color:var(--fg)}
+  .tnode.on{background:var(--bg-2);color:var(--fg);border-left-color:var(--cyan)}
+  .tnode .n{font-size:10.5px;color:var(--fg-3);background:var(--bg-3);border-radius:3px;padding:0 5px;min-width:20px;text-align:center}
+  .tnode.warn .n{color:var(--amber);background:#2a2314}
+  .tree-h2{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3);padding:22px 16px 10px;border-top:1px solid var(--line);margin-top:14px}
+  .hint{font-family:var(--mono);font-size:10.5px;color:var(--fg-3);padding:0 16px;line-height:1.8}
+  .hint div{display:flex;justify-content:space-between;gap:10px}
+
+  /* ---------- main ---------- */
+  main{padding:0 0 160px;min-width:0}
+  .block{border-bottom:1px solid var(--line)}
+  .block-h{position:sticky;top:46px;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--line);cursor:pointer}
+  .block-h .tw{font-family:var(--mono);font-size:10px;color:var(--fg-3);transition:.15s}
+  .block.closed .tw{transform:rotate(-90deg)}
+  .block-h h2{font-size:13px;font-weight:600;margin:0;letter-spacing:.01em}
+  .block-h .id{font-family:var(--mono);font-size:10.5px;color:var(--fg-3)}
+  .block-h .sp{flex:1}
+  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+  .pill.a{background:#2a2314;color:var(--amber)}
+  .pill.g{background:#14251a;color:var(--lime)}
+  .pill.r{background:#2b1620;color:var(--rose)}
+  .block-b{padding:8px 0 22px}
+  .block.closed .block-b{display:none}
+
+  /* ---------- record rows ---------- */
+  .rec{display:grid;grid-template-columns:26px 1fr;border-left:2px solid transparent}
+  .rec:hover{background:var(--bg-1)}
+  .rec.open{background:var(--bg-1);border-left-color:var(--violet)}
+  .rec.dragging{opacity:.3}
+  .rec.over{box-shadow:inset 0 2px 0 var(--cyan)}
+  .rec-g{display:grid;place-items:center;color:var(--line-2);cursor:grab;font-size:11px;padding-top:11px}
+  .rec:hover .rec-g{color:var(--fg-3)}
+  .rec-b{padding:9px 20px 9px 0;min-width:0}
+  .rec-l1{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .rec-t{font-weight:600;font-size:14px}
+  .rec-o{color:var(--fg-2);font-size:13px}
+  .rec-o::before{content:"@ ";color:var(--fg-3);font-family:var(--mono)}
+  .rec-d{font-family:var(--mono);font-size:11px;color:var(--fg-3);margin-left:auto;white-space:nowrap}
+  .rec-l2{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+  .tk{font-family:var(--mono);font-size:10.5px;color:var(--cyan);background:#0f2422;border:1px solid #17403b;border-radius:3px;padding:1px 6px}
+  .tk.n{color:var(--fg-3);background:var(--bg-2);border-color:var(--line);cursor:pointer}
+  .tk.n:hover{color:var(--cyan);border-color:#17403b}
+  .bl{font-family:var(--mono);font-size:11.5px;color:var(--fg-2);margin-top:7px;padding-left:2px;line-height:1.75}
+  .bl div::before{content:"▸ ";color:var(--violet)}
+  .miss{font-family:var(--mono);font-size:11px;color:var(--amber);margin-top:7px}
+  .miss::before{content:"⚠ "}
+
+  /* inline field editor */
+  .fields{display:none;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);margin:10px 0 0;border-top:1px solid var(--line)}
+  .rec.open .fields{display:grid}
+  .fld{background:var(--bg);padding:9px 12px;display:flex;flex-direction:column;gap:4px}
+  .fld.wide{grid-column:1/-1}
+  .fld label{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-3)}
+  .fld label u{color:var(--rose);text-decoration:none}
+  .fld input,.fld textarea,.fld select{font-family:var(--mono);font-size:12.5px;background:transparent;border:none;color:var(--fg);padding:2px 0;width:100%}
+  .fld textarea{resize:vertical;min-height:64px;line-height:1.7}
+  .fld input:focus,.fld textarea:focus,.fld select:focus{outline:none;box-shadow:0 1px 0 var(--cyan)}
+  .fld input::placeholder,.fld textarea::placeholder{color:var(--fg-3)}
+  .fld select{background:var(--bg);color:var(--fg)}
+  .rec-foot{grid-column:1/-1;background:var(--bg-1);padding:8px 12px;display:flex;gap:8px;align-items:center}
+  .rec-foot .sp{flex:1}
+  .rec-foot .note{font-family:var(--mono);font-size:10.5px;color:var(--fg-3)}
+
+  .newrec{display:flex;align-items:center;gap:10px;padding:10px 20px 10px 26px;font-family:var(--mono);font-size:11.5px;color:var(--fg-3);cursor:pointer;border:none;background:transparent;width:100%;text-align:left}
+  .newrec:hover{color:var(--cyan);background:var(--bg-1)}
+
+  /* matrix for languages */
+  .mx{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+  .mx th{text-align:left;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-3);font-weight:400;padding:6px 10px;border-bottom:1px solid var(--line)}
+  .mx td{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--fg-2)}
+  .mx tr:hover td{background:var(--bg-1)}
+  .mx td:first-child{color:var(--fg);font-weight:600;font-family:var(--sans);font-size:13px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;border:none;background:var(--bg-2);color:var(--fg-3);padding:3px 6px;cursor:pointer;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:none}
+  .seg button.on{background:var(--violet);color:#fff;font-weight:700}
+
+  /* skills as a bin board */
+  .bins{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;background:var(--line)}
+  .bin{background:var(--bg);padding:12px 14px;min-height:130px}
+  .bin h4{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3);margin:0 0 10px;display:flex;justify-content:space-between}
+  .bin .tk{margin:0 4px 5px 0;display:inline-block;cursor:grab}
+  .bin.hot{background:var(--bg-2);box-shadow:inset 0 0 0 1px var(--cyan)}
+
+  /* ---------- right: signal ---------- */
+  .signal{position:sticky;top:46px;border-left:1px solid var(--line);height:calc(100vh - 46px);overflow:auto;padding:16px 0 60px}
+  .sg{padding:0 16px 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .sg:last-child{border:none}
+  .sg h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3);margin:0 0 12px;font-weight:400}
+  .gauge{display:flex;align-items:flex-end;gap:10px;margin-bottom:10px}
+  .gauge b{font-family:var(--mono);font-size:32px;line-height:1;color:var(--cyan);font-weight:500}
+  .gauge span{font-family:var(--mono);font-size:11px;color:var(--fg-3);padding-bottom:4px}
+  .bars{display:flex;flex-direction:column;gap:7px}
+  .bar{display:grid;grid-template-columns:74px 1fr 30px;gap:8px;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--fg-2)}
+  .bar i{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden;display:block}
+  .bar i b{display:block;height:100%;background:var(--cyan)}
+  .bar i b.a{background:var(--amber)} .bar i b.r{background:var(--rose)}
+  .bar u{text-decoration:none;color:var(--fg-3);text-align:right}
+  .diag{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;font-family:var(--mono);font-size:11px;line-height:1.55}
+  .diag li{display:grid;grid-template-columns:14px 1fr;gap:8px;color:var(--fg-2)}
+  .diag .w{color:var(--amber)} .diag .e{color:var(--rose)} .diag .o{color:var(--lime)}
+  .diag code{color:var(--fg);background:var(--bg-2);border-radius:3px;padding:0 4px}
+  .kw{display:flex;flex-wrap:wrap;gap:5px}
+  .kw span{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line);color:var(--fg-2)}
+  .kw span.hi{color:var(--cyan);border-color:#17403b;background:#0f2422}
+
+  /* ---------- palette ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(4,6,10,.72);backdrop-filter:blur(3px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding-top:14vh}
+  .scrim.on{display:flex}
+  .pal{width:min(620px,92vw);background:var(--bg-1);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 30px 80px -20px #000;overflow:hidden}
+  .pal input{width:100%;font-family:var(--mono);font-size:15px;background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--fg);padding:16px 18px}
+  .pal input:focus{outline:none}
+  .pal ul{list-style:none;margin:0;padding:6px;max-height:340px;overflow:auto}
+  .pal li{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border-radius:6px;font-size:13px;color:var(--fg-2);cursor:pointer}
+  .pal li:hover,.pal li.sel{background:var(--bg-3);color:var(--fg)}
+  .pal li em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--fg-3)}
+  .pal .grp{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);padding:12px 12px 5px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="logo">◆ commit<b>ahead</b></div>
+  <div class="crumbs">profile <span>/</span> <span>denis-silva</span> <span>/</span> master</div>
+  <div class="sp"></div>
+  <div class="status"><i></i>synced 2s ago</div>
+  <div class="kbar" onclick="openPal()">⌕ Jump or add… <span class="kbd">⌘K</span></div>
+  <button class="btn">⤓ Export</button>
+  <button class="btn btn-go">Build CV</button>
+</div>
+
+<div class="capture">
+  <div class="capture-in">
+    <span class="pfx">›</span>
+    <input id="cap" placeholder='Quick add — try:  exp Staff Engineer @ Spotify 2024-01..now Stockholm #kubernetes #go' autocomplete="off">
+    <div class="parse" id="parse"><span class="k">hint</span> type <b>exp</b> · <b>edu</b> · <b>cert</b> · <b>skill</b> · <b>lang</b> · <b>proj</b> then free text</div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ================= TREE ================= -->
+  <nav class="tree">
+    <div class="tree-h">Sections</div>
+    <a class="tnode on" data-go="b-identity">identity <span class="n">✓</span></a>
+    <a class="tnode warn" data-go="b-exp">experience <span class="n">6</span></a>
+    <a class="tnode" data-go="b-edu">education <span class="n">6</span></a>
+    <a class="tnode" data-go="b-skills">skills <span class="n">23</span></a>
+    <a class="tnode" data-go="b-lang">languages <span class="n">3</span></a>
+    <a class="tnode warn" data-go="b-cert">certifications <span class="n">2</span></a>
+    <a class="tnode" data-go="b-proj">projects <span class="n">1</span></a>
+    <a class="tnode" data-go="b-links">links <span class="n">3</span></a>
+
+    <div class="tree-h2">Shortcuts</div>
+    <div class="hint">
+      <div><span>palette</span><span class="kbd">⌘K</span></div>
+      <div><span>next field</span><span class="kbd">Tab</span></div>
+      <div><span>new record</span><span class="kbd">⌘⏎</span></div>
+      <div><span>collapse all</span><span class="kbd">⌘\</span></div>
+      <div><span>close row</span><span class="kbd">Esc</span></div>
+    </div>
+  </nav>
+
+  <!-- ================= MAIN ================= -->
+  <main>
+
+    <!-- identity -->
+    <section class="block" id="b-identity">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>identity</h2><span class="id">01</span><span class="sp"></span><span class="pill g">complete</span></div>
+      <div class="block-b">
+        <div class="fields" style="display:grid;margin:0;border-top:none">
+          <div class="fld"><label>full name <u>*</u></label><input value="Denis Elvis Santos da Silva"></div>
+          <div class="fld"><label>headline <u>*</u></label><input value="Senior Software Engineer · .NET / Azure"></div>
+          <div class="fld"><label>email <u>*</u></label><input value="denis@example.com"></div>
+          <div class="fld"><label>phone</label><input value="+351 900 000 000"></div>
+          <div class="fld"><label>city, country</label><input value="Lisbon, Portugal"></div>
+          <div class="fld"><label>work authorisation</label><input value="EU citizen"></div>
+          <div class="fld wide"><label>summary — 3 to 4 sentences, specialism first</label><textarea>Backend-focused engineer specialising in .NET and Azure. I lead the design of service boundaries, own production reliability, and mentor teams through architectural change. Recent work: multi-tenant SaaS on Azure with event-driven integration and hard observability requirements.</textarea></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- experience -->
+    <section class="block" id="b-exp">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>experience</h2><span class="id">02 · 6 records · 14y 3m</span><span class="sp"></span><span class="pill a">4 records thin</span></div>
+      <div class="block-b" data-sortable>
+
+        <article class="rec open">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Senior Software Consultant</span><span class="rec-o">Academic Software</span><span class="rec-d">2023-10 → now · 1y 10m</span></div>
+            <div class="rec-l2"><span class="tk">.net-8</span><span class="tk">azure</span><span class="tk">ef-core</span><span class="tk">react</span><span class="tk">service-bus</span><span class="tk n">+</span></div>
+            <div class="bl">
+              <div>Led migration of 3 legacy services to .NET 8 — p95 latency −41%</div>
+              <div>Designed Azure Service Bus integration carrying 2.4M msg/month</div>
+              <div>Introduced ADRs; adopted by 4 squads</div>
+            </div>
+            <div class="fields">
+              <div class="fld"><label>title <u>*</u></label><input value="Senior Software Consultant"></div>
+              <div class="fld"><label>employer <u>*</u></label><input value="Academic Software"></div>
+              <div class="fld"><label>location</label><input value="Lokeren, Belgium"></div>
+              <div class="fld"><label>arrangement</label><select><option selected>hybrid</option><option>on-site</option><option>remote</option></select></div>
+              <div class="fld"><label>from <u>*</u></label><input value="2023-10"></div>
+              <div class="fld"><label>to</label><input value="now" placeholder="YYYY-MM or now"></div>
+              <div class="fld wide"><label>achievements — one per line, verb first, number last</label><textarea>Led migration of 3 legacy services to .NET 8 — p95 latency −41%
+Designed Azure Service Bus integration carrying 2.4M msg/month
+Introduced ADRs; adopted by 4 squads</textarea></div>
+              <div class="rec-foot"><span class="note">3 bullets · 47 words · reads well</span><span class="sp"></span><button class="btn-x">duplicate</button><button class="btn-x">delete</button><button class="btn" data-open>close</button></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Senior Software Consultant</span><span class="rec-o">Sysmatch → Academic Software</span><span class="rec-d">2022-04 → 2023-10 · 1y 7m</span></div>
+            <div class="rec-l2"><span class="tk">.net</span><span class="tk">azure-devops</span><span class="tk n">+</span></div>
+            <div class="miss">no achievements — renders as a blank line in every CV</div>
+            <div class="fields">
+              <div class="fld"><label>title <u>*</u></label><input value="Senior Software Consultant"></div>
+              <div class="fld"><label>employer <u>*</u></label><input value="Sysmatch"></div>
+              <div class="fld wide"><label>achievements</label><textarea placeholder="Led / Built / Reduced / Owned …"></textarea></div>
+              <div class="rec-foot"><span class="note">0 bullets</span><span class="sp"></span><button class="btn-x">delete</button><button class="btn" data-open>close</button></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Senior Software Consultant / SCRUM Master</span><span class="rec-o">Geometric Talks</span><span class="rec-d">2020-06 → 2022-04 · 1y 11m</span></div>
+            <div class="miss">no achievements · no technologies</div>
+            <div class="fields"><div class="fld wide"><label>achievements</label><textarea></textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div>
+          </div>
+        </article>
+
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Senior Software Consultant</span><span class="rec-o">Hitachi Consulting</span><span class="rec-d">2019-05 → 2020-07 · 1y 3m</span></div>
+            <div class="miss">no achievements</div>
+            <div class="fields"><div class="fld wide"><label>achievements</label><textarea></textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div>
+          </div>
+        </article>
+
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Senior IT Analyst</span><span class="rec-o">Companhia Siderúrgica Nacional</span><span class="rec-d">2014-04 → 2019-05 · 5y 2m</span></div>
+            <div class="miss">no achievements — longest tenure, worth 3 bullets</div>
+            <div class="fields"><div class="fld wide"><label>achievements</label><textarea></textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div>
+          </div>
+        </article>
+
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">IT Intern</span><span class="rec-o">CSN</span><span class="rec-d">2012-01 → 2014-03 · 2y 3m</span></div>
+            <div class="rec-l2"><span class="tk n">+ tech</span></div>
+            <div class="fields"><div class="fld wide"><label>achievements</label><textarea></textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div>
+          </div>
+        </article>
+
+      </div>
+      <button class="newrec" data-new>＋ new record <span class="kbd" style="margin-left:auto">⌘⏎</span></button>
+    </section>
+
+    <!-- education -->
+    <section class="block" id="b-edu">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>education</h2><span class="id">03 · 2 degrees · 4 courses</span><span class="sp"></span><span class="pill r">1 bad paste</span></div>
+      <div class="block-b" data-sortable>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Postgraduate · .NET Systems Architecture &amp; Cloud Computing</span><span class="rec-o">FIAP</span><span class="rec-d">2025-03 → 2026-03</span></div>
+            <div class="rec-l2"><span class="tk">eqf-7</span></div>
+            <div class="fields">
+              <div class="fld"><label>qualification <u>*</u></label><input value=".NET Systems Architecture & Cloud Computing"></div>
+              <div class="fld"><label>institution <u>*</u></label><input value="FIAP"></div>
+              <div class="fld"><label>eqf level</label><select><option selected>7 — master / postgraduate</option><option>6 — bachelor</option></select></div>
+              <div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div>
+            </div>
+          </div>
+        </article>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b">
+            <div class="rec-l1" data-open><span class="rec-t">Mastering Software Testing</span><span class="rec-o">desenvolvedor.io</span><span class="rec-d">2018-11</span></div>
+            <div class="miss">subject field contains text about breads and pastries — pasted from a sample template</div>
+            <div class="fields"><div class="fld wide"><label>subjects covered</label><textarea>- occupational techniques (making of standard breads, fancy breads, cakes and pastries)</textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn-x">clear field</button><button class="btn" data-open>close</button></div></div>
+          </div>
+        </article>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b"><div class="rec-l1" data-open><span class="rec-t">Complete React Developer</span><span class="rec-o">Udemy</span><span class="rec-d">2019 → 2020</span></div>
+          <div class="fields"><div class="fld wide"><label>subjects</label><textarea></textarea></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div></div>
+        </article>
+      </div>
+      <button class="newrec" data-new>＋ new record</button>
+    </section>
+
+    <!-- skills as bins -->
+    <section class="block" id="b-skills">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>skills</h2><span class="id">04 · 4 bins · 23 skills</span><span class="sp"></span><span class="pill g">grouped</span></div>
+      <div class="block-b">
+        <div class="bins">
+          <div class="bin"><h4>languages &amp; runtimes <span>7</span></h4>
+            <span class="tk" draggable="true">c#</span><span class="tk" draggable="true">.net-8</span><span class="tk" draggable="true">typescript</span><span class="tk" draggable="true">sql</span><span class="tk" draggable="true">python</span><span class="tk" draggable="true">go</span><span class="tk" draggable="true">node</span><span class="tk n">+</span>
+          </div>
+          <div class="bin"><h4>cloud &amp; platform <span>8</span></h4>
+            <span class="tk" draggable="true">azure</span><span class="tk" draggable="true">service-bus</span><span class="tk" draggable="true">functions</span><span class="tk" draggable="true">aks</span><span class="tk" draggable="true">docker</span><span class="tk" draggable="true">terraform</span><span class="tk" draggable="true">app-insights</span><span class="tk" draggable="true">key-vault</span><span class="tk n">+</span>
+          </div>
+          <div class="bin"><h4>data <span>5</span></h4>
+            <span class="tk" draggable="true">postgres</span><span class="tk" draggable="true">sql-server</span><span class="tk" draggable="true">ef-core</span><span class="tk" draggable="true">redis</span><span class="tk" draggable="true">cosmos-db</span><span class="tk n">+</span>
+          </div>
+          <div class="bin"><h4>ways of working <span>3</span></h4>
+            <span class="tk" draggable="true">scrum</span><span class="tk" draggable="true">mentoring</span><span class="tk" draggable="true">adrs</span><span class="tk n">+</span>
+          </div>
+        </div>
+        <button class="newrec">＋ new bin</button>
+      </div>
+    </section>
+
+    <!-- languages -->
+    <section class="block" id="b-lang">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>languages</h2><span class="id">05 · 3 · CEFR</span><span class="sp"></span><span class="pill g">complete</span></div>
+      <div class="block-b" style="padding:0 20px 20px 26px">
+        <table class="mx">
+          <thead><tr><th>language</th><th>listen</th><th>read</th><th>speak</th><th>write</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Portuguese</td>
+              <td><span class="seg"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></span></td>
+              <td><button class="btn-x">del</button></td></tr>
+            <tr><td>English</td>
+              <td><span class="seg"><button>A1</button><button>A2</button><button>B1</button><button>B2</button><button class="on">C1</button><button>C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button>B2</button><button>C1</button><button class="on">C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button class="on">B2</button><button>C1</button><button>C2</button></span></td>
+              <td><span class="seg"><button>B1</button><button>B2</button><button class="on">C1</button><button>C2</button></span></td>
+              <td><button class="btn-x">del</button></td></tr>
+            <tr><td>Dutch</td>
+              <td><span class="seg"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button><button>C1</button><button>C2</button></span></td>
+              <td><span class="seg"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button></span></td>
+              <td><span class="seg"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button></span></td>
+              <td><span class="seg"><button class="on">A1</button><button>A2</button><button>B1</button><button>B2</button></span></td>
+              <td><button class="btn-x">del</button></td></tr>
+          </tbody>
+        </table>
+        <button class="newrec" style="padding-left:10px">＋ new language</button>
+      </div>
+    </section>
+
+    <!-- certifications -->
+    <section class="block" id="b-cert">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>certifications</h2><span class="id">06 · 2</span><span class="sp"></span><span class="pill a">no credential urls</span></div>
+      <div class="block-b" data-sortable>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b"><div class="rec-l1" data-open><span class="rec-t">AZ-204 Developing Solutions for Azure</span><span class="rec-o">Microsoft</span><span class="rec-d">2023-02 · no expiry</span></div>
+          <div class="miss">missing credential id + verification url</div>
+          <div class="fields"><div class="fld"><label>credential id</label><input placeholder="H1234-5678"></div><div class="fld"><label>verify url</label><input placeholder="https://learn.microsoft.com/…"></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div></div>
+        </article>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b"><div class="rec-l1" data-open><span class="rec-t">Professional Scrum Master I</span><span class="rec-o">Scrum.org</span><span class="rec-d">2021-09</span></div>
+          <div class="fields"><div class="fld"><label>verify url</label><input></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div></div>
+        </article>
+      </div>
+      <button class="newrec" data-new>＋ new record</button>
+    </section>
+
+    <!-- projects -->
+    <section class="block" id="b-proj">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>projects</h2><span class="id">07 · 1</span><span class="sp"></span><span class="pill a">thin section</span></div>
+      <div class="block-b" data-sortable>
+        <article class="rec">
+          <div class="rec-g" draggable="true">⠿</div>
+          <div class="rec-b"><div class="rec-l1" data-open><span class="rec-t">CommitAhead</span><span class="rec-o">personal · open source</span><span class="rec-d">2026 → now</span></div>
+          <div class="rec-l2"><span class="tk">.net-10</span><span class="tk">react-19</span><span class="tk">postgres</span></div>
+          <div class="fields"><div class="fld wide"><label>one-sentence description</label><input value="Profile-and-CV app that generates role-targeted CVs from one structured profile."></div><div class="fld"><label>repo url</label><input value="github.com/denisvr/commitahead"></div><div class="rec-foot"><span class="sp"></span><button class="btn" data-open>close</button></div></div></div>
+        </article>
+      </div>
+      <button class="newrec" data-new>＋ new record</button>
+    </section>
+
+    <!-- links -->
+    <section class="block" id="b-links">
+      <div class="block-h" data-fold><span class="tw">▼</span><h2>links</h2><span class="id">08 · 3</span><span class="sp"></span><span class="pill g">complete</span></div>
+      <div class="block-b" style="padding:14px 20px 20px 26px">
+        <div class="kw">
+          <span class="hi">linkedin.com/in/denisvr</span><span class="hi">github.com/denisvr</span><span class="hi">denis.dev</span><span style="cursor:pointer">+ add</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= SIGNAL ================= -->
+  <aside class="signal">
+    <div class="sg">
+      <h3>completeness</h3>
+      <div class="gauge"><b>71</b><span>/ 100 · ready for a general CV</span></div>
+      <div class="bars">
+        <div class="bar"><span>identity</span><i><b style="width:100%"></b></i><u>100</u></div>
+        <div class="bar"><span>experience</span><i><b class="a" style="width:48%"></b></i><u>48</u></div>
+        <div class="bar"><span>education</span><i><b style="width:82%"></b></i><u>82</u></div>
+        <div class="bar"><span>skills</span><i><b style="width:88%"></b></i><u>88</u></div>
+        <div class="bar"><span>languages</span><i><b style="width:100%"></b></i><u>100</u></div>
+        <div class="bar"><span>certs</span><i><b class="a" style="width:55%"></b></i><u>55</u></div>
+        <div class="bar"><span>projects</span><i><b class="r" style="width:22%"></b></i><u>22</u></div>
+      </div>
+    </div>
+    <div class="sg">
+      <h3>diagnostics · 5</h3>
+      <ul class="diag">
+        <li><span class="e">✕</span><span>4 experience records have <code>achievements = []</code></span></li>
+        <li><span class="e">✕</span><span><code>education[1].subjects</code> contains unrelated template text</span></li>
+        <li><span class="w">!</span><span>No credential URL on 2 certifications — recruiters can't verify</span></li>
+        <li><span class="w">!</span><span>Only 1 project — add 1–2 more to strengthen a career pivot</span></li>
+        <li><span class="o">✓</span><span>No date gaps detected across 14y 3m</span></li>
+      </ul>
+    </div>
+    <div class="sg">
+      <h3>keyword surface</h3>
+      <p style="font-family:var(--mono);font-size:10.5px;color:var(--fg-3);margin:0 0 10px;line-height:1.6">Terms an ATS would extract from this profile today. Sparse sections yield sparse keywords.</p>
+      <div class="kw">
+        <span class="hi">.net</span><span class="hi">c#</span><span class="hi">azure</span><span class="hi">ef core</span><span class="hi">react</span><span class="hi">service bus</span><span>scrum</span><span>postgres</span><span>docker</span><span>terraform</span><span>aks</span><span>mentoring</span>
+      </div>
+      <p style="font-family:var(--mono);font-size:10.5px;color:var(--amber);margin:12px 0 0;line-height:1.6">⚠ 9 of 23 skills appear in no experience record — ATS scoring weights skills backed by a role far higher.</p>
+    </div>
+    <div class="sg">
+      <h3>next</h3>
+      <p style="font-family:var(--mono);font-size:10.5px;color:var(--fg-3);margin:0;line-height:1.7">Later, <b style="color:var(--cyan)">Build CV</b> takes a job ad + a region preset (EU / US) and drafts a targeted CV out of these records. Diagnostics above are what it will complain about.</p>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ================= PALETTE ================= -->
+<div class="scrim" id="scrim" onclick="if(event.target===this)closePal()">
+  <div class="pal">
+    <input id="palIn" placeholder="Jump to a section, or type “add ” to create…" autocomplete="off">
+    <ul>
+      <li class="grp" style="display:block">Add</li>
+      <li><span>＋</span><span>New experience record</span><em>exp</em></li>
+      <li><span>＋</span><span>New education / course</span><em>edu</em></li>
+      <li><span>＋</span><span>New certification</span><em>cert</em></li>
+      <li><span>＋</span><span>New project</span><em>proj</em></li>
+      <li><span>＋</span><span>New language</span><em>lang</em></li>
+      <li class="grp" style="display:block">Jump</li>
+      <li><span>§</span><span>experience</span><em>4 thin records</em></li>
+      <li><span>§</span><span>skills</span><em>23</em></li>
+      <li class="grp" style="display:block">Fix</li>
+      <li><span>⚑</span><span>Write achievements for Sysmatch</span><em>diagnostic</em></li>
+      <li><span>⚑</span><span>Clear pasted text in “Mastering Software Testing”</span><em>diagnostic</em></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // fold blocks / open records
+  document.addEventListener('click',e=>{
+    if(e.target.closest('[data-fold]')) e.target.closest('.block').classList.toggle('closed');
+    if(e.target.closest('[data-open]')) e.target.closest('.rec').classList.toggle('open');
+    if(e.target.closest('.seg button')){
+      const b=e.target.closest('button');
+      b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+    }
+    if(e.target.matches('.btn-x') && e.target.textContent==='del') e.target.closest('tr').remove();
+    if(e.target.closest('[data-new]')){
+      const b=e.target.closest('[data-new]'), list=b.previousElementSibling, first=list.querySelector('.rec');
+      const c=first.cloneNode(true); c.classList.add('open');
+      c.querySelector('.rec-t').textContent='untitled';
+      c.querySelectorAll('.rec-o,.rec-d,.miss,.bl').forEach(x=>x.remove());
+      c.querySelectorAll('input,textarea').forEach(x=>x.value='');
+      list.prepend(c); c.scrollIntoView({block:'center'});
+    }
+  });
+
+  // quick-capture live parse
+  const cap=document.getElementById('cap'), out=document.getElementById('parse');
+  const KIND={exp:'experience',edu:'education',cert:'certification',skill:'skill',lang:'language',proj:'project'};
+  cap.addEventListener('input',()=>{
+    const v=cap.value.trim();
+    if(!v){ out.innerHTML='<span class="k">hint</span> type <b>exp</b> · <b>edu</b> · <b>cert</b> · <b>skill</b> · <b>lang</b> · <b>proj</b> then free text'; return; }
+    const m=v.match(/^(\w+)\s*(.*)$/), kind=KIND[m[1].toLowerCase()], rest=m[2];
+    if(!kind){ out.innerHTML='<span class="k">?</span> unknown prefix <b>'+m[1]+'</b>'; return; }
+    const at=rest.split('@'), title=at[0].trim();
+    const org=(at[1]||'').replace(/\d{4}.*/,'').trim();
+    const dates=(rest.match(/\d{4}(-\d{2})?(\.\.(now|\d{4}(-\d{2})?))?/g)||[]).join(' ');
+    const tags=(rest.match(/#[\w-]+/g)||[]).map(t=>t.slice(1));
+    out.innerHTML='<span class="k">'+kind+'</span>'
+      +(title?' title=<b>'+title+'</b>':'')
+      +(org?' org=<b>'+org+'</b>':'')
+      +(dates?' when=<b>'+dates+'</b>':'')
+      +(tags.length?' tags=<b>'+tags.join(', ')+'</b>':'')
+      +' <span class="kbd">⏎ to create</span>';
+  });
+  cap.addEventListener('keydown',e=>{ if(e.key==='Enter'&&cap.value.trim()){ cap.value=''; cap.dispatchEvent(new Event('input')); } });
+
+  // drag reorder
+  let d=null;
+  document.addEventListener('dragstart',e=>{
+    const g=e.target.closest('.rec-g'); if(!g) return;
+    d=g.closest('.rec'); d.classList.add('dragging');
+  });
+  document.addEventListener('dragover',e=>{
+    if(!d) return; e.preventDefault();
+    const o=e.target.closest('.rec');
+    if(!o||o===d||o.parentElement!==d.parentElement) return;
+    const r=o.getBoundingClientRect();
+    o.parentElement.insertBefore(d, e.clientY<r.top+r.height/2?o:o.nextSibling);
+  });
+  document.addEventListener('dragend',()=>{ if(d)d.classList.remove('dragging'); d=null; });
+
+  // bins highlight on drag-over
+  document.querySelectorAll('.bin').forEach(b=>{
+    b.addEventListener('dragover',e=>{e.preventDefault();b.classList.add('hot')});
+    b.addEventListener('dragleave',()=>b.classList.remove('hot'));
+    b.addEventListener('drop',()=>b.classList.remove('hot'));
+  });
+
+  // tree nav
+  document.querySelectorAll('.tnode').forEach(n=>n.addEventListener('click',()=>{
+    document.querySelectorAll('.tnode').forEach(x=>x.classList.remove('on'));
+    n.classList.add('on');
+    document.getElementById(n.dataset.go).scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+
+  // palette
+  const scrim=document.getElementById('scrim'), palIn=document.getElementById('palIn');
+  function openPal(){ scrim.classList.add('on'); palIn.value=''; palIn.focus(); }
+  function closePal(){ scrim.classList.remove('on'); }
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); openPal(); }
+    if((e.metaKey||e.ctrlKey)&&e.key==='\\'){ e.preventDefault(); document.querySelectorAll('.block').forEach(b=>b.classList.toggle('closed')); }
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); cap.focus(); }
+    if(e.key==='Escape'){ closePal(); document.querySelectorAll('.rec.open').forEach(r=>r.classList.remove('open')); }
+  });
+</script>
+</body>
+</html>

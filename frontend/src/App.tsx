@@ -3,8 +3,10 @@ import { apiClient, ensureFreshSession } from './api/client'
 import { AppShell } from './design-system/components/AppShell'
 import { BookmarkMark } from './design-system/components/Brand'
 import { Button } from './design-system/components/Button'
+import type { SidebarItem } from './design-system/components/Sidebar'
+import { readSidebarCollapsed, storeSidebarCollapsed } from './design-system/sidebar'
 import { LoginForm } from './features/auth/LoginForm'
-import { ProfileHubPage } from './features/professional-profile/ProfileHubPage'
+import { ProfileHubPage, type HubTab, type PresentationsView } from './features/professional-profile/ProfileHubPage'
 import styles from './App.module.css'
 
 // 'connection-error' is distinct from 'anonymous' on purpose — a network failure while checking
@@ -13,10 +15,14 @@ import styles from './App.module.css'
 type AuthState = 'loading' | 'authenticated' | 'anonymous' | 'connection-error'
 
 // Professional profile & CVs is the only feature in the app (Study, Job Analyses, Interview
-// Notes, and the AI Analyze pipeline were removed — see docs/roadmap.md). AppShell still expects
-// a destinations list even with a single entry; onNavigate is a no-op since there's nowhere else
-// to navigate to.
-const DESTINATIONS = [{ key: 'profile', label: 'Professional profile & CVs' }]
+// Notes, and the AI Analyze pipeline were removed — see docs/roadmap.md). Home is the hub's
+// landing view, also reached via the brand mark; full names here, not abbreviations, per the
+// user's own note that "CV" alone read as too terse.
+const SIDEBAR_ITEMS: SidebarItem[] = [
+  { key: 'home', label: 'Home', icon: 'house' },
+  { key: 'profile', label: 'Professional profile', icon: 'user-round' },
+  { key: 'presentations', label: 'CV presentations', icon: 'file-text' },
+]
 
 function AuthHeading() {
   return (
@@ -35,6 +41,25 @@ function App() {
   const [email, setEmail] = useState<string | null>(null)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Owned here, not in ProfileHubPage — the Sidebar and the page content it controls are siblings
+  // under AppShell, so their shared state has to live in the nearest common ancestor.
+  const [hubTab, setHubTab] = useState<HubTab>('home')
+  const [presentationsView, setPresentationsView] = useState<PresentationsView>({ name: 'list' })
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed)
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current
+      storeSidebarCollapsed(next)
+      return next
+    })
+  }
+
+  const startNewCV = () => {
+    setHubTab('presentations')
+    setPresentationsView({ name: 'new' })
+  }
 
   useEffect(() => {
     apiClient
@@ -133,15 +158,24 @@ function App() {
 
   return (
     <AppShell
-      destinations={DESTINATIONS}
-      activeDestination="profile"
-      onNavigate={() => {}}
+      sidebarItems={SIDEBAR_ITEMS}
+      activeSidebarItem={hubTab}
+      onSidebarNavigate={(key) => setHubTab(key as HubTab)}
+      sidebarCollapsed={sidebarCollapsed}
+      onToggleSidebar={toggleSidebar}
+      onHomeClick={() => setHubTab('home')}
       email={email ?? ''}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
     >
       {logoutError && <p role="alert">{logoutError}</p>}
-      <ProfileHubPage />
+      <ProfileHubPage
+        hubTab={hubTab}
+        onHubTabChange={setHubTab}
+        presentationsView={presentationsView}
+        onPresentationsViewChange={setPresentationsView}
+        onCreateCV={startNewCV}
+      />
     </AppShell>
   )
 }

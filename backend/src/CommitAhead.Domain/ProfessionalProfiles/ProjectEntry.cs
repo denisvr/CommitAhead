@@ -14,6 +14,11 @@ public sealed class ProjectEntry
     public string? Url { get; }
     public IReadOnlyList<Guid> SkillIds { get; }
 
+    // Assigned by ProfessionalProfile.ReplaceProjects from the caller's array order — not a
+    // constructor parameter, since it's aggregate-managed persistence state, not something a
+    // caller building one entry in isolation should have to supply or could get wrong.
+    public int Position { get; internal set; }
+
     public ProjectEntry(
         Guid id,
         string name,

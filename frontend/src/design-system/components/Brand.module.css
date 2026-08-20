@@ -4,13 +4,14 @@
   gap: var(--space-4);
 }
 
-.mark {
-  color: var(--accent);
-}
+/* No colour set here on purpose: BookmarkMark merges this class with whatever the caller passes,
+   and every current caller (AppShell's gradient mark box, App.module.css's login heading) needs
+   a different colour — the caller decides, this class only carries the shared shape/behaviour
+   hooks if any are ever needed. */
 
 .wordmark {
   font-size: var(--text-md);
-  letter-spacing: var(--track-headline);
+  letter-spacing: var(--track-title);
 }
 
 .wordmarkStrong {

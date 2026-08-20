@@ -13,6 +13,11 @@ public sealed class CertificationEntry
     public string? CredentialId { get; }
     public string? Url { get; }
 
+    // Assigned by ProfessionalProfile.ReplaceCertifications from the caller's array order — not a
+    // constructor parameter, since it's aggregate-managed persistence state, not something a
+    // caller building one entry in isolation should have to supply or could get wrong.
+    public int Position { get; internal set; }
+
     public CertificationEntry(
         Guid id,
         string name,

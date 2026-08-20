@@ -21,6 +21,10 @@ public sealed class ExperienceEntryConfiguration : IEntityTypeConfiguration<Expe
         builder.Property<Guid>("ProfessionalProfileId")
             .HasColumnName("professional_profile_id");
 
+        // Stamped by ProfessionalProfile.ReplaceExperience from the caller's array order — see
+        // ProfessionalProfileRepository's ordered Include for the read side.
+        builder.Property(e => e.Position).HasColumnName("position").IsRequired();
+
         builder.Property(e => e.Company).HasColumnName("company").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.Client).HasColumnName("client").HasMaxLength(ValidationLimits.ShortTextMaxLength);
         builder.Property(e => e.Role).HasColumnName("role").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();

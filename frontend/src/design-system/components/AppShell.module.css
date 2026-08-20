@@ -1,125 +1,121 @@
+/* Pixel values below are copied literally from the approved reference
+   (docs/design/prototypes/cv-3-studio-v2.1.html ".hd"/".mark"/".wm") rather than routed through
+   the generic type/space scale — the reference itself works this way, one-off numbers per
+   component rather than a rigid named scale, and matching it exactly is the point.
+
+   .headerInner/.body/.content diverge from that reference on purpose: the reference has no
+   sidebar, so its header centers on --page-max. Once the sidebar (Sidebar.tsx) sits flush at the
+   true left edge, a centered header would float out of alignment with it, so the header goes
+   edge-to-edge too and only .content keeps a reading-width cap — see .content's own comment below
+   for how it stays centered in the space right of the sidebar without dragging the sidebar's own
+   left edge away from the header's. */
 .shell {
-  display: flex;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.55;
 }
 
-.sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  /* color-mix, not the reference's literal rgba(255,255,255,.85) — that hard-codes light mode
+     with no dark counterpart in the reference; this resolves to the identical colour in light
+     and the correct translucent dark surface in dark, the same technique the reference's own
+     jump bar already uses for itself. */
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: var(--border-hairline) solid var(--border-soft);
+}
+
+.headerInner {
+  padding: 11px 22px;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-12);
-  border-right: var(--border-hairline) solid var(--border-soft);
+  align-items: center;
+  gap: 16px;
 }
 
-.nav {
+.brand {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.navLink {
-  padding: var(--space-4) var(--space-6);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  color: var(--text);
-  background: transparent;
+  align-items: center;
+  gap: 10px;
   border: none;
-  text-align: left;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
+  border-radius: 9px;
 }
 
-.navLink:hover {
-  background: var(--surface-alt);
+.brand:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
-.navLinkActive {
-  background: var(--accent-wash);
-  color: var(--accent);
-  font-weight: var(--weight-medium);
+.markBox {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, var(--accent-bright), var(--accent));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px -2px var(--accent-glow);
 }
 
-.footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+.mark {
+  color: var(--accent-contrast);
 }
 
-.email {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  overflow-wrap: break-word;
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-size: 16px;
+  white-space: nowrap;
 }
 
-.content {
+.spacer {
   flex: 1;
-  min-width: 0;
-  padding: var(--page-pad-y) var(--page-pad-x);
-  max-width: var(--content-max);
 }
 
-.mobileHeader,
-.mobileNav {
-  display: none;
+/* Sidebar.tsx is `position: fixed`, out of flow entirely, so it no longer occupies a flex slot
+   here — `.body` reserves its width with padding-left instead, kept in sync with Sidebar's own
+   220px/60px (collapsed) via the same `sidebarCollapsed` prop AppShell already threads through to
+   the Sidebar itself. */
+.body {
+  display: flex;
+  padding-left: 220px;
+}
+
+.bodyCollapsed {
+  padding-left: 60px;
+}
+
+/* Not `justify-content: center` on .body — that would center the [Sidebar, content] pair as one
+   block, drifting the sidebar away from x=0 (and out of line with the header's own flush-left
+   brand) by half of whatever space is left over past --page-max on a wide viewport. Growing
+   .content and centering it with margin auto instead keeps the sidebar flush left always, and
+   only ever centers the leftover space to content's own right of the sidebar. */
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: var(--page-max);
+  margin: 0 auto;
 }
 
 @media (max-width: 767px) {
-  .sidebar {
-    display: none;
+  .headerInner {
+    gap: 10px;
+    padding: 8px 16px;
   }
 
-  .mobileHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--space-16);
-    border-bottom: var(--border-hairline) solid var(--border-soft);
-  }
-
-  .mobileBrand {
-    gap: var(--space-2);
-  }
-
-  .mobileLogout {
-    min-height: var(--tap-min);
-    padding: 0 var(--space-8);
-    font-size: var(--text-sm);
-    color: var(--text-muted);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-  }
-
-  .content {
-    padding: var(--space-16);
-    padding-bottom: calc(var(--tap-min) + var(--space-16) * 2);
-  }
-
-  .mobileNav {
-    display: flex;
-    position: fixed;
-    inset: auto 0 0 0;
-    background: var(--bg);
-    border-top: var(--border-hairline) solid var(--border-soft);
-  }
-
-  .mobileNav .navLink {
-    flex: 1;
-    min-height: var(--tap-min);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    border-radius: 0;
-  }
-
-  .mobileNav .navLinkActive {
-    background: var(--accent-wash);
+  /* Sidebar.module.css forces icon-only width below 767px regardless of the collapse preference
+     — this mirrors that so .content's reserved space always matches, in both the expanded and
+     collapsed case, hence appearing after .bodyCollapsed to win at this width either way. */
+  .body,
+  .bodyCollapsed {
+    padding-left: 52px;
   }
 }

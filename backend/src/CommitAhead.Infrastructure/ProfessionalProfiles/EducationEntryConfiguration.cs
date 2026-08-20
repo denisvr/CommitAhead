@@ -19,6 +19,10 @@ public sealed class EducationEntryConfiguration : IEntityTypeConfiguration<Educa
         builder.Property<Guid>("ProfessionalProfileId")
             .HasColumnName("professional_profile_id");
 
+        // Stamped by ProfessionalProfile.ReplaceEducation from the caller's array order — see
+        // ProfessionalProfileRepository's ordered Include for the read side.
+        builder.Property(e => e.Position).HasColumnName("position").IsRequired();
+
         builder.Property(e => e.Institution).HasColumnName("institution").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.Degree).HasColumnName("degree").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.Field).HasColumnName("field").HasMaxLength(ValidationLimits.ShortTextMaxLength);

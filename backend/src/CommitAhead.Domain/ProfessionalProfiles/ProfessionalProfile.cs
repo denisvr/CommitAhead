@@ -5,8 +5,10 @@ namespace CommitAhead.Domain.ProfessionalProfiles;
 /// <summary>
 /// The canonical record of a user's professional identity — a singleton per user (ADR-0015), not
 /// a single global record (CONTEXT.md). Holds seven child collections (Experience, Education,
-/// Skill, Language, Certification, Project, ProfileLink) with no domain ordering invariant of
-/// their own — only CVPresentation's selections are explicitly ordered (see docs/domain/model.md).
+/// Skill, Language, Certification, Project, ProfileLink). Four of them (Experience, Education,
+/// Certifications, Projects) carry a user-controlled Position, stamped from the caller's array
+/// order on every Replace* — the others have no ordering invariant of their own, and
+/// CVPresentation's selections are separately, explicitly ordered (see docs/domain/model.md).
 ///
 /// Every Replace* method takes the caller's full candidate collection and replaces it wholesale
 /// (an editor-form shape, not incremental add/remove) — the caller (the future Application use
@@ -73,7 +75,10 @@ public sealed class ProfessionalProfile
 
     public void ReplaceEducation(IEnumerable<EducationEntry> education, DateTime updatedAtUtc)
     {
-        _education = ValidateCollection(education, entry => entry.Id, nameof(education));
+        var validated = ValidateCollection(education, entry => entry.Id, nameof(education));
+        AssignPositions(validated, (entry, position) => entry.Position = position);
+
+        _education = validated;
         UpdatedAtUtc = updatedAtUtc;
     }
 
@@ -85,7 +90,10 @@ public sealed class ProfessionalProfile
 
     public void ReplaceCertifications(IEnumerable<CertificationEntry> certifications, DateTime updatedAtUtc)
     {
-        _certifications = ValidateCollection(certifications, entry => entry.Id, nameof(certifications));
+        var validated = ValidateCollection(certifications, entry => entry.Id, nameof(certifications));
+        AssignPositions(validated, (entry, position) => entry.Position = position);
+
+        _certifications = validated;
         UpdatedAtUtc = updatedAtUtc;
     }
 
@@ -100,6 +108,7 @@ public sealed class ProfessionalProfile
     {
         var validated = ValidateCollection(experience, entry => entry.Id, nameof(experience));
         ValidateSkillReferencesExist(validated.SelectMany(entry => entry.SkillIds), nameof(experience));
+        AssignPositions(validated, (entry, position) => entry.Position = position);
 
         _experience = validated;
         UpdatedAtUtc = updatedAtUtc;
@@ -110,6 +119,7 @@ public sealed class ProfessionalProfile
     {
         var validated = ValidateCollection(projects, entry => entry.Id, nameof(projects));
         ValidateSkillReferencesExist(validated.SelectMany(entry => entry.SkillIds), nameof(projects));
+        AssignPositions(validated, (entry, position) => entry.Position = position);
 
         _projects = validated;
         UpdatedAtUtc = updatedAtUtc;
@@ -151,6 +161,20 @@ public sealed class ProfessionalProfile
         if (referencedSkillIds.Any(skillId => !availableSkillIds.Contains(skillId)))
         {
             throw new DomainValidationException($"{paramName} references a Skill that does not exist in this profile.");
+        }
+    }
+
+    /// <summary>
+    /// Stamps each entry's Position from its index in the caller's array order (Experience,
+    /// Education, Certifications and Projects are the four collections a user can reorder
+    /// manually) — the array order is the only signal of intended order the API receives, and it
+    /// would otherwise be lost the moment it round-trips through storage.
+    /// </summary>
+    private static void AssignPositions<T>(List<T> entries, Action<T, int> setPosition)
+    {
+        for (var i = 0; i < entries.Count; i++)
+        {
+            setPosition(entries[i], i);
         }
     }
 

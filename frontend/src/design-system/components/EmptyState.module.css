@@ -9,7 +9,7 @@
 
 .title {
   margin: 0;
-  font-size: var(--text-headline);
+  font-size: var(--text-lead);
   font-weight: var(--weight-semibold);
 }
 

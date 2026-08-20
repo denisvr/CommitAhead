@@ -1,13 +1,133 @@
-.page {
+/* Literal values from cv-3-studio-v2.1.html ".split"/".frame"/".side" — see AppShell.module.css's
+   header comment for why this file doesn't route them through the generic scale. */
+.split {
+  padding: 18px 22px 90px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 452px;
+  gap: 22px;
+  align-items: start;
+}
+
+@media (max-width: 1279px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.column {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  min-width: 0;
+}
+
+.frame {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  background: var(--surface);
+  border: var(--border-hairline) solid var(--border-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.frameIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--accent-wash);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+
+.frameIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.frame p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.frame strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.frameClose {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.frameClose:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.frameClose:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.aside {
+  position: sticky;
+  top: 104px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 118px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+/* The reference hides the aside entirely below 1280px — a click-through preview dialog takes
+   over instead. This slice keeps the simpler, always-visible fallback of stacking it beneath the
+   sections (never fully hidden), flagged as a known gap against the reference's own responsive
+   behaviour rather than its desktop layout. */
+@media (max-width: 1279px) {
+  .aside {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* New chrome, not modelled by cv-3-studio-v2.1.html — the reference has no page-level header row
+   above its jump bar. Holds the page title plus the "Import from LinkedIn" action, which used to
+   live in AppShell's shared header slot before that slot was removed in favour of each feature
+   page owning its own actions. */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px 0;
+}
+
+/* Used only by the create-profile bootstrap screen and the error/retry state — the approved
+   reference has no equivalent (it assumes a profile already exists), so these stay generic. */
+.page {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .title {
   margin: 0;
-  font-size: var(--text-title);
-  font-weight: var(--weight-semibold);
+  font-size: 22px;
+  font-weight: 700;
 }
 
 .hint {
@@ -16,11 +136,7 @@
   max-width: 60ch;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-}
-
 .status {
+  padding: 18px 22px;
   color: var(--text-muted);
 }

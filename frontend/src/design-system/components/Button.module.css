@@ -1,18 +1,22 @@
+/* Literal values from cv-3-studio-v2.1.html ".btn"/".btn-p"/".btn-s"/".btn-icon" — see
+   AppShell.module.css's header comment for why this file doesn't route them through the generic
+   scale. */
 .button {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: var(--control-height);
-  padding: 0 var(--space-12);
+  gap: 7px;
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
-  border-radius: var(--radius-md);
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 9px;
   border: var(--border-hairline) solid transparent;
   cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .button:focus-visible {
@@ -25,10 +29,24 @@
   opacity: 0.6;
 }
 
+.secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+}
+
+.secondary:not(:disabled):hover {
+  border-color: var(--text-faint);
+}
+
 .primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
+  /* The one coloured shadow in the system (components.md "Button"). In dark --accent-glow is
+     plain black, because a light indigo glow on a dark ground reads as a halo. */
+  box-shadow: 0 4px 10px -2px var(--accent-glow);
 }
 
 .primary:not(:disabled):hover {
@@ -36,33 +54,64 @@
   border-color: var(--accent-hover);
 }
 
-.secondary {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.secondary:not(:disabled):hover {
-  border-color: var(--border-strong);
-}
-
 .ghost {
+  padding: 7px 10px;
+  font-size: 12.5px;
+  box-shadow: none;
   background: transparent;
-  color: var(--text);
+  border-color: transparent;
+  color: var(--text-muted);
 }
 
 .ghost:not(:disabled):hover {
   background: var(--surface-alt);
+  color: var(--text);
+  border-color: transparent;
 }
 
 .danger {
   background: var(--surface);
   border-color: var(--critical);
   color: var(--critical);
+  box-shadow: var(--shadow-xs);
 }
 
 .danger:not(:disabled):hover {
   background: var(--critical-wash);
+}
+
+/* Add/create actions (components.md's per-card "+ Add …" header buttons) — green reads as
+   "create", distinct from the brand accent already used for primary/interactive actions. */
+.success {
+  background: var(--surface);
+  border-color: var(--good);
+  color: var(--good);
+  box-shadow: var(--shadow-xs);
+}
+
+.success:not(:disabled):hover {
+  background: var(--good-wash);
+}
+
+/* Edit actions — the same accent used for links and other "you can interact with this" affordances. */
+.accent {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.accent:not(:disabled):hover {
+  background: var(--accent-wash);
+}
+
+.sm {
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+
+.icon {
+  padding: 7px 9px;
 }
 
 .hiddenLabel {
@@ -73,8 +122,8 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  width: var(--space-8);
-  height: var(--space-8);
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: var(--border-hairline) solid currentColor;
   border-top-color: transparent;

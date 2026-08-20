@@ -1,18 +1,30 @@
-/* Motion is functional only: state changes, never entrances. No bounce, no
-   spring, nothing longer than 180ms in the product surface. */
+/* Generated from docs/design/design-system/tokens/ — the design reference is the source
+   of truth. Change a value there and copy it here in the same PR (readme.md, "Required
+   source files"). Do not edit only one side. */
+
+/* Motion is functional only: state changes, never entrances. No bounce, no spring,
+   no shimmer, nothing decorative. */
 :root {
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1); /* @kind other */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* @kind other */
+
   --dur-instant: 80ms; /* @kind other */
-  --dur-fast: 120ms; /* @kind other */
-  --dur-base: 180ms; /* @kind other */
+  --dur-fast: 120ms;   /* colour, background and border changes */
+  --dur-base: 180ms;   /* disclosure: a row opening, a chevron turning, a panel appearing */
+  --dur-slow: 240ms;   /* attention only: the flash that confirms a jump landed */
+
   --transition-control: color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
 }
+
+/* Transform is permitted for exactly two things: rotating a disclosure chevron,
+   and the scroll position of a sticky region. It is never used to move, scale or
+   lift a surface on hover. */
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-instant: 0ms; /* @kind other */
     --dur-fast: 0ms; /* @kind other */
     --dur-base: 0ms; /* @kind other */
+    --dur-slow: 0ms; /* @kind other */
   }
 }

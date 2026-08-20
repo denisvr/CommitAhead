@@ -217,6 +217,10 @@ namespace CommitAhead.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
                     b.Property<Guid>("ProfessionalProfileId")
                         .HasColumnType("uuid")
                         .HasColumnName("professional_profile_id");
@@ -270,6 +274,10 @@ namespace CommitAhead.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("location");
 
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
                     b.Property<Guid>("ProfessionalProfileId")
                         .HasColumnType("uuid")
                         .HasColumnName("professional_profile_id");
@@ -321,6 +329,10 @@ namespace CommitAhead.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("location");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
 
                     b.Property<Guid>("ProfessionalProfileId")
                         .HasColumnType("uuid")
@@ -487,6 +499,10 @@ namespace CommitAhead.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
 
                     b.Property<Guid>("ProfessionalProfileId")
                         .HasColumnType("uuid")

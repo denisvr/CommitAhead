@@ -19,6 +19,10 @@ public sealed class ProjectEntryConfiguration : IEntityTypeConfiguration<Project
         builder.Property<Guid>("ProfessionalProfileId")
             .HasColumnName("professional_profile_id");
 
+        // Stamped by ProfessionalProfile.ReplaceProjects from the caller's array order — see
+        // ProfessionalProfileRepository's ordered Include for the read side.
+        builder.Property(e => e.Position).HasColumnName("position").IsRequired();
+
         builder.Property(e => e.Name).HasColumnName("name").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.Role).HasColumnName("role").HasMaxLength(ValidationLimits.ShortTextMaxLength);
         builder.Property(e => e.DescriptionMarkdown).HasColumnName("description_markdown").HasMaxLength(ValidationLimits.MarkdownMaxLength).IsRequired();

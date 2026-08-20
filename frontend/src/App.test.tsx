@@ -5,12 +5,20 @@ import { http, HttpResponse } from 'msw'
 import { server } from './mocks/server'
 import App from './App'
 
-// AppShell renders the same nav/logout controls twice (desktop sidebar + mobile bottom
-// bar/header) — CSS media queries hide one or the other visually, but jsdom has no layout engine,
-// so both are always in the DOM. Any element AppShell duplicates this way needs [0], not a bare
-// getByRole.
-function clickLogout() {
-  return userEvent.click(screen.getAllByRole('button', { name: 'Log out' })[0])
+// The Studio shell renders each control exactly once. The Reading Room shell duplicated its nav
+// and logout into a desktop sidebar and a mobile bottom bar, which forced getAllByRole(...)[0]
+// here because jsdom has no layout engine to hide either copy; that is no longer the case.
+//
+// Email and Log out only render once the account avatar is opened (AccountMenu) — this helper
+// opens it first, tolerating it already being open (the retry-logout test calls this twice).
+async function openAccountMenu() {
+  const trigger = await screen.findByRole('button', { name: 'Account menu' })
+  if (trigger.getAttribute('aria-expanded') !== 'true') await userEvent.click(trigger)
+}
+
+async function clickLogout() {
+  await openAccountMenu()
+  await userEvent.click(await screen.findByRole('button', { name: /log out/i }))
 }
 
 describe('App', () => {
@@ -59,8 +67,9 @@ describe('App', () => {
   it('shows the professional profile and the signed-in email once authenticated', async () => {
     render(<App />)
 
-    // Professional profile & CVs is the only feature in the app (see App.tsx's DESTINATIONS).
+    // Professional profile & CVs is the only feature in the app (see App.tsx's SIDEBAR_ITEMS).
     expect(await screen.findByRole('heading', { name: /professional profile/i })).toBeInTheDocument()
+    await openAccountMenu()
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
   })
 
@@ -78,7 +87,8 @@ describe('App', () => {
     )
 
     render(<App />)
-    expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
+    await openAccountMenu()
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument()
 
     await clickLogout()
 
@@ -92,7 +102,8 @@ describe('App', () => {
     server.use(http.get('/auth/csrf', () => new HttpResponse(null, { status: 500 })))
 
     render(<App />)
-    expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
+    await openAccountMenu()
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument()
 
     await clickLogout()
 
@@ -108,7 +119,8 @@ describe('App', () => {
     server.use(http.post('/auth/logout', () => new HttpResponse(null, { status: 400 })))
 
     render(<App />)
-    expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
+    await openAccountMenu()
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument()
 
     await clickLogout()
 
@@ -120,7 +132,8 @@ describe('App', () => {
     server.use(http.post('/auth/logout', () => HttpResponse.error()))
 
     render(<App />)
-    expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
+    await openAccountMenu()
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument()
 
     await clickLogout()
 
@@ -138,7 +151,8 @@ describe('App', () => {
     )
 
     render(<App />)
-    expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
+    await openAccountMenu()
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument()
 
     await clickLogout()
     expect(await screen.findByRole('alert')).toBeInTheDocument()

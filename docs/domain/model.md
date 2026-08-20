@@ -23,11 +23,19 @@ The canonical source of professional identity and reusable CV content — one pe
 
 **Child entity collections:**
 
+Experience, Education, Certification, and Project entries additionally carry a `position` (int,
+zero-based, unique and contiguous within the collection — see invariant 8 below): the user's own
+manual order for that collection, stamped from the client's array order on every replace and read
+back in that same order. It is aggregate-managed — nothing outside `ProfessionalProfile` sets it —
+and is not part of the API request/response contract; the client already expresses order as plain
+array sequence. Skill, LanguageEntry, and ProfileLink carry no such field.
+
 #### ExperienceEntry
 
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `position` | int |
 | `company` | string |
 | `client` | string? |
 | `role` | string |
@@ -45,6 +53,7 @@ The canonical source of professional identity and reusable CV content — one pe
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `position` | int |
 | `institution` | string |
 | `degree` | string |
 | `field` | string? |
@@ -79,6 +88,7 @@ The canonical source of professional identity and reusable CV content — one pe
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `position` | int |
 | `name` | string |
 | `issuingOrganisation` | string |
 | `issuedAt` | YearMonth? |
@@ -91,6 +101,7 @@ The canonical source of professional identity and reusable CV content — one pe
 | Field | Type |
 |---|---|
 | `id` | UUID |
+| `position` | int |
 | `name` | string |
 | `role` | string? |
 | `startDate` | YearMonth? |
@@ -170,6 +181,7 @@ month: int [1, 12]
 5. Every CVPresentation selection collection has unique entry IDs and unique, contiguous positions starting at zero.
 6. Deleting a canonical profile entry removes its ID from any CVPresentation's ordered `uuid[]` selection array but never deletes a CVPresentation.
 7. Every cross-aggregate reference connects entities owned by the same user (see ADR-0015): a CVPresentation's `professionalProfileId` must share the referencing entity's `ownerUserId`. There is no cross-user reference, ever.
+8. Within one ProfessionalProfile, each of Experience, Education, Certification, and Project has unique, contiguous `position` values starting at zero — enforced by construction (`ProfessionalProfile.AssignPositions` always re-stamps the whole collection from array order on every replace), not by a separate uniqueness check.
 
 ---
 

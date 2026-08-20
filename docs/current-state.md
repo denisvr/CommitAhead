@@ -40,6 +40,23 @@ priority, and document routing; detailed rules remain in their authoritative doc
     validation, and PDF export (`ExportCVPresentation`, QuestPDF via ADR-0020) including locale
     dates, visibility rules, page-limit enforcement, and a committed visual-regression baseline
     for the one supported template (`modern-one-page`).
+- **Frontend shell, since ADR-0024 was first written:** a collapsible left Sidebar (Home,
+  Professional profile, CV presentations — modelled on Azure DevOps's own nav rail,
+  `localStorage`-persisted collapse state) and a circular AccountMenu replaced the original
+  header-only shell; see the superseded-note banner at the top of ADR-0024 and
+  `docs/design/design-system/components.md` ("AppShell", "Sidebar", "AccountMenu", "Home"). The
+  ProfessionalProfilePage editor is Europass-style: each section defaults to read-only formatted
+  text, not open input fields, with colour-coded Add (green)/Edit (accent)/Delete (red)/Done
+  (green) actions (`components.md` "Button") and no separate Save button anywhere — every
+  mutating action (add, edit, delete, reorder) persists immediately.
+- **Manual reordering** for Experience, Education, Certifications, and Projects — a Move up/down
+  pair (keyboard-accessible) plus a native HTML5 drag handle (mouse-only; **not** a JS drag
+  library — this app's CSP has no `unsafe-inline` for `style-src`, which blocks the inline
+  transform every such library uses for live drag feedback, see `CollapsibleRow.tsx`'s own header
+  comment). Order is a real, persisted `Position` column on each of the four entities
+  (`20260820112709_AddProfessionalProfileEntryPositions`), stamped from the client's array order on
+  every `Replace*` and read back via an `ORDER BY` in `ProfessionalProfileRepository` — see
+  `docs/architecture/persistence.md`. Skills, Languages, and ProfileLinks have no such ordering.
 - A fully-containerized, hot-reload dev environment (ADR-0022) is implemented:
   `docker-compose.dev.yml` layers `db-init`/`api`/`frontend` onto `backend/docker-compose.yml`'s
   existing `db`. Phase 6a's persistent local production-like Docker runtime

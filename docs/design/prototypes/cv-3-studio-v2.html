@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype 3 — Studio v2 · Master Profile</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#eef1f6; --surf:#ffffff; --surf-2:#f7f9fc; --surf-3:#eceff5;
+    --tx:#101828; --tx-2:#42506b; --tx-3:#6b7688;              /* tx-3 darkened for contrast */
+    --bd:#e0e5ee; --bd-2:#c6cfdd;
+    --brand:#4f46e5; --brand-2:#6d63ff; --brand-soft:#eeecff; --brand-line:#c7c2ff;
+    --ok:#04785c; --ok-soft:#e4f4ee;
+    --rec:#a35a00; --rec-soft:#fdf1e0; --rec-line:#f0d3a8;      /* recommendation = amber */
+    --err:#c2143c; --err-soft:#fdeaee; --err-line:#f3c2cd;      /* error = data quality only */
+    --sh-s:0 1px 2px rgba(16,24,40,.05);
+    --sh:0 4px 6px -2px rgba(16,24,40,.04),0 12px 24px -8px rgba(16,24,40,.10);
+    --sh-l:0 24px 48px -16px rgba(16,24,40,.22);
+    --f:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+    --fp:"Iowan Old Style",Georgia,ui-serif,serif;
+    --r:12px;
+  }
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--f);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+  /* ================= header ================= */
+  header{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+  .hd{max-width:1640px;margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px}
+  .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,var(--brand-2),var(--brand));display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 4px 10px -2px rgba(79,70,229,.5);flex:none}
+  .wm{font-weight:700;letter-spacing:-.015em;font-size:16px;white-space:nowrap}
+  .wm span{color:var(--tx-3);font-weight:500}
+  .hd .sp{flex:1}
+  .seg2{display:inline-flex;background:var(--surf-3);border-radius:9px;padding:3px}
+  .seg2 button{font:inherit;font-size:12.5px;font-weight:600;border:none;background:transparent;color:var(--tx-2);padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s;display:inline-flex;gap:6px;align-items:center}
+  .seg2 button.on{background:var(--surf);color:var(--tx);box-shadow:var(--sh-s)}
+  .seg2 button em{font-style:normal;font-weight:600;font-size:11px;color:var(--tx-3)}
+  .btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd-2);background:var(--surf);color:var(--tx);padding:8px 14px;border-radius:9px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;transition:.15s;box-shadow:var(--sh-s);white-space:nowrap}
+  .btn:hover{border-color:var(--tx-3)}
+  .btn-p{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 4px 10px -2px rgba(79,70,229,.45)}
+  .btn-p:hover{background:#4338ca;border-color:#4338ca}
+  .btn-s{padding:7px 10px;font-size:12.5px;box-shadow:none;background:transparent;border-color:transparent;color:var(--tx-2)}
+  .btn-s:hover{background:var(--surf-3);color:var(--tx);border-color:transparent}
+  .btn-icon{padding:7px 9px}
+  .saved{font-size:12.5px;color:var(--ok);font-weight:600;display:flex;gap:6px;align-items:center;white-space:nowrap}
+  #btnPreview{display:none}
+  @media(max-width:1279px){#btnPreview{display:inline-flex}}
+  @media(max-width:1080px){.hd .lnk{display:none}}
+  @media(max-width:720px){.wm span,.saved{display:none}}
+
+  /* ================= jump bar ================= */
+  .jump{position:sticky;top:53px;z-index:50;background:rgba(238,241,246,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+  .jump-in{max-width:1640px;margin:0 auto;padding:9px 22px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}
+  .jump-in::-webkit-scrollbar{display:none}
+  .jc{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:12.5px;font-weight:600;color:var(--tx-2);background:var(--surf);border:1px solid var(--bd);border-radius:20px;padding:5px 12px;cursor:pointer;text-decoration:none;transition:.15s}
+  .jc:hover{border-color:var(--bd-2);color:var(--tx)}
+  .jc.on{background:var(--tx);border-color:var(--tx);color:#fff}
+  .jc u{text-decoration:none;font-weight:600;opacity:.62;font-variant-numeric:tabular-nums}
+  .jc .fl{width:6px;height:6px;border-radius:50%;flex:none}
+  .jc .fl.rec{background:#d98324} .jc .fl.err{background:var(--err)}
+  .jc.on .fl{box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+
+  /* ================= split ================= */
+  .split{max-width:1640px;margin:0 auto;padding:18px 22px 90px;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:22px;align-items:start}
+  @media(max-width:1279px){.split{grid-template-columns:minmax(0,1fr)}}
+
+  /* ================= framing strip ================= */
+  .frame{display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:center;background:var(--surf);border:1px solid var(--bd);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--sh-s)}
+  .frame .fi{width:26px;height:26px;border-radius:7px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:13px}
+  .frame p{margin:0;font-size:13px;color:var(--tx-2);line-height:1.5}
+  .frame b{color:var(--tx)}
+  .frame .x{border:none;background:transparent;color:var(--tx-3);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:6px}
+  .frame .x:hover{background:var(--surf-3);color:var(--tx)}
+
+  /* ================= cards ================= */
+  .card{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden;scroll-margin-top:108px}
+  .card.flash{animation:cardFlash 1.1s ease-out}
+  @keyframes cardFlash{0%{box-shadow:0 0 0 3px var(--brand-line),var(--sh)}100%{box-shadow:var(--sh)}}
+  .card-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--bd)}
+  .ico{width:31px;height:31px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:14px;flex:none}
+  .card-h h2{font-size:15px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .card-h .meta{margin:1px 0 0;font-size:12.5px;color:var(--tx-3)}
+  .card-h .sp{flex:1}
+  .badge{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;white-space:nowrap;border:1px solid transparent}
+  .badge.ok{background:var(--ok-soft);color:var(--ok)}
+  .badge.rec{background:var(--rec-soft);color:var(--rec);border-color:var(--rec-line)}
+  .badge.err{background:var(--err-soft);color:var(--err);border-color:var(--err-line)}
+  .badge.info{background:var(--surf-3);color:var(--tx-3);font-weight:600}
+  .card-b{padding:16px 18px 18px}
+  .lead{margin:-2px 0 14px;font-size:13px;color:var(--tx-2);line-height:1.5}
+  .lead b{color:var(--tx);font-weight:600}
+
+  /* ordering control */
+  .ord{display:flex;align-items:center;gap:8px;margin:-2px 0 12px;font-size:12.5px;color:var(--tx-3)}
+  .ord select{font:inherit;font-size:12.5px;font-weight:600;color:var(--tx-2);border:1px solid var(--bd);background:var(--surf-2);border-radius:7px;padding:4px 7px}
+  .ord .sp{flex:1}
+
+  /* ================= fields ================= */
+  .hero{display:grid;grid-template-columns:auto 1fr;gap:18px}
+  @media(max-width:620px){.hero{grid-template-columns:1fr}}
+  .avatar{width:90px;height:90px;border-radius:16px;background:linear-gradient(140deg,#c7d2fe,#a5b4fc);display:grid;place-items:center;font-family:var(--fp);font-size:31px;color:#312e81;cursor:pointer;position:relative;overflow:hidden;flex:none}
+  .avatar b{position:absolute;inset:auto 0 0 0;background:rgba(16,24,40,.78);color:#fff;font-family:var(--f);font-size:10px;font-weight:600;text-align:center;padding:4px;opacity:0;transition:.15s}
+  .avatar:hover b{opacity:1}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .g2 .w{grid-column:1/-1}
+  @media(max-width:620px){.g2{grid-template-columns:1fr}}
+  .f label{display:block;font-size:12.5px;font-weight:700;color:var(--tx-2);margin-bottom:5px}
+  .f label i{color:var(--err);font-style:normal}
+  .f label span{font-weight:500;color:var(--tx-3)}
+  .f input,.f textarea,.f select{width:100%;font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--bd-2);border-radius:9px;background:var(--surf);color:var(--tx);transition:.12s}
+  .f textarea{min-height:88px;resize:vertical;line-height:1.6}
+  .f input:focus,.f textarea:focus,.f select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .f input::placeholder,.f textarea::placeholder{color:var(--tx-3)}
+  .hint{font-size:12px;color:var(--tx-3);margin-top:5px;line-height:1.45}
+  .hint.rec{color:var(--rec);font-weight:600}
+  .hint.err{color:var(--err);font-weight:600}
+
+  /* ================= items ================= */
+  .items{display:flex;flex-direction:column;gap:9px}
+  .item{border:1px solid var(--bd);border-radius:10px;background:var(--surf-2);transition:.15s}
+  .item:hover{border-color:var(--bd-2)}
+  .item.open{background:var(--surf);border-color:var(--brand-line);box-shadow:0 0 0 3px var(--brand-soft)}
+  .item.dragging{opacity:.35}
+  .item-h{display:grid;grid-template-columns:22px 1fr auto;gap:11px;align-items:center;padding:12px 13px;cursor:pointer}
+  .idxn{font-size:11.5px;font-weight:700;color:var(--tx-3);text-align:center;font-variant-numeric:tabular-nums}
+  .grip{display:none;color:var(--bd-2);cursor:grab;text-align:center;font-size:13px}
+  .items.manual .grip{display:block} .items.manual .idxn{display:none}
+  .item:hover .grip{color:var(--tx-3)}
+  .it{font-weight:700;font-size:14.5px;letter-spacing:-.005em}
+  .it .kind{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--tx-3);background:var(--surf-3);border-radius:4px;padding:2px 6px;margin-right:7px;vertical-align:1px}
+  .io{font-size:13px;color:var(--tx-2)}
+  .im{font-size:12px;color:var(--tx-3);margin-top:2px;font-variant-numeric:tabular-nums}
+  .iside{display:flex;gap:7px;align-items:center;flex:none}
+  .qty{font-size:12px;color:var(--tx-3);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .mini{font-size:11px;font-weight:700;padding:3px 7px;border-radius:5px;white-space:nowrap;border:1px solid transparent}
+  .mini.rec{background:var(--rec-soft);color:var(--rec);border-color:var(--rec-line)}
+  .mini.err{background:var(--err-soft);color:var(--err);border-color:var(--err-line)}
+  .cv{color:var(--tx-3);transition:.2s;font-size:11px}
+  .item.open .cv{transform:rotate(180deg)}
+  .item-b{display:none;padding:2px 13px 15px 46px;border-top:1px dashed var(--bd)}
+  .item.open .item-b{display:block}
+  .item-b .g2{margin-top:13px}
+  @media(max-width:620px){.item-b{padding-left:13px}}
+  .row-actions{display:flex;gap:6px;align-items:center;margin-top:15px;padding-top:12px;border-top:1px solid var(--bd)}
+  .row-actions .sp{flex:1}
+  .row-actions .note{font-size:12px;color:var(--tx-3)}
+  .add{width:100%;margin-top:11px;border:1.5px dashed var(--bd-2);background:transparent;color:var(--tx-2);padding:11px;border-radius:10px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;transition:.15s}
+  .add:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+  /* ================= achievements repository ================= */
+  .rep{grid-column:1/-1;border:1px solid var(--bd);border-radius:10px;background:var(--surf-2);padding:13px 14px;margin-top:2px}
+  .rep-h{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+  .rep-h h4{margin:0;font-size:13.5px;font-weight:700}
+  .rep-h .sp{flex:1}
+  .rep-h .n{font-size:12px;font-weight:700;color:var(--brand);background:var(--brand-soft);border-radius:6px;padding:2px 8px;white-space:nowrap}
+  .rep p{margin:0 0 11px;font-size:12.5px;color:var(--tx-2);line-height:1.5;max-width:64ch}
+  .rep p b{color:var(--tx)}
+  .bl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .bl li{display:grid;grid-template-columns:16px 1fr 26px;gap:6px;align-items:center}
+  .bl .bg{color:var(--bd-2);cursor:grab;font-size:11px;text-align:center}
+  .bl li:hover .bg{color:var(--tx-3)}
+  .bl input{border-radius:8px;font-size:13.5px;padding:8px 10px;border:1px solid var(--bd);background:var(--surf);width:100%;font:inherit;color:var(--tx)}
+  .bl input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .bl li.inpv input{border-left:3px solid var(--brand)}
+  .x{border:none;background:transparent;color:var(--tx-3);cursor:pointer;border-radius:6px;padding:5px;font-size:12px}
+  .x:hover{color:var(--err);background:var(--err-soft)}
+  .rep-f{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+  .rep-f .sp{flex:1}
+  .ai{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--brand-line);background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:6px 11px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+  .ai:hover{background:#e5e2ff}
+  .ai-note{font-size:11.5px;color:var(--tx-3);line-height:1.4;flex-basis:100%}
+
+  /* progressive extra fields */
+  .more{grid-column:1/-1;margin-top:4px}
+  .more-l{font-size:12px;font-weight:700;color:var(--tx-3);margin-bottom:7px}
+  .ghosts{display:flex;flex-wrap:wrap;gap:6px}
+  .ghost{font:inherit;font-size:12px;font-weight:600;color:var(--tx-2);background:transparent;border:1px dashed var(--bd-2);border-radius:7px;padding:5px 10px;cursor:pointer;transition:.15s}
+  .ghost:hover{border-color:var(--brand);border-style:solid;color:var(--brand);background:var(--brand-soft)}
+
+  /* ================= chips ================= */
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:5px 6px 5px 10px;font-size:13px;font-weight:500}
+  .chip button{border:none;background:transparent;cursor:pointer;color:var(--tx-3);padding:2px 3px;border-radius:4px;font-size:11px}
+  .chip button:hover{color:var(--err)}
+  .chip.new{border-style:dashed;color:var(--tx-2);cursor:pointer;font-weight:600;padding:5px 11px}
+  .chip.new:hover{border-color:var(--brand);color:var(--brand);border-style:solid}
+  .chip.ro{padding:4px 9px;background:var(--surf-3);border-color:transparent;color:var(--tx-2);font-size:12.5px}
+
+  /* ================= skills table ================= */
+  .sk{width:100%;border-collapse:collapse;margin-top:12px}
+  .sk th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--tx-3);padding:0 8px 7px 0;border-bottom:1px solid var(--bd)}
+  .sk td{padding:6px 8px 6px 0;border-bottom:1px solid var(--bd)}
+  .sk td:first-child{font-weight:600;font-size:13.5px}
+  .sk select,.sk input{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--bd);border-radius:7px;background:var(--surf);color:var(--tx-2);width:100%}
+  .sk select:focus,.sk input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+  .sk .tdx{width:30px;padding-right:0}
+  @media(max-width:700px){.sk th:nth-child(4),.sk td:nth-child(4){display:none}}
+
+  /* ================= languages ================= */
+  .lg{display:grid;grid-template-columns:1fr repeat(4,80px) 30px;gap:8px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--bd)}
+  .lg.h{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--tx-3);padding-bottom:6px}
+  .lg select{font:inherit;font-size:12.5px;padding:6px 7px;border:1px solid var(--bd);border-radius:7px;background:var(--surf);width:100%;color:var(--tx-2)}
+  .lg b{font-weight:700;font-size:14px}
+  .native{font-size:10.5px;font-weight:800;color:var(--ok);background:var(--ok-soft);border-radius:5px;padding:2px 6px;margin-left:6px;letter-spacing:.03em}
+  @media(max-width:760px){.lg{grid-template-columns:1fr 1fr 1fr}.lg.h{display:none}}
+
+  /* ================= side column ================= */
+  .side{position:sticky;top:104px;display:flex;flex-direction:column;gap:12px;height:calc(100vh - 118px);overflow:auto;scrollbar-width:thin}
+  .panel{background:var(--surf);border:1px solid var(--bd);border-radius:10px;box-shadow:var(--sh-s);padding:13px 14px}
+  .panel h3{font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--tx-3);margin:0 0 9px}
+  .cov{display:flex;align-items:baseline;gap:8px}
+  .cov b{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .cov span{font-size:12.5px;color:var(--tx-2);font-weight:600}
+  .cbar{height:6px;background:var(--surf-3);border-radius:3px;overflow:hidden;margin:9px 0 9px}
+  .cbar i{display:block;height:100%;width:71%;background:linear-gradient(90deg,var(--brand-2),var(--brand))}
+  .panel .exp{font-size:12px;color:var(--tx-2);line-height:1.5;margin:0}
+  .panel h3.sub{margin:12px 0 9px;padding-top:11px;border-top:1px solid var(--bd)}
+
+  .checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .checks li{display:grid;grid-template-columns:15px 1fr;gap:9px;font-size:12.5px;color:var(--tx-2);line-height:1.45;cursor:pointer}
+  .checks li:hover{color:var(--tx)}
+  .checks .m{font-weight:800;text-align:center;font-size:12px}
+  .checks .m.err{color:var(--err)} .checks .m.rec{color:var(--rec)}
+  .checks b{color:var(--tx);font-weight:600}
+  .checks-f{margin:10px 0 0;padding-top:9px;border-top:1px solid var(--bd);font-size:11.5px;color:var(--tx-3)}
+
+  /* ================= preview ================= */
+  .pv-bar{display:flex;align-items:center;gap:8px}
+  .pv-bar h3{font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--tx-3);margin:0}
+  .pv-bar .sp{flex:1}
+  .tsel{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--bd-2);background:var(--surf);border-radius:8px;padding:5px 8px;color:var(--tx);max-width:190px}
+  .pv-cap{font-size:12px;color:var(--tx-2);line-height:1.45;margin:8px 0 9px}
+  .pv-cap b{color:var(--tx)}
+  .pv-wrap{flex:1;min-height:0;display:flex;flex-direction:column}
+  .paper{background:#fff;border-radius:6px;box-shadow:var(--sh-l);overflow:hidden;position:relative;flex:1;min-height:320px}
+  .paper-scroll{position:absolute;inset:0;overflow:auto;padding:28px 30px 34px}
+  .pv-name{font-family:var(--fp);font-size:22px;line-height:1.15;letter-spacing:-.015em;margin:0 0 3px;color:#0b1220}
+  .pv-head{font-size:11px;font-weight:700;color:var(--brand);letter-spacing:.02em;margin-bottom:7px}
+  .pv-contact{font-size:8.8px;color:#4b5563;display:flex;flex-wrap:wrap;gap:3px 9px;padding-bottom:10px;border-bottom:1.5px solid #0b1220;margin-bottom:11px}
+  .pv-h2{font-size:8.8px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#0b1220;margin:13px 0 6px;padding-bottom:3px;border-bottom:1px solid #e5e7eb}
+  .pv-sum{font-size:9.3px;line-height:1.6;color:#374151;margin:0}
+  .pv-job{margin-bottom:8px;border-radius:3px;padding:2px 4px;margin-left:-4px;cursor:pointer;transition:background .18s}
+  .pv-job:hover{background:#f4f3ff}
+  .pv-j1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .pv-jt{font-size:10.3px;font-weight:700;color:#0b1220}
+  .pv-jd{font-size:8.4px;color:#4b5563;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pv-jo{font-size:9.3px;color:#374151;font-style:italic}
+  .pv-ul{margin:4px 0 0;padding-left:12px;font-size:8.9px;line-height:1.55;color:#374151}
+  .pv-ul li{margin-bottom:2px;border-radius:2px;transition:background .18s}
+  .pv-ul li.hl{background:#e9e6ff;box-shadow:0 0 0 2px #e9e6ff}
+  .pv-rest{font-size:8.2px;color:#6d63ff;margin-top:3px;font-weight:600;padding-left:12px;border-radius:2px;transition:background .18s}
+  .pv-rest.hl{background:#e9e6ff}
+  .pv-flag{font-size:8.3px;color:#a35a00;font-style:italic;border-left:2px solid #f0d3a8;padding:2px 0 2px 7px;margin-top:4px;background:#fefaf3}
+  .pv-flag.bad{color:#c2143c;border-left-color:#f3c2cd;background:#fdf6f7}
+  .pv-tags{font-size:8.3px;color:#4b5563;margin-top:3px}
+  .pv-sk{display:flex;flex-wrap:wrap;gap:3px}
+  .pv-sk span{font-size:8.3px;background:#f3f4f6;border-radius:3px;padding:1.5px 5px;color:#374151}
+  .pv-lg{display:grid;grid-template-columns:1fr auto;font-size:8.9px;color:#374151;padding:1.5px 0}
+  .pv-foot{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,#fff 45%);padding:13px 30px 8px;font-size:8.3px;color:#6b7280;display:flex;justify-content:space-between}
+  .pv-note{margin-top:9px;font-size:12px;color:var(--tx-2);background:var(--surf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;line-height:1.5;box-shadow:var(--sh-s)}
+  .pv-note b{color:var(--tx)}
+  .pv-note .r{color:var(--rec);font-weight:600}
+
+  /* ================= preview overlay ================= */
+  .ovl{position:fixed;inset:0;z-index:90;background:rgba(16,24,40,.55);backdrop-filter:blur(4px);display:none;padding:22px}
+  .ovl.on{display:flex;justify-content:center}
+  .ovl-in{background:var(--bg);border-radius:14px;width:min(760px,100%);max-height:100%;display:flex;flex-direction:column;box-shadow:0 40px 90px -20px rgba(0,0,0,.5);overflow:hidden}
+  .ovl-h{display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--surf);border-bottom:1px solid var(--bd)}
+  .ovl-h h3{margin:0;font-size:14px;font-weight:700}
+  .ovl-h .sp{flex:1}
+  .ovl-b{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:0}
+  .ovl-b .paper{min-height:min(78vh,940px);flex:none}
+  #fabPreview{position:fixed;right:20px;bottom:20px;z-index:70;display:none;border-radius:26px;padding:12px 18px;font-size:13.5px;box-shadow:0 10px 26px -6px rgba(79,70,229,.6)}
+  @media(max-width:1279px){#fabPreview{display:inline-flex}}
+
+  /* ================= create-cv sheet ================= */
+  .sheet{position:fixed;inset:0;z-index:95;background:rgba(16,24,40,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:22px}
+  .sheet.on{display:flex}
+  .sheet-in{background:var(--surf);border-radius:14px;width:min(620px,100%);max-height:100%;overflow:auto;box-shadow:0 40px 90px -20px rgba(0,0,0,.5)}
+  .sheet-h{padding:20px 22px 14px;border-bottom:1px solid var(--bd)}
+  .sheet-h h2{margin:0 0 5px;font-size:19px;font-weight:700;letter-spacing:-.015em}
+  .sheet-h p{margin:0;font-size:13px;color:var(--tx-2);line-height:1.5}
+  .steps{list-style:none;margin:0;padding:16px 22px;display:flex;flex-direction:column;gap:2px}
+  .steps li{display:grid;grid-template-columns:26px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--bd)}
+  .steps li:last-child{border:none}
+  .steps .sn{width:24px;height:24px;border-radius:7px;background:var(--surf-3);color:var(--tx-2);display:grid;place-items:center;font-size:12px;font-weight:800}
+  .steps h4{margin:0 0 2px;font-size:13.5px;font-weight:700}
+  .steps p{margin:0;font-size:12.5px;color:var(--tx-2);line-height:1.45}
+  .rule{margin:0 22px 18px;background:var(--surf-2);border:1px solid var(--bd);border-left:3px solid var(--brand);border-radius:9px;padding:12px 13px;font-size:12.5px;color:var(--tx-2);line-height:1.55}
+  .rule b{color:var(--tx);display:block;margin-bottom:3px;font-size:13px}
+  .sheet-f{display:flex;gap:8px;padding:0 22px 20px;align-items:center}
+  .sheet-f .sp{flex:1}
+
+  /* Declared last so it wins over .side's own display:flex — below 1280px the preview
+     moves out of the layout and is reached through the header button / floating button. */
+  @media(max-width:1279px){.side{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <div class="mark">C</div>
+    <div class="wm">CommitAhead <span>Studio</span></div>
+    <div class="seg2" style="margin-left:6px">
+      <button class="on">Profile</button>
+      <button>CVs <em>3</em></button>
+    </div>
+    <div class="sp"></div>
+    <div class="saved">✓ Saved</div>
+    <button class="btn btn-s lnk">Import from LinkedIn</button>
+    <button class="btn btn-icon" id="btnPreview" title="Preview profile">◧ Preview</button>
+    <button class="btn btn-p" id="btnCreate">Create a CV →</button>
+  </div>
+</header>
+
+<nav class="jump">
+  <div class="jump-in" id="jump">
+    <a class="jc on" href="#c-about">About you</a>
+    <a class="jc" href="#c-exp"><span class="fl rec"></span>Experience <u>6</u></a>
+    <a class="jc" href="#c-edu"><span class="fl err"></span>Education <u>6</u></a>
+    <a class="jc" href="#c-skills">Skills <u>23</u></a>
+    <a class="jc" href="#c-lang">Languages <u>3</u></a>
+    <a class="jc" href="#c-cert"><span class="fl rec"></span>Certifications <u>2</u></a>
+    <a class="jc" href="#c-proj">Projects <u>1</u></a>
+    <a class="jc" href="#c-links">Links <u>3</u></a>
+  </div>
+</nav>
+
+<div class="split">
+
+  <!-- ==================== FORM COLUMN ==================== -->
+  <div>
+
+    <div class="frame" id="frame">
+      <div class="fi">◆</div>
+      <p><b>This is your Master Profile — not a CV.</b> Keep everything worth remembering here, including things no single CV would ever show. Each CV you create selects, orders and rewrites from this record.</p>
+      <button class="x" onclick="document.getElementById('frame').remove()">✕</button>
+    </div>
+
+    <!-- ============ ABOUT ============ -->
+    <section class="card" id="c-about">
+      <div class="card-h">
+        <div class="ico">👤</div>
+        <div><h2>About you</h2><p class="meta">Identity, contact details and how you describe yourself</p></div>
+        <div class="sp"></div><span class="badge ok">Complete</span>
+      </div>
+      <div class="card-b">
+        <div class="hero">
+          <div class="avatar">DS<b>Change</b></div>
+          <div class="g2">
+            <div class="f"><label>Full name <i>*</i></label><input data-bind="name" value="Denis Elvis Santos da Silva"></div>
+            <div class="f"><label>Headline <i>*</i> <span>— your title, not your dream job</span></label><input data-bind="headline" value="Senior Software Engineer · .NET / Azure"></div>
+            <div class="f"><label>Email <i>*</i></label><input data-bind="email" value="denis@example.com"></div>
+            <div class="f"><label>Phone</label><input data-bind="phone" value="+351 900 000 000"></div>
+            <div class="f"><label>City, country</label><input data-bind="loc" value="Lisbon, Portugal"></div>
+            <div class="f"><label>Work authorisation <span>— some regions expect it, some forbid it</span></label><input data-bind="auth" value="EU citizen"></div>
+            <div class="f w"><label>Professional summary <span>— the long version; each CV shortens it for the role</span></label>
+              <textarea data-bind="summary">Backend-focused engineer specialising in .NET and Azure. I lead the design of service boundaries, own production reliability, and mentor teams through architectural change. Recent work: multi-tenant SaaS on Azure with event-driven integration and hard observability requirements.</textarea>
+              <div class="hint"><span id="sumC">294 characters</span> · Write it fully here. A US one-pager will compress it; a Europass CV will print more of it.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ EXPERIENCE ============ -->
+    <section class="card" id="c-exp">
+      <div class="card-h">
+        <div class="ico">💼</div>
+        <div><h2>Experience</h2><p class="meta">6 positions · 14 yrs 3 mo · no gaps detected</p></div>
+        <div class="sp"></div><span class="badge rec">4 have no impact yet</span>
+      </div>
+      <div class="card-b">
+        <p class="lead">Your full employment record. <b>Depth here is an asset</b> — a CV for a Solution Architect role and a CV for an Engineering Manager role will pull different things out of the same history.</p>
+        <div class="ord">
+          <span>Order</span>
+          <select id="ordExp"><option value="chrono" selected>Newest first (recommended)</option><option value="chrono-rev">Oldest first</option><option value="manual">Manual</option></select>
+          <span class="sp"></span>
+          <span id="ordNote">Chronological order is kept for you. Each CV decides its own order.</span>
+        </div>
+
+        <div class="items" id="expList" data-sortable>
+
+          <!-- exp 1 -->
+          <article class="item open" id="exp-1">
+            <div class="item-h" data-t>
+              <span class="idxn">1</span><span class="grip" draggable="true">⣿</span>
+              <div>
+                <div class="it">Senior Software Consultant</div>
+                <div class="io">Academic Software · Lokeren, Belgium</div>
+                <div class="im">Oct 2023 — Present · 1 yr 10 mo · Hybrid · Permanent</div>
+              </div>
+              <div class="iside"><span class="qty">9 achievements</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b">
+              <div class="g2">
+                <div class="f"><label>Role <i>*</i></label><input value="Senior Software Consultant"></div>
+                <div class="f"><label>Company <i>*</i></label><input value="Academic Software"></div>
+                <div class="f"><label>Location</label><input value="Lokeren, Belgium"></div>
+                <div class="f"><label>Employment type</label><select><option selected>Permanent</option><option>Contract</option><option>Freelance</option><option>Internship</option></select></div>
+                <div class="f"><label>Work arrangement</label><select><option selected>Hybrid</option><option>On-site</option><option>Remote</option></select></div>
+                <div class="f"><label>From <i>*</i></label><input type="month" value="2023-10"></div>
+                <div class="f"><label>To</label><input type="month" disabled><div class="hint"><label style="font-size:12.5px;color:var(--tx-2);display:inline-flex;gap:6px;align-items:center;font-weight:500"><input type="checkbox" checked style="width:auto"> I still work here</label></div></div>
+                <div class="f"><label>Team size</label><input value="8 engineers, 2 squads"></div>
+                <div class="f w"><label>Context <span>— what the company does and what you were brought in to do</span></label>
+                  <textarea>Belgian edtech serving schools across Flanders. Brought in to modernise the licensing platform and unblock a stalled .NET Framework estate.</textarea>
+                </div>
+
+                <!-- achievements repository -->
+                <div class="rep">
+                  <div class="rep-h">
+                    <h4>Impact &amp; achievements</h4>
+                    <span class="sp"></span>
+                    <span class="n">9 captured</span>
+                  </div>
+                  <p>Add everything worth remembering — <b>there is no right number here</b>. A CV will typically print three or four of these, chosen for the role it targets.</p>
+                  <ul class="bl" data-rep>
+                    <li class="inpv"><span class="bg" draggable="true">⣿</span><input data-pv="a1" value="Led the migration of 3 legacy services to .NET 8, cutting p95 latency by 41%."><button class="x">✕</button></li>
+                    <li class="inpv"><span class="bg" draggable="true">⣿</span><input data-pv="a2" value="Designed the Azure Service Bus integration now carrying 2.4M messages/month."><button class="x">✕</button></li>
+                    <li class="inpv"><span class="bg" draggable="true">⣿</span><input data-pv="a3" value="Introduced architecture decision records, adopted by 4 squads."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Reduced Azure spend by 27% by right-sizing App Service plans and moving batch work to Functions."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Mentored 5 developers; two were promoted to senior within a year."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Designed the multi-tenant data model isolating 1,200+ school tenants."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Cut release lead time from 3 weeks to 2 days with trunk-based delivery and Azure DevOps."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Ran the incident review process; repeat incidents dropped from 6 to 1 per quarter."><button class="x">✕</button></li>
+                    <li><span class="bg" draggable="true">⣿</span><input value="Owned the OpenTelemetry rollout across 11 services."><button class="x">✕</button></li>
+                    <li><span class="bg">＋</span><input placeholder="Add another — even if no CV would ever print it"><button class="x">✕</button></li>
+                  </ul>
+                  <div class="rep-f">
+                    <button class="ai">✦ Rephrase these</button>
+                    <button class="ai" style="background:transparent">✦ Find the missing numbers</button>
+                    <span class="sp"></span>
+                    <span class="ai-note">Works only from what you have already written. CommitAhead never invents experience, technology or results.</span>
+                  </div>
+                </div>
+
+                <div class="f w"><label>Technologies</label>
+                  <div class="chips">
+                    <span class="chip">.NET 8 <button>✕</button></span><span class="chip">Azure <button>✕</button></span>
+                    <span class="chip">EF Core <button>✕</button></span><span class="chip">React <button>✕</button></span>
+                    <span class="chip">Service Bus <button>✕</button></span><span class="chip">Azure DevOps <button>✕</button></span>
+                    <span class="chip">OpenTelemetry <button>✕</button></span><span class="chip new">+ Add</span>
+                  </div>
+                </div>
+
+                <div class="more">
+                  <div class="more-l">Add more detail to this position</div>
+                  <div class="ghosts">
+                    <button class="ghost">+ Responsibilities</button>
+                    <button class="ghost">+ Business domain</button>
+                    <button class="ghost">+ Scale &amp; volumes</button>
+                    <button class="ghost">+ Architecture</button>
+                    <button class="ghost">+ Leadership</button>
+                    <button class="ghost">+ Clients</button>
+                    <button class="ghost">+ Products</button>
+                  </div>
+                  <div class="hint">Optional. Nothing here is printed directly — it gives each CV more to choose from.</div>
+                </div>
+              </div>
+              <div class="row-actions"><span class="note">Autosaved</span><span class="sp"></span>
+                <button class="btn btn-s">Duplicate</button><button class="btn btn-s">Delete</button><button class="btn" data-t>Done</button></div>
+            </div>
+          </article>
+
+          <!-- exp 2 -->
+          <article class="item" id="exp-2">
+            <div class="item-h" data-t>
+              <span class="idxn">2</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Senior Software Consultant</div><div class="io">Sysmatch · client: Academic Software</div><div class="im">Apr 2022 — Oct 2023 · 1 yr 7 mo · Lisbon, Portugal · Contract</div></div>
+              <div class="iside"><span class="mini rec">Nothing captured</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b">
+              <div class="g2">
+                <div class="rep">
+                  <div class="rep-h"><h4>Impact &amp; achievements</h4><span class="sp"></span><span class="n" style="color:var(--rec);background:var(--rec-soft)">0 captured</span></div>
+                  <p>18 months of work with nothing recorded. Anything you write here becomes available to <b>every future CV</b> — start with what you'd tell a colleague you did.</p>
+                  <ul class="bl" data-rep><li><span class="bg">＋</span><input placeholder="Led / Built / Reduced / Owned / Migrated…"><button class="x">✕</button></li></ul>
+                  <div class="rep-f"><button class="ai">✦ Draft from the role &amp; tech stack</button><span class="sp"></span><span class="ai-note">Drafts phrasing you then confirm or correct. Nothing is added to your Profile until you accept it.</span></div>
+                </div>
+                <div class="f w"><label>Technologies</label><div class="chips"><span class="chip">.NET <button>✕</button></span><span class="chip">Azure DevOps <button>✕</button></span><span class="chip new">+ Add</span></div></div>
+              </div>
+              <div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div>
+            </div>
+          </article>
+
+          <!-- exp 3 -->
+          <article class="item" id="exp-3">
+            <div class="item-h" data-t>
+              <span class="idxn">3</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Senior Software Consultant / SCRUM Master</div><div class="io">Geometric Talks</div><div class="im">Jun 2020 — Apr 2022 · 1 yr 11 mo · Lisbon, Portugal</div></div>
+              <div class="iside"><span class="mini rec">Nothing captured</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2"><div class="rep">
+              <div class="rep-h"><h4>Impact &amp; achievements</h4><span class="sp"></span><span class="n" style="color:var(--rec);background:var(--rec-soft)">0 captured</span></div>
+              <p>You held two roles here. That combination is exactly what an <b>Engineering Manager</b> CV would want — worth recording properly.</p>
+              <ul class="bl" data-rep><li><span class="bg">＋</span><input placeholder="Led / Facilitated / Built…"><button class="x">✕</button></li></ul>
+            </div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+          <!-- exp 4 -->
+          <article class="item" id="exp-4">
+            <div class="item-h" data-t>
+              <span class="idxn">4</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Senior Software Consultant</div><div class="io">Hitachi Consulting</div><div class="im">May 2019 — Jul 2020 · 1 yr 3 mo · Lisbon, Portugal</div></div>
+              <div class="iside"><span class="mini rec">Nothing captured</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2"><div class="rep">
+              <div class="rep-h"><h4>Impact &amp; achievements</h4><span class="sp"></span><span class="n" style="color:var(--rec);background:var(--rec-soft)">0 captured</span></div>
+              <p>A recognised consultancy name carries weight — give it something to stand on.</p>
+              <ul class="bl" data-rep><li><span class="bg">＋</span><input placeholder="Led / Built / Delivered…"><button class="x">✕</button></li></ul>
+            </div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+          <!-- exp 5 -->
+          <article class="item" id="exp-5">
+            <div class="item-h" data-t>
+              <span class="idxn">5</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Senior IT Analyst</div><div class="io">Companhia Siderúrgica Nacional</div><div class="im">Apr 2014 — May 2019 · 5 yrs 2 mo · Volta Redonda, Brazil</div></div>
+              <div class="iside"><span class="mini rec">Nothing captured</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2"><div class="rep">
+              <div class="rep-h"><h4>Impact &amp; achievements</h4><span class="sp"></span><span class="n" style="color:var(--rec);background:var(--rec-soft)">0 captured</span></div>
+              <p>Your longest tenure — <b>five years</b> — and the only heavy-industry domain in your history. Some roles will value that specifically.</p>
+              <ul class="bl" data-rep><li><span class="bg">＋</span><input placeholder="Led / Built / Automated…"><button class="x">✕</button></li></ul>
+            </div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+          <!-- exp 6 -->
+          <article class="item" id="exp-6">
+            <div class="item-h" data-t>
+              <span class="idxn">6</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">IT Intern</div><div class="io">Companhia Siderúrgica Nacional</div><div class="im">Jan 2012 — Mar 2014 · 2 yrs 3 mo · Volta Redonda, Brazil · Internship</div></div>
+              <div class="iside"><span class="qty">Kept for completeness</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2"><div class="rep">
+              <div class="rep-h"><h4>Impact &amp; achievements</h4><span class="sp"></span><span class="n" style="background:var(--surf-3);color:var(--tx-3)">Optional</span></div>
+              <p>Early-career roles stay in the Profile but most CVs will omit them. Nothing to fix here.</p>
+              <ul class="bl" data-rep><li><span class="bg">＋</span><input placeholder="Optional"><button class="x">✕</button></li></ul>
+            </div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+        </div>
+        <button class="add" data-add>＋ Add a position</button>
+      </div>
+    </section>
+
+    <!-- ============ EDUCATION ============ -->
+    <section class="card" id="c-edu">
+      <div class="card-h">
+        <div class="ico">🎓</div>
+        <div><h2>Education &amp; training</h2><p class="meta">2 degrees · 4 courses</p></div>
+        <div class="sp"></div><span class="badge err">1 data issue</span>
+      </div>
+      <div class="card-b">
+        <p class="lead">Keep degrees and short courses in the same place — the <b>type</b> is what matters. A CV can print a postgraduate degree prominently and drop a two-hour course entirely.</p>
+        <div class="items" data-sortable>
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">1</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it"><span class="kind">Postgraduate</span>.NET Systems Architecture &amp; Cloud Computing</div><div class="io">FIAP · Brazil</div><div class="im">Mar 2025 — Mar 2026 · EQF 7 · in progress</div></div>
+              <div class="iside"><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2">
+              <div class="f"><label>Type <i>*</i></label><select><option>Degree</option><option selected>Postgraduate</option><option>Certification</option><option>Course</option><option>Bootcamp</option><option>Training</option></select></div>
+              <div class="f"><label>Qualification <i>*</i></label><input value=".NET Systems Architecture & Cloud Computing"></div>
+              <div class="f"><label>Institution <i>*</i></label><input value="FIAP"></div>
+              <div class="f"><label>Level (EQF)</label><select><option>—</option><option selected>7 — Master / Postgraduate</option><option>6 — Bachelor</option></select></div>
+              <div class="f w"><label>Subjects covered <span>— optional</span></label><textarea placeholder="Distributed systems, cloud architecture, DDD…"></textarea></div>
+            </div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">2</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it"><span class="kind">Course</span>Mastering Software Testing</div><div class="io">desenvolvedor.io · Eduardo Pires</div><div class="im">Nov 2018</div></div>
+              <div class="iside"><span class="mini err">Content mismatch</span><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2">
+              <div class="f"><label>Type <i>*</i></label><select><option>Degree</option><option>Postgraduate</option><option>Certification</option><option selected>Course</option><option>Bootcamp</option></select></div>
+              <div class="f"><label>Institution <i>*</i></label><input value="desenvolvedor.io"></div>
+              <div class="f w"><label>Subjects covered</label>
+                <textarea>- occupational techniques (making of standard breads, fancy breads, cakes and pastries)
+- science applied to food and equipment (microbiology, biochemistry, hygiene)</textarea>
+                <div class="hint err">⚠ This describes baking, not software testing — almost certainly pasted from a sample template. It currently prints on your CV.</div>
+              </div>
+            </div><div class="row-actions"><span class="sp"></span><button class="btn btn-s">Clear field</button><button class="btn" data-t>Done</button></div></div>
+          </article>
+
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">3</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it"><span class="kind">Course</span>Complete React Developer (Redux, Hooks, GraphQL)</div><div class="io">Udemy · Andrei Neagoie</div><div class="im">2019 — 2020</div></div>
+              <div class="iside"><span class="cv">▼</span></div>
+            </div>
+            <div class="item-b"><div class="g2"><div class="f w"><label>Subjects covered <span>— optional for short courses</span></label><textarea></textarea></div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+        </div>
+        <button class="add" data-add>＋ Add education, a course or training</button>
+      </div>
+    </section>
+
+    <!-- ============ SKILLS ============ -->
+    <section class="card" id="c-skills">
+      <div class="card-h">
+        <div class="ico">🛠</div>
+        <div><h2>Skills</h2><p class="meta">23 skills in 4 groups</p></div>
+        <div class="sp"></div><span class="badge info">Grouped</span>
+      </div>
+      <div class="card-b">
+        <p class="lead">Groups stay small and readable. <b>Level, years and recency live in the Profile</b> — they tell CommitAhead which of these are actually central to your career, and they don't have to appear on any CV.</p>
+        <div class="items" data-sortable>
+
+          <article class="item open">
+            <div class="item-h" data-t><span class="idxn">1</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Languages &amp; runtimes</div><div class="im">C# · .NET · TypeScript · SQL · Python · Go · Node.js</div></div>
+              <div class="iside"><span class="qty">7</span><span class="cv">▼</span></div></div>
+            <div class="item-b">
+              <table class="sk">
+                <thead><tr><th style="width:34%">Skill</th><th>Level</th><th>Years</th><th>Last used</th><th class="tdx"></th></tr></thead>
+                <tbody>
+                  <tr><td>C#</td><td><select><option selected>Expert</option><option>Advanced</option><option>Working</option><option>Basic</option></select></td><td><input value="12"></td><td><select><option selected>Current</option><option>2025</option><option>2024</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>.NET</td><td><select><option selected>Expert</option><option>Advanced</option></select></td><td><input value="12"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>TypeScript</td><td><select><option>Expert</option><option selected>Advanced</option></select></td><td><input value="5"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>SQL</td><td><select><option>Expert</option><option selected>Advanced</option></select></td><td><input value="11"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>Python</td><td><select><option>Advanced</option><option selected>Working</option></select></td><td><input value="3"></td><td><select><option>Current</option><option selected>2024</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>Go</td><td><select><option>Working</option><option selected>Basic</option></select></td><td><input value="1"></td><td><select><option>Current</option><option selected>2023</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>Node.js</td><td><select><option>Advanced</option><option selected>Working</option></select></td><td><input value="4"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                </tbody>
+              </table>
+              <div class="rep-f"><span class="chip new">+ Add skill</span><span class="sp"></span><span class="ai-note" style="flex-basis:auto">Go was last used in 2023 — a CV targeting Go roles would flag that, not hide it.</span></div>
+            </div>
+          </article>
+
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">2</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Cloud &amp; platform</div><div class="im">Azure · Service Bus · Functions · AKS · Docker · Terraform · App Insights · Key Vault</div></div>
+              <div class="iside"><span class="qty">8</span><span class="cv">▼</span></div></div>
+            <div class="item-b">
+              <table class="sk">
+                <thead><tr><th style="width:34%">Skill</th><th>Level</th><th>Years</th><th>Last used</th><th class="tdx"></th></tr></thead>
+                <tbody>
+                  <tr><td>Azure</td><td><select><option selected>Expert</option></select></td><td><input value="7"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>Service Bus</td><td><select><option selected>Advanced</option></select></td><td><input value="4"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                  <tr><td>AKS</td><td><select><option selected>Working</option></select></td><td><input value="2"></td><td><select><option selected>Current</option></select></td><td class="tdx"><button class="x">✕</button></td></tr>
+                </tbody>
+              </table>
+              <div class="rep-f"><span class="chip new">+ Add skill</span></div>
+            </div>
+          </article>
+
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">3</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Data</div><div class="im">PostgreSQL · SQL Server · EF Core · Redis · Cosmos DB</div></div>
+              <div class="iside"><span class="qty">5</span><span class="cv">▼</span></div></div>
+            <div class="item-b"><div class="chips" style="margin-top:12px"><span class="chip ro">PostgreSQL</span><span class="chip ro">SQL Server</span><span class="chip ro">EF Core</span><span class="chip ro">Redis</span><span class="chip ro">Cosmos DB</span><span class="chip new">+ Add skill</span></div>
+              <div class="hint">Open a skill to set level, years and recency.</div></div>
+          </article>
+
+          <article class="item">
+            <div class="item-h" data-t><span class="idxn">4</span><span class="grip" draggable="true">⣿</span>
+              <div><div class="it">Ways of working</div><div class="im">SCRUM · mentoring · architecture decision records</div></div>
+              <div class="iside"><span class="qty">3</span><span class="cv">▼</span></div></div>
+            <div class="item-b"><div class="chips" style="margin-top:12px"><span class="chip ro">SCRUM</span><span class="chip ro">Mentoring</span><span class="chip ro">ADRs</span><span class="chip new">+ Add skill</span></div></div>
+          </article>
+
+        </div>
+        <button class="add">＋ Add a skill group</button>
+      </div>
+    </section>
+
+    <!-- ============ LANGUAGES ============ -->
+    <section class="card" id="c-lang">
+      <div class="card-h"><div class="ico">🌍</div><div><h2>Languages</h2><p class="meta">3 languages · CEFR</p></div><div class="sp"></div><span class="badge info">3</span></div>
+      <div class="card-b">
+        <p class="lead">Store the full CEFR breakdown once. <b>Each template prints what its market expects</b> — a Europass CV shows all four skills, a US CV shows a single plain-English line.</p>
+        <div class="lg h"><span>Language</span><span>Listening</span><span>Reading</span><span>Speaking</span><span>Writing</span><span></span></div>
+        <div class="lg"><b>Portuguese<span class="native">Native</span></b>
+          <select><option selected>C2</option><option>C1</option></select><select><option selected>C2</option></select><select><option selected>C2</option></select><select><option selected>C2</option></select><button class="x">✕</button></div>
+        <div class="lg"><b>English</b>
+          <select><option selected>C1</option><option>C2</option><option>B2</option></select><select><option selected>C2</option></select><select><option selected>B2</option><option>C1</option></select><select><option selected>C1</option></select><button class="x">✕</button></div>
+        <div class="lg"><b>Dutch</b>
+          <select><option selected>A1</option><option>A2</option></select><select><option selected>A1</option></select><select><option selected>A1</option></select><select><option selected>A1</option></select><button class="x">✕</button></div>
+        <div class="hint" style="margin-top:11px">Current template prints: <b style="color:var(--tx-2)">English — Listening C1 · Reading C2 · Speaking B2 · Writing C1</b>. A US · ATS-plain template would print <b style="color:var(--tx-2)">English — professional working proficiency</b> from the same data.</div>
+        <button class="add" data-add>＋ Add a language</button>
+      </div>
+    </section>
+
+    <!-- ============ CERTIFICATIONS ============ -->
+    <section class="card" id="c-cert">
+      <div class="card-h"><div class="ico">🏅</div><div><h2>Certifications</h2><p class="meta">2 certifications</p></div><div class="sp"></div><span class="badge rec">2 unverifiable</span></div>
+      <div class="card-b">
+        <div class="items" data-sortable>
+          <article class="item"><div class="item-h" data-t><span class="idxn">1</span><span class="grip" draggable="true">⣿</span>
+            <div><div class="it">AZ-204 — Developing Solutions for Microsoft Azure</div><div class="io">Microsoft</div><div class="im">Issued Feb 2023 · no expiry</div></div>
+            <div class="iside"><span class="mini rec">Add link</span><span class="cv">▼</span></div></div>
+            <div class="item-b"><div class="g2">
+              <div class="f"><label>Credential ID</label><input placeholder="H1234-5678"></div>
+              <div class="f"><label>Verification URL</label><input placeholder="https://learn.microsoft.com/…"><div class="hint">A verifiable link makes this stronger on every CV that includes it.</div></div>
+            </div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+          <article class="item"><div class="item-h" data-t><span class="idxn">2</span><span class="grip" draggable="true">⣿</span>
+            <div><div class="it">Professional Scrum Master I</div><div class="io">Scrum.org</div><div class="im">Issued Sep 2021</div></div>
+            <div class="iside"><span class="mini rec">Add link</span><span class="cv">▼</span></div></div>
+            <div class="item-b"><div class="g2"><div class="f"><label>Verification URL</label><input></div></div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+        </div>
+        <button class="add" data-add>＋ Add a certification</button>
+      </div>
+    </section>
+
+    <!-- ============ PROJECTS ============ -->
+    <section class="card" id="c-proj">
+      <div class="card-h"><div class="ico">🚀</div><div><h2>Projects</h2><p class="meta">1 project</p></div><div class="sp"></div><span class="badge info">Optional</span></div>
+      <div class="card-b">
+        <p class="lead">Entirely optional. Most engineers with a full employment history have one or none — add a project when it shows something your jobs don't.</p>
+        <div class="items" data-sortable>
+          <article class="item"><div class="item-h" data-t><span class="idxn">1</span><span class="grip" draggable="true">⣿</span>
+            <div><div class="it">CommitAhead</div><div class="io">Personal · open source</div><div class="im">2026 — Present · .NET 10 · React 19 · PostgreSQL</div></div>
+            <div class="iside"><span class="cv">▼</span></div></div>
+            <div class="item-b"><div class="g2">
+              <div class="f w"><label>One sentence — what it is and who it's for</label><input value="Profile-and-CV app that generates role-targeted CVs from a single structured career profile."></div>
+              <div class="f"><label>Repository / demo URL</label><input value="github.com/denisvr/commitahead"></div>
+              <div class="f"><label>Your role</label><input value="Sole author"></div>
+            </div><div class="row-actions"><span class="sp"></span><button class="btn" data-t>Done</button></div></div>
+          </article>
+        </div>
+        <button class="add" data-add>＋ Add a project</button>
+      </div>
+    </section>
+
+    <!-- ============ LINKS ============ -->
+    <section class="card" id="c-links">
+      <div class="card-h"><div class="ico">🔗</div><div><h2>Links</h2><p class="meta">3 links</p></div><div class="sp"></div><span class="badge info">3</span></div>
+      <div class="card-b"><div class="chips">
+        <span class="chip">LinkedIn <button>✕</button></span>
+        <span class="chip">GitHub <button>✕</button></span>
+        <span class="chip">denis.dev <button>✕</button></span>
+        <span class="chip new">+ Add link</span>
+      </div>
+      <div class="hint" style="margin-top:9px">Each CV picks which of these to print — a US ATS template usually prints one.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==================== SIDE COLUMN ==================== -->
+  <aside class="side">
+
+    <div class="panel">
+      <h3>Profile coverage</h3>
+      <div class="cov"><b>71%</b><span>of your career recorded</span></div>
+      <div class="cbar"><i></i></div>
+      <p class="exp">How much of your career is recorded — <b style="color:var(--tx)">not</b> a score of how good a CV would be.</p>
+
+      <h3 class="sub">Worth your attention · 3</h3>
+      <ul class="checks">
+        <li data-jump="#c-edu"><span class="m err">✕</span><span><b>Testing course</b> describes baking — and it prints today.</span></li>
+        <li data-jump="#c-exp"><span class="m rec">!</span><span><b>4 positions</b> have nothing recorded — 9 years no CV can draw on.</span></li>
+        <li data-jump="#c-cert"><span class="m rec">!</span><span><b>2 certifications</b> have no verification link.</span></li>
+      </ul>
+      <p class="checks-f">Optional sections are never flagged. <b style="color:var(--tx-2)">Job match</b> is measured per CV, not here.</p>
+    </div>
+
+    <div class="pv-wrap">
+      <div class="pv-bar">
+        <h3>Profile preview</h3>
+        <div class="sp"></div>
+        <select class="tsel" id="tsel">
+          <optgroup label="Europe"><option selected>Europass-like</option><option>Modern European</option><option>UK · Reverse-chronological</option></optgroup>
+          <optgroup label="North America"><option>US · ATS-plain</option><option>Canada · Standard</option></optgroup>
+          <optgroup label="More"><option disabled>More templates soon…</option></optgroup>
+        </select>
+        <button class="btn btn-icon" id="btnExpand" title="Open larger">⤢</button>
+      </div>
+      <p class="pv-cap">Your Profile through a template — <b>not a saved CV</b>, but exactly what an export would print today. Click anything to jump to it.</p>
+
+      <div class="paper" id="paper">
+        <div class="paper-scroll">
+          <h1 class="pv-name" id="pvName">Denis Elvis Santos da Silva</h1>
+          <div class="pv-head" id="pvHead">Senior Software Engineer · .NET / Azure</div>
+          <div class="pv-contact" data-target="#c-about">
+            <span id="pvEmail">denis@example.com</span><span id="pvPhone">+351 900 000 000</span>
+            <span id="pvLoc">Lisbon, Portugal</span><span id="pvAuth">EU citizen</span>
+            <span>linkedin.com/in/denisvr</span><span>github.com/denisvr</span>
+          </div>
+
+          <div class="pv-h2">Profile</div>
+          <p class="pv-sum" id="pvSum" data-target="#c-about">Backend-focused engineer specialising in .NET and Azure. I lead the design of service boundaries, own production reliability, and mentor teams through architectural change.</p>
+
+          <div class="pv-h2">Work experience</div>
+
+          <div class="pv-job" data-target="#exp-1">
+            <div class="pv-j1"><span class="pv-jt">Senior Software Consultant</span><span class="pv-jd">Oct 2023 — Present</span></div>
+            <div class="pv-jo">Academic Software — Lokeren, Belgium</div>
+            <ul class="pv-ul">
+              <li data-pv="a1">Led the migration of 3 legacy services to .NET 8, cutting p95 latency by 41%.</li>
+              <li data-pv="a2">Designed the Azure Service Bus integration now carrying 2.4M messages/month.</li>
+              <li data-pv="a3">Introduced architecture decision records, adopted by 4 squads.</li>
+            </ul>
+            <div class="pv-rest" id="pvRest">+ 6 more achievements in your Profile — this template prints three.</div>
+            <div class="pv-tags">.NET 8 · Azure · EF Core · React · Service Bus</div>
+          </div>
+
+          <div class="pv-job" data-target="#exp-2">
+            <div class="pv-j1"><span class="pv-jt">Senior Software Consultant</span><span class="pv-jd">Apr 2022 — Oct 2023</span></div>
+            <div class="pv-jo">Sysmatch — client: Academic Software, Belgium</div>
+            <div class="pv-flag">Nothing recorded — prints as a bare heading.</div>
+          </div>
+
+          <div class="pv-job" data-target="#exp-3">
+            <div class="pv-j1"><span class="pv-jt">Senior Software Consultant / SCRUM Master</span><span class="pv-jd">Jun 2020 — Apr 2022</span></div>
+            <div class="pv-jo">Geometric Talks — Lisbon, Portugal</div>
+            <div class="pv-flag">Nothing recorded.</div>
+          </div>
+
+          <div class="pv-job" data-target="#exp-4">
+            <div class="pv-j1"><span class="pv-jt">Senior Software Consultant</span><span class="pv-jd">May 2019 — Jul 2020</span></div>
+            <div class="pv-jo">Hitachi Consulting — Lisbon, Portugal</div>
+            <div class="pv-flag">Nothing recorded.</div>
+          </div>
+
+          <div class="pv-job" data-target="#exp-5">
+            <div class="pv-j1"><span class="pv-jt">Senior IT Analyst</span><span class="pv-jd">Apr 2014 — May 2019</span></div>
+            <div class="pv-jo">Companhia Siderúrgica Nacional — Volta Redonda, Brazil</div>
+            <div class="pv-flag">Nothing recorded — five years with nothing to show.</div>
+          </div>
+
+          <div class="pv-job" data-target="#exp-6">
+            <div class="pv-j1"><span class="pv-jt">IT Intern</span><span class="pv-jd">Jan 2012 — Mar 2014</span></div>
+            <div class="pv-jo">Companhia Siderúrgica Nacional — Volta Redonda, Brazil</div>
+          </div>
+
+          <div class="pv-h2">Education &amp; training</div>
+          <div class="pv-job" data-target="#c-edu">
+            <div class="pv-j1"><span class="pv-jt">Postgraduate — .NET Systems Architecture &amp; Cloud Computing</span><span class="pv-jd">2025 — 2026</span></div>
+            <div class="pv-jo">FIAP · EQF level 7</div>
+          </div>
+          <div class="pv-job" data-target="#c-edu">
+            <div class="pv-j1"><span class="pv-jt">Mastering Software Testing</span><span class="pv-jd">2018</span></div>
+            <div class="pv-jo">desenvolvedor.io</div>
+            <div class="pv-flag bad">"…making of standard breads, fancy breads, cakes and pastries" — printed exactly like this.</div>
+          </div>
+
+          <div class="pv-h2">Skills</div>
+          <div class="pv-sk" data-target="#c-skills">
+            <span>C#</span><span>.NET</span><span>TypeScript</span><span>SQL</span><span>Azure</span><span>Service Bus</span><span>AKS</span><span>Docker</span><span>Terraform</span><span>PostgreSQL</span><span>EF Core</span><span>Redis</span><span>SCRUM</span><span>Mentoring</span>
+          </div>
+
+          <div class="pv-h2">Languages</div>
+          <div data-target="#c-lang">
+            <div class="pv-lg"><span>Portuguese — native</span><span>C2 · C2 · C2 · C2</span></div>
+            <div class="pv-lg"><span>English</span><span>C1 · C2 · B2 · C1</span></div>
+            <div class="pv-lg"><span>Dutch</span><span>A1 · A1 · A1 · A1</span></div>
+          </div>
+
+          <div class="pv-h2">Certifications</div>
+          <div data-target="#c-cert">
+            <div class="pv-lg"><span>AZ-204 — Developing Solutions for Microsoft Azure</span><span>Microsoft, 2023</span></div>
+            <div class="pv-lg"><span>Professional Scrum Master I</span><span>Scrum.org, 2021</span></div>
+          </div>
+        </div>
+        <div class="pv-foot"><span>Page 1 of 2</span><span id="pvTpl">Europass-like</span></div>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<button class="btn btn-p" id="fabPreview">◧ Preview profile</button>
+
+<!-- ============ preview overlay (small viewports) ============ -->
+<div class="ovl" id="ovl">
+  <div class="ovl-in">
+    <div class="ovl-h">
+      <h3>Profile preview</h3>
+      <div class="sp"></div>
+      <select class="tsel" id="tsel2">
+        <optgroup label="Europe"><option selected>Europass-like</option><option>Modern European</option><option>UK · Reverse-chronological</option></optgroup>
+        <optgroup label="North America"><option>US · ATS-plain</option><option>Canada · Standard</option></optgroup>
+      </select>
+      <button class="btn" id="ovlClose">Close</button>
+    </div>
+    <div class="ovl-b" id="ovlBody"></div>
+  </div>
+</div>
+
+<!-- ============ create-cv preparation sheet ============ -->
+<div class="sheet" id="sheet">
+  <div class="sheet-in">
+    <div class="sheet-h">
+      <h2>Create a CV</h2>
+      <p>Not built yet — this is the flow it will follow. Your Profile stays untouched; a CV is a separate, saved projection of it.</p>
+    </div>
+    <ol class="steps">
+      <li><span class="sn">1</span><div><h4>Job</h4><p>Paste the job ad or its URL. Everything downstream is derived from it.</p></div></li>
+      <li><span class="sn">2</span><div><h4>Region &amp; language</h4><p>Portugal, Germany, UK, US… Region changes far more than styling: page count, photo, address, date format, section order, whether a summary is expected.</p></div></li>
+      <li><span class="sn">3</span><div><h4>Strategy</h4><p>Target role and template. Which positions to include, which achievements to surface out of each one, which skills to lead with.</p></div></li>
+      <li><span class="sn">4</span><div><h4>Review</h4><p>What was selected, what was left out, and why — before anything is exported.</p></div></li>
+      <li><span class="sn">5</span><div><h4>Export</h4><p>Saved under <b>CVs</b> with the job it was built for, so you can reuse or revise it later.</p></div></li>
+    </ol>
+    <div class="rule">
+      <b>Never invents experience.</b>
+      CommitAhead may select, reorder, shorten, rephrase and adapt for a market. It will never add a technology, employer, role, certification, number or result that isn't already in your Profile. Every line on a generated CV traces back to something you wrote.
+    </div>
+    <div class="sheet-f"><span class="sp"></span><button class="btn" id="sheetClose">Back to Profile</button></div>
+  </div>
+</div>
+
+<script>
+  /* ---------- live binding: form -> preview ---------- */
+  const bindMap={name:'pvName',headline:'pvHead',email:'pvEmail',phone:'pvPhone',loc:'pvLoc',auth:'pvAuth',summary:'pvSum'};
+  document.querySelectorAll('[data-bind]').forEach(el=>el.addEventListener('input',()=>{
+    const t=document.getElementById(bindMap[el.dataset.bind]);
+    if(t) t.textContent=el.value;
+    if(el.dataset.bind==='summary') document.getElementById('sumC').textContent=el.value.length+' characters';
+  }));
+
+  /* ---------- achievement text -> preview line ---------- */
+  document.querySelectorAll('input[data-pv]').forEach(inp=>inp.addEventListener('input',()=>{
+    const li=document.querySelector('.pv-ul li[data-pv="'+inp.dataset.pv+'"]');
+    if(li) li.textContent=inp.value;
+  }));
+
+  /* ---------- form -> preview highlight (focus / hover) ---------- */
+  function hl(on,inp){
+    const key=inp.dataset.pv;
+    const tgt=key?document.querySelector('.pv-ul li[data-pv="'+key+'"]'):document.getElementById('pvRest');
+    if(!tgt) return;
+    tgt.classList.toggle('hl',on);
+    if(on) tgt.scrollIntoView({block:'nearest'});
+  }
+  document.addEventListener('focusin',e=>{ if(e.target.closest('.bl')&&e.target.tagName==='INPUT') hl(true,e.target); });
+  document.addEventListener('focusout',e=>{ if(e.target.closest('.bl')&&e.target.tagName==='INPUT') hl(false,e.target); });
+  document.addEventListener('mouseover',e=>{ const i=e.target.closest('.bl input'); if(i) hl(true,i); });
+  document.addEventListener('mouseout',e=>{ const i=e.target.closest('.bl input'); if(i) hl(false,i); });
+
+  /* ---------- preview -> form (click to jump) ---------- */
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('[data-target]');
+    if(!t) return;
+    const sel=t.dataset.target, node=document.querySelector(sel);
+    if(!node) return;
+    closeOvl();
+    const item=node.classList.contains('item')?node:null;
+    if(item) item.classList.add('open');
+    const card=node.closest('.card')||node;
+    card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+    node.scrollIntoView({behavior:'smooth',block:item?'center':'start'});
+  });
+
+  /* ---------- expand / collapse, add, delete ---------- */
+  document.addEventListener('click',e=>{
+    if(e.target.closest('[data-t]')){ e.target.closest('.item').classList.toggle('open'); return; }
+    if(e.target.closest('.x')||e.target.matches('.chip button')){
+      const r=e.target.closest('.bl li,.chip,.lg,.sk tr');
+      if(r){ r.style.transition='.18s'; r.style.opacity=0; setTimeout(()=>r.remove(),170); }
+      return;
+    }
+    if(e.target.closest('[data-add]')){
+      const b=e.target.closest('[data-add]'), list=b.parentElement.querySelector('.items');
+      if(!list) return;
+      const c=list.querySelector('.item').cloneNode(true);
+      c.classList.add('open'); c.removeAttribute('id');
+      c.querySelector('.it').textContent='New entry';
+      c.querySelectorAll('.io,.im,.mini,.qty,.kind').forEach(x=>x.remove());
+      c.querySelectorAll('input,textarea').forEach(x=>{if(x.type!=='checkbox')x.value=''});
+      c.querySelectorAll('[data-pv]').forEach(x=>x.removeAttribute('data-pv'));
+      c.querySelectorAll('.bl li').forEach((li,i)=>{ if(i>0) li.remove(); li.classList.remove('inpv'); });
+      list.prepend(c); renumber(list); c.scrollIntoView({block:'center',behavior:'smooth'});
+    }
+  });
+
+  /* ---------- achievements list grows as you type ---------- */
+  document.addEventListener('input',e=>{
+    const ul=e.target.closest('.bl'); if(!ul) return;
+    const last=ul.lastElementChild;
+    if(last.querySelector('input').value.trim()){
+      const li=document.createElement('li');
+      li.innerHTML='<span class="bg">＋</span><input placeholder="Add another"><button class="x">✕</button>';
+      ul.appendChild(li);
+    }
+    const n=[...ul.querySelectorAll('input')].filter(i=>i.value.trim()).length;
+    const badge=ul.closest('.rep').querySelector('.n');
+    if(badge&&!badge.textContent.includes('Optional')){
+      badge.textContent=n+' captured';
+      badge.style.color=n?'var(--brand)':'var(--rec)';
+      badge.style.background=n?'var(--brand-soft)':'var(--rec-soft)';
+    }
+  });
+
+  /* ---------- ordering: chronological by default, manual opt-in ---------- */
+  const ordSel=document.getElementById('ordExp'), expList=document.getElementById('expList'), ordNote=document.getElementById('ordNote');
+  ordSel.addEventListener('change',()=>{
+    const v=ordSel.value;
+    expList.classList.toggle('manual',v==='manual');
+    if(v==='chrono-rev'||v==='chrono'){
+      const rows=[...expList.children];
+      if(v==='chrono-rev') rows.reverse().forEach(r=>expList.appendChild(r));
+      else rows.sort((a,b)=>(+a.id.split('-')[1])-(+b.id.split('-')[1])).forEach(r=>expList.appendChild(r));
+    }
+    ordNote.textContent = v==='manual'
+      ? 'Manual order applies to this Profile view only — a CV still decides its own order.'
+      : 'Chronological order is kept for you. Each CV decides its own order.';
+    renumber(expList);
+  });
+  function renumber(list){ [...list.children].forEach((c,i)=>{ const n=c.querySelector('.idxn'); if(n) n.textContent=i+1; }); }
+
+  /* ---------- drag: achievements + skill groups + manual lists ---------- */
+  let d=null;
+  document.addEventListener('dragstart',e=>{
+    const g=e.target.closest('.grip,.bg[draggable]'); if(!g) return;
+    d=g.closest('.item,.bl li'); d.classList.add('dragging');
+  });
+  document.addEventListener('dragover',e=>{
+    if(!d) return; e.preventDefault();
+    const o=e.target.closest(d.matches('.item')?'.item':'.bl li');
+    if(!o||o===d||o.parentElement!==d.parentElement) return;
+    const r=o.getBoundingClientRect();
+    o.parentElement.insertBefore(d, e.clientY<r.top+r.height/2?o:o.nextSibling);
+  });
+  document.addEventListener('dragend',()=>{
+    if(d){ d.classList.remove('dragging'); const p=d.parentElement; if(p.classList.contains('items')) renumber(p); }
+    d=null;
+  });
+
+  /* ---------- side-panel checks jump to their section ---------- */
+  document.querySelectorAll('[data-jump]').forEach(li=>li.addEventListener('click',()=>{
+    const card=document.querySelector(li.dataset.jump);
+    card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+    card.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+
+  /* ---------- jump bar ---------- */
+  const chips=[...document.querySelectorAll('#jump .jc')];
+  chips.forEach(c=>{
+    c.addEventListener('click',ev=>{ ev.preventDefault(); document.querySelector(c.getAttribute('href')).scrollIntoView({behavior:'smooth',block:'start'}); });
+    const sec=document.querySelector(c.getAttribute('href'));
+    new IntersectionObserver(es=>es.forEach(en=>{ if(en.isIntersecting){
+      chips.forEach(x=>x.classList.remove('on')); c.classList.add('on');
+      c.scrollIntoView({inline:'nearest',block:'nearest'});
+    }}),{rootMargin:'-116px 0px -68% 0px'}).observe(sec);
+  });
+
+  /* ---------- template selector ---------- */
+  function setTpl(v){ document.getElementById('pvTpl').textContent=v; }
+  document.getElementById('tsel').addEventListener('change',e=>{ setTpl(e.target.value); document.getElementById('tsel2').value=e.target.value; });
+  document.getElementById('tsel2').addEventListener('change',e=>{ setTpl(e.target.value); document.getElementById('tsel').value=e.target.value; });
+
+  /* ---------- preview overlay: the same live paper node, moved ---------- */
+  const ovl=document.getElementById('ovl'), ovlBody=document.getElementById('ovlBody'), pvWrap=document.querySelector('.pv-wrap');
+  function openOvl(){ ovlBody.appendChild(document.getElementById('paper')); ovl.classList.add('on'); }
+  function closeOvl(){
+    if(!ovl.classList.contains('on')) return;
+    pvWrap.appendChild(document.getElementById('paper'));
+    ovl.classList.remove('on');
+  }
+  document.getElementById('btnPreview').addEventListener('click',openOvl);
+  document.getElementById('fabPreview').addEventListener('click',openOvl);
+  document.getElementById('btnExpand').addEventListener('click',openOvl);
+  document.getElementById('ovlClose').addEventListener('click',closeOvl);
+  ovl.addEventListener('click',e=>{ if(e.target===ovl) closeOvl(); });
+
+  /* ---------- create-cv sheet ---------- */
+  const sheet=document.getElementById('sheet');
+  document.getElementById('btnCreate').addEventListener('click',()=>sheet.classList.add('on'));
+  document.getElementById('sheetClose').addEventListener('click',()=>sheet.classList.remove('on'));
+  sheet.addEventListener('click',e=>{ if(e.target===sheet) sheet.classList.remove('on'); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeOvl(); sheet.classList.remove('on'); } });
+</script>
+</body>
+</html>

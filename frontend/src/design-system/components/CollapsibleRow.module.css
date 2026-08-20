@@ -1,0 +1,140 @@
+/* Literal values from cv-3-studio-v2.1.html ".item"/".item-h"/".idxn"/".it"/".io"/".im"/".cv"/
+   ".item-b" — see AppShell.module.css's header comment for why this file doesn't route them
+   through the generic scale. */
+.row {
+  border: var(--border-hairline) solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.row:hover {
+  border-color: var(--border);
+}
+
+.row.open {
+  background: var(--surface);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+/* New chrome, not in the reference — a mouse-only native-HTML5-drag affordance (CollapsibleRow.tsx's
+   own header comment explains why native drag, not a library). Dims the row being dragged and
+   marks whichever row it's currently over as the drop target; both are plain class toggles, not
+   inline style, since the CSP here has no `unsafe-inline` for style-src. */
+.row.dragging {
+  opacity: 0.5;
+}
+
+.row.dropTarget {
+  border-color: var(--accent);
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.headRow {
+  display: flex;
+  align-items: stretch;
+}
+
+.dragHandle {
+  flex-shrink: 0;
+  width: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.head {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 12px 13px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.head:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.ordinal {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.005em;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.side {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.chevron {
+  display: flex;
+  color: var(--text-faint);
+  transition: transform 0.2s;
+}
+
+.row.open .chevron {
+  transform: rotate(180deg);
+}
+
+.body {
+  padding: 2px 13px 15px 46px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.bodyIndented {
+  padding-left: 72px;
+}
+
+@media (max-width: 620px) {
+  .body {
+    padding-left: 13px;
+  }
+
+  .bodyIndented {
+    padding-left: 13px;
+  }
+}

@@ -1,0 +1,42 @@
+/* Literal values from cv-3-studio-v2.1.html ".badge" (card-level) and ".mini" (row-level status)
+   — see AppShell.module.css's header comment for why this file doesn't route them through the
+   generic scale. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  font-size: 11.5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+}
+
+.sm {
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+
+.critical {
+  background: var(--critical-wash);
+  color: var(--critical);
+  border-color: var(--critical-line);
+}
+
+.caution {
+  background: var(--caution-wash);
+  color: var(--caution);
+  border-color: var(--caution-line);
+}
+
+.good {
+  background: var(--good-wash);
+  color: var(--good);
+}
+
+.neutral {
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-weight: 600;
+}

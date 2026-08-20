@@ -1,0 +1,134 @@
+/* New chrome not modelled by cv-3-studio-v2.1.html — see Sidebar.tsx's own header comment. Values
+   sit alongside AppShell's literal header numbers (22px page padding, 9-10px radii) rather than
+   being derived from any reference file.
+
+   52px = the header's own rendered height (30px mark + 11px top/bottom padding) — the sidebar
+   sits just below it, not at the viewport's true top, where the header itself already sticks.
+
+   `position: fixed`, not `sticky` — pinned to the viewport outright rather than to scroll
+   position within its flow parent, so it truly cannot ever appear to drift or lag during a
+   scroll (sticky was already correct positionally, but this removes any dependency on scroll-
+   linked recalculation entirely, the strongest guarantee that it "can't move"). Being fixed takes
+   it out of flow, so AppShell.module.css's `.body` reserves the matching width via padding-left
+   instead of a flex sibling. */
+.sidebar {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  border-right: var(--border-hairline) solid var(--border-soft);
+  background: var(--surface);
+  position: fixed;
+  top: 52px;
+  left: 0;
+  bottom: 0;
+  z-index: 55;
+  overflow-y: auto;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+  padding: 14px 8px;
+}
+
+.sidebar.collapsed .itemLabel,
+.sidebar.collapsed .collapseLabel {
+  display: none;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.item:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.item:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.itemActive {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.itemIcon {
+  flex-shrink: 0;
+}
+
+.itemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapseToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.collapseToggle:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.collapseToggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.collapseIconFlipped {
+  transform: rotate(180deg);
+}
+
+/* No room for a persistent rail on a phone-width screen — forced icon-only regardless of the
+   user's collapse preference, rather than hidden outright, so CV stays reachable. */
+@media (max-width: 767px) {
+  .sidebar {
+    width: 52px;
+    padding: 12px 6px;
+    top: 46px;
+  }
+
+  .itemLabel,
+  .collapseToggle {
+    display: none;
+  }
+}

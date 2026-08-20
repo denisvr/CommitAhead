@@ -1,0 +1,16 @@
+/* Literal values from cv-3-studio-v2.1.html's inline-styled "I still work here" checkbox label —
+   reproduced as a real class since inline styles are disallowed under the production CSP. */
+.check {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.check input {
+  width: auto;
+  accent-color: var(--accent);
+}

@@ -14,6 +14,11 @@ public sealed class EducationEntry
     public string? Location { get; }
     public string? DetailsMarkdown { get; }
 
+    // Assigned by ProfessionalProfile.ReplaceEducation from the caller's array order — not a
+    // constructor parameter, since it's aggregate-managed persistence state, not something a
+    // caller building one entry in isolation should have to supply or could get wrong.
+    public int Position { get; internal set; }
+
     public EducationEntry(
         Guid id,
         string institution,

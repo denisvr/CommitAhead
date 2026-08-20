@@ -1,0 +1,52 @@
+/* Literal values from cv-3-studio-v2.1.html ".hero"/".avatar" — see AppShell.module.css's header
+   comment for why this file doesn't route them through the generic scale.
+
+   No hover "Change" overlay and no cursor:pointer: there is no photo upload capability yet
+   (ContactInfo.PhotoStorageKey is a raw reference field, not a widget — see the field's own
+   hint), so nothing here should look clickable. Font stays the app's one sans family rather than
+   the reference's serif — readme.md "one humanist sans for everything... never a second display
+   family"; introducing a whole serif stack for two letters isn't worth that exception. */
+.hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 620px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Read-mode field — same label styling as Field.module.css's own .label (12.5px/700/text-muted)
+   so toggling between read and edit only swaps a value for an input, nothing else moves. */
+.readFieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.readFieldLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.readFieldValue {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, var(--accent-line), var(--accent-wash));
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}

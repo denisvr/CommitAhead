@@ -1,0 +1,372 @@
+/* Literal values from cv-3-studio-v2.1.html ".items"/".add"/".row-actions"/".ord"/".sk"/".lg" —
+   see AppShell.module.css's header comment for why this file doesn't route them through the
+   generic scale. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--critical);
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: var(--border-hairline) solid var(--border-soft);
+}
+
+.rowActionsSpacer {
+  flex: 1;
+}
+
+.rowNote {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.ord {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 12px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.ord label {
+  color: var(--text-faint);
+}
+
+.ordSelect {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: var(--border-hairline) solid var(--border-strong);
+  background: var(--surface-sunken);
+  border-radius: 7px;
+  padding: 4px 7px;
+}
+
+.ordNote {
+  margin-left: auto;
+}
+
+.qty {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.moveRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* ---------- read view (Europass-style: formatted text by default, edit via a button) ---------- */
+.readView {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.readMetaLine {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.readSummary {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.readSummary p {
+  margin: 0 0 8px;
+}
+
+.readSummary p:last-child {
+  margin-bottom: 0;
+}
+
+.readList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.readEmpty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.readChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.readLink {
+  font-size: 13px;
+  word-break: break-all;
+}
+
+/* ---------- skills table (".sk") ---------- */
+.skillsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.skillsTable th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 8px 7px 0;
+  border-bottom: var(--border-hairline) solid var(--border-soft);
+}
+
+.skillsTable td {
+  padding: 6px 8px 6px 0;
+  border-bottom: var(--border-hairline) solid var(--border-soft);
+}
+
+.skillsTable td:first-child {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.skillsTable select,
+.skillsTable input {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 5px 7px;
+  border: var(--border-hairline) solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-muted);
+  width: 100%;
+}
+
+.skillsTable select:focus,
+.skillsTable input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-wash);
+}
+
+/* The Skill cell is a real input (unlike the reference's plain-text first column) but reads as
+   the same bold static-looking label until it's touched. */
+.skillsTable td:first-child input {
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text);
+  width: 100%;
+  border-bottom: 1px solid transparent;
+}
+
+.skillsTable td:first-child input:hover {
+  border-bottom-color: var(--border-soft);
+}
+
+.skillsTable td:first-child input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+}
+
+.skillActionCell {
+  width: 56px;
+  padding-right: 0;
+}
+
+.skillActions {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+/* Shared shape for the pencil/check/x icon controls on a skill/language row (prototype's ".x") —
+   a plain icon button, not the Button component's variants, since these need to sit flush in a
+   table cell / grid track. Colour comes from one of the three operation-specific classes below,
+   never from this base class alone, so every one of these always reads as its own operation
+   rather than only on hover. */
+.iconRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 5px;
+  font-size: 12px;
+}
+
+.iconRemove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.iconEdit {
+  color: var(--accent);
+}
+
+.iconEdit:hover {
+  background: var(--accent-wash);
+}
+
+.iconDone {
+  color: var(--good);
+}
+
+.iconDone:hover {
+  background: var(--good-wash);
+}
+
+.iconDelete {
+  color: var(--critical);
+}
+
+.iconDelete:hover {
+  background: var(--critical-wash);
+}
+
+.groupTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.groupCount {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One shared table for every group (sections.module.css's own header comment on .skillsTable) —
+   a colSpan divider row inside the same table/tbody, not a separate heading between separate
+   tables, which is what let each group's columns drift out of alignment with the others. */
+.skillGroupRow td {
+  padding: 20px 8px 6px 0;
+  border-bottom: none;
+}
+
+.skillGroupRow:first-child td {
+  padding-top: 4px;
+}
+
+/* ---------- languages grid (".lg") ---------- */
+.langRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px minmax(0, 1fr) 56px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 2px;
+  border-bottom: var(--border-hairline) solid var(--border-soft);
+}
+
+.langValue {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.langHeader {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-bottom: 6px;
+}
+
+.langName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.langRow .langName input {
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  width: 100%;
+  border-bottom: 1px solid transparent;
+  min-width: 0;
+}
+
+.langRow .langName input:hover {
+  border-bottom-color: var(--border-soft);
+}
+
+.langRow .langName input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.native {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--good);
+  background: var(--good-wash);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.langRow select,
+.langRow input {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 6px 7px;
+  border: var(--border-hairline) solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-muted);
+  width: 100%;
+}
+
+.langRow select:focus,
+.langRow input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-wash);
+}
+
+/* ---------- link chips (".chips") ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chipEditor {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: var(--border-hairline) solid var(--border-soft);
+}

@@ -1,18 +1,20 @@
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './Button.module.css'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'accent'
+type ButtonSize = 'default' | 'sm' | 'icon'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
+  size?: ButtonSize
   isLoading?: boolean
 }
 
-export function Button({ variant = 'secondary', isLoading = false, disabled, className, children, ...rest }: ButtonProps) {
+export function Button({ variant = 'secondary', size = 'default', isLoading = false, disabled, className, children, ...rest }: ButtonProps) {
   return (
     <button
       type="button"
-      className={[styles.button, styles[variant], className].filter(Boolean).join(' ')}
+      className={[styles.button, styles[variant], size !== 'default' ? styles[size] : '', className].filter(Boolean).join(' ')}
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
       {...rest}

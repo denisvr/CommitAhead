@@ -5,6 +5,13 @@ date: 2026-07-29
 
 # Custom React components with CSS Modules and shared design tokens
 
+> **Partially superseded by ADR-0024.** The implementation decision below — hand-built React
+> components with CSS Modules over shared token files, no UI framework — is unchanged and still
+> binding. The identity it was written against, Reading Room, was replaced by Studio. Where this
+> document reasons about paper surfaces, a small radius scale or the absence of shadow, read those
+> as the motivating example of the time, not as current visual rules; `docs/design/design-system/`
+> is authoritative for those.
+
 ## Context
 
 Phase 1 needs a production UI approach. The approved Reading Room identity is intentionally

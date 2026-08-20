@@ -15,6 +15,25 @@ Earlier phases gave `EvidenceLink` and `AnalysisDraft` a `sourceType` + `sourceI
 
 Experience, Education, Skill, Language, Certification, Project, and ProfileLink use dedicated tables with a required `professional_profile_id` FK. `ExperienceEntry.SkillIds` and `ProjectEntry.SkillIds` map as a plain `uuid[]` array column — **not** FK-backed `experience_skills`/`project_skills` join tables as originally planned; see ADR-0017 for why and what invariant 21/22 still guarantee at the domain level without a database-level FK on each array element. The application must remove/reassign those references before deleting a Skill; `ProfessionalProfile.ReplaceSkills` enforces this in-memory.
 
+### ProfessionalProfile canonical collection ordering
+
+Experience, Education, Certification, and Project (but not Skill, Language, or ProfileLink) each
+carry a `position` integer column, added by
+`20260820112709_AddProfessionalProfileEntryPositions`. This is a **different** mapping shape from
+CVPresentation's ordered selections below — those are plain `uuid[]` array columns with no entity
+of their own, so array order already *is* position with nothing else to store. These four
+collections are real, independently-keyed EF entities (their own table, their own `Id` primary
+key), so EF's change tracker matches and persists rows by `Id`, never by list position — without an
+explicit column, nothing recorded the order the client last sent, and nothing in the read query
+enforced a stable order back. `ProfessionalProfile.ReplaceExperience`/`ReplaceEducation`/
+`ReplaceCertifications`/`ReplaceProjects` stamp each entry's `Position` from its index in the
+caller's array (`AssignPositions`, a private helper in `ProfessionalProfile.cs`) before assigning;
+`ProfessionalProfileRepository.GetByOwnerUserIdAsync` reads them back via an ordered `Include`
+(`profile.Experience.OrderBy(e => e.Position)`, one per collection) rather than the plain
+unordered `Include` used for Skills/Languages/ProfileLinks. `Position` is internal persistence
+state, not part of the public API contract — the frontend already communicates intended order via
+plain array sequence on every `PUT`, the same as before this column existed.
+
 ### YearMonth
 Stored as a single converted `integer` column (`year * 100 + month`) in the parent table — **not** two separate `_year`/`_month` columns as originally planned; see ADR-0017. No native `YearMonth` DB type, and EF Core cannot constructor-bind a containing entity's parameter to a nested owned/complex sub-object, which a two-column `OwnsOne`/`ComplexProperty` mapping would have required.
 
@@ -42,7 +61,7 @@ same-owner rule above, which the composite FK does enforce at the database level
 - Breaking schema changes (column renames, type changes) are split into additive migrations with a deprecation period.
 - Integration tests run against a Testcontainers PostgreSQL instance with migrations applied once per test session; Respawn resets data between tests (not schema).
 - The migration job uses a separate privileged migration credential. The running API never receives schema-owner or migration privileges.
-- **Migration history**: `20260818163818_DropStudyJobAnalysesInterviewNotesAnalysisDraftsAndAI` dropped the thirteen tables that backed the now-removed Study/JobAnalyses/InterviewNotes/AnalysisDrafts/AI features (`study_items`, `study_reviews`, `scoring_config_overrides`, `evidence_links`, `job_analyses`, `job_requirements`, `job_gaps`, `interview_notes`, `analysis_drafts`, `suggestion_proposals`, `link_proposals`, `study_item_proposals`, `ai_usage_records`), alongside the corresponding RLS scripts (formerly `003_rls_phase1.sql` and a Phase 3/4 equivalent) and Storage provisioning script. `professional_profiles`, `cv_presentations`, and their seven canonical child tables were untouched by that migration.
+- **Migration history**: `20260818163818_DropStudyJobAnalysesInterviewNotesAnalysisDraftsAndAI` dropped the thirteen tables that backed the now-removed Study/JobAnalyses/InterviewNotes/AnalysisDrafts/AI features (`study_items`, `study_reviews`, `scoring_config_overrides`, `evidence_links`, `job_analyses`, `job_requirements`, `job_gaps`, `interview_notes`, `analysis_drafts`, `suggestion_proposals`, `link_proposals`, `study_item_proposals`, `ai_usage_records`), alongside the corresponding RLS scripts (formerly `003_rls_phase1.sql` and a Phase 3/4 equivalent) and Storage provisioning script. `professional_profiles`, `cv_presentations`, and their seven canonical child tables were untouched by that migration. `20260820112709_AddProfessionalProfileEntryPositions` later added the `position` integer column (default `0`, backfilled for existing rows — see "ProfessionalProfile canonical collection ordering" above) to `experience_entries`, `education_entries`, `certification_entries`, and `project_entries` only.
 
 ## Supabase RLS
 Row-Level Security is **enabled** (not forced) on every remaining table: `002_rls_users.sql` for `users`; `004_rls_phase2.sql` for the nine business tables (`professional_profiles`, `cv_presentations`, and the seven canonical child tables — `experience_entries`, `education_entries`, `skills`, `language_entries`, `certification_entries`, `project_entries`, `profile_links`). ENABLE alone already fully restricts `commitahead_app`, since it never owns these tables — `commitahead_migrator` does — and that is the actual runtime threat model this defends: a compromised or buggy running API, not an ad-hoc query run directly as the table owner or a superuser. FORCE would extend these same policies to that owner/superuser connection too, which is a broader guarantee this app doesn't need and that carries its own operational risk (a migration or admin script connecting as the owner would unexpectedly be row-filtered). There are no policies for Supabase `anon` or `authenticated`, so Data API access is denied regardless.

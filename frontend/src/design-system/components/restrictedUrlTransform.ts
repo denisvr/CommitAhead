@@ -9,7 +9,7 @@ const ALLOWED_PROTOCOLS = /^(https?|mailto)$/i
  * appears after the first ?, #, or / is not a scheme separator, e.g. a query string containing
  * one) but narrows the scheme allowlist to exactly http(s)/mailto. Disallowed schemes —
  * javascript:, data:, anything else — return '', which callers turn into plain text instead of a
- * clickable link (RestrictedMarkdown's `a` override, or CVPreview's SafeLink for a raw URL field).
+ * clickable link (RestrictedMarkdown's `a` override, or the shared SafeLink for a raw URL field).
  */
 export function restrictedUrl(url: string): string {
   const colon = url.indexOf(':')

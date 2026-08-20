@@ -19,6 +19,10 @@ public sealed class CertificationEntryConfiguration : IEntityTypeConfiguration<C
         builder.Property<Guid>("ProfessionalProfileId")
             .HasColumnName("professional_profile_id");
 
+        // Stamped by ProfessionalProfile.ReplaceCertifications from the caller's array order —
+        // see ProfessionalProfileRepository's ordered Include for the read side.
+        builder.Property(e => e.Position).HasColumnName("position").IsRequired();
+
         builder.Property(e => e.Name).HasColumnName("name").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.IssuingOrganisation).HasColumnName("issuing_organisation").HasMaxLength(ValidationLimits.ShortTextMaxLength).IsRequired();
         builder.Property(e => e.CredentialId).HasColumnName("credential_id").HasMaxLength(ValidationLimits.ShortTextMaxLength);

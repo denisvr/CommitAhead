@@ -1,5 +1,8 @@
-/* Space is the component system: separation is whitespace first, one hairline
-   second, a background tint never. 4px base. */
+/* Space and shape — Studio.
+
+   Separation is a card first, whitespace second, a hairline third. Cards carry a
+   generous corner: the shape is what makes the interface read as a workspace of
+   discrete objects rather than a document. 4px base. */
 :root {
   --space-0: 0px;
   --space-1: 2px;
@@ -20,45 +23,55 @@
   --space-28: 56px;
   --space-32: 64px;
 
-  /* Trimmed-paper corners. Nothing in the product exceeds 4px. */
-  --radius-none: 0px;
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 4px;
+  /* Shape. Each radius has one job — do not pick by eye.
+     Nesting rule: a child's radius is always smaller than its parent's. */
+  --radius-xs: 4px;    /* marks inside a chip, meter bars, tiny swatches */
+  --radius-sm: 6px;    /* badges, chips, table cells */
+  --radius-md: 8px;    /* buttons, inputs, selects, icon buttons */
+  --radius-lg: 10px;   /* collapsible rows, inline panels, sunken regions */
+  --radius-xl: 12px;   /* cards */
+  --radius-2xl: 14px;  /* dialogs and overlay sheets */
+  --radius-pill: 999px;/* jump-bar chips, floating action button */
 
   --border-hairline: 1px;
   --focus-width: 2px;
   --focus-offset: 2px;
 
-  --sidebar-width: 200px;
-  --content-max: 820px;
-  --page-pad-x: 44px;
-  --page-pad-y: 38px;
+  /* Layout. The reading column and the page are two different widths — the profile
+     is a two-column workspace, so the page may exceed the reading column. */
+  --content-max: 820px;    /* the reading/form column, never wider */
+  --page-max: 1640px;      /* the whole workspace including the preview column — matches the
+                               approved reference (cv-3-studio-v2.1.html) exactly */
+  --preview-width: 452px;  /* the profile preview column */
+  --split-gap: 22px;
+  --page-pad-x: 22px;
+  --page-pad-y: 18px;
+  --header-height: 53px;   /* the sticky header; jump bar sticks directly beneath it */
 
   --control-height: 40px;
   --control-height-sm: 32px;
   --tap-min: 44px;
+
+  --card-gap: var(--space-8);     /* between stacked cards */
+  --section-gap: var(--space-16);  /* between top-level regions of a page */
+  --row-gap: var(--space-3);      /* between collapsible rows inside a card */
 }
 
-/* Density. Comfortable is the default and governs the Study Queue, item detail
-   and CV editor. Dense is opt-in per region — analytical tables only: Study
-   Items, Job Analysis requirements, AI usage. Set data-density="dense" on the
-   table's wrapper, never on the page. */
+/* Density. Comfortable is the default and governs the profile, forms and CV
+   editing. Dense is opt-in for analytical tables only — the skills metadata table
+   is the one current use. Set data-density="dense" on the table wrapper, never on
+   a page or a mobile tap-target list. */
 :root,
 :root[data-density="comfortable"] {
-  --row-pad-y: 15px;
-  --row-pad-x: 0px;
-  --row-gap: 20px;
+  --row-pad-y: 12px;
+  --row-pad-x: 13px;
   --row-title-size: var(--text-md);
   --row-meta-size: var(--text-xs);
-  --section-gap: var(--space-28);
 }
 
 :root[data-density="dense"] {
-  --row-pad-y: 7px;
-  --row-pad-x: 10px;
-  --row-gap: 12px;
+  --row-pad-y: 6px;
+  --row-pad-x: 8px;
   --row-title-size: var(--text-sm);
   --row-meta-size: var(--text-xs);
-  --section-gap: var(--space-16);
 }

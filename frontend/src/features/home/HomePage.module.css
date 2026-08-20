@@ -1,0 +1,31 @@
+/* New chrome, not modelled by cv-3-studio-v2.1.html (no landing page in the reference) — padding
+   matches ProfessionalProfilePage.module.css's ".page" fallback so it reads consistently next to
+   the other feature pages. */
+.page {
+  padding: 18px 22px 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero {
+  margin-bottom: 4px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  max-width: 60ch;
+}
+
+.cardNote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+}

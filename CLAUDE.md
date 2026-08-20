@@ -96,11 +96,18 @@ published backend artifact's `wwwroot` only during `dotnet publish` (see the
 
 ## Frontend design contract
 
-- The approved identity is **Reading Room** with the **Bookmark** mark. The canonical design
-  documentation is `docs/design/design-system/readme.md`.
+- The approved identity is **Studio** with the **Bookmark** mark (ADR-0024, superseding Reading
+  Room). The canonical design documentation is `docs/design/design-system/readme.md`.
 - Before frontend work, read that document plus `components.md` and `page-patterns.md` in the same
   directory. `CONTEXT.md` and the domain/ADR documents remain authoritative for behaviour and
   terminology whenever a visual reference disagrees with them.
+- `frontend/src/design-system/tokens/` is a copy of `docs/design/design-system/tokens/` and carries
+  a header saying so. The design reference is the source of truth: change a value there and copy it
+  across in the same PR — never edit only one side.
+- Light and dark are one system, not two palettes. Any new colour token must be added to both the
+  `:root[data-theme="dark"]` block and the `prefers-color-scheme` block, and
+  `node docs/design/design-system/verify-contrast.mjs` must pass. Review every screen in light, in
+  dark, and with no explicit choice under a dark system preference.
 - Implement production UI as React 19 + TypeScript components with CSS Modules and shared CSS
   custom-property tokens, according to ADR-0016. No Tailwind, MUI, shadcn, CSS-in-JS, inline
   `style` attributes, CDN assets, runtime-injected SVG sprites, or `window` globals.

@@ -60,17 +60,24 @@ describe('ProfessionalProfilePage', () => {
     await userEvent.type(screen.getByLabelText('Summary'), 'Backend engineer.')
     await userEvent.click(screen.getByRole('button', { name: 'Create profile' }))
 
-    expect(await screen.findByRole('heading', { name: 'Professional profile' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'About you' })).toBeInTheDocument()
   })
 
-  it('loads and displays the existing profile', async () => {
+  it('loads and displays the existing profile as a single scrolling page', async () => {
     server.use(http.get('/api/professional-profile', () => HttpResponse.json(PROFILE)))
 
     render(<ProfessionalProfilePage />)
 
-    expect(await screen.findByRole('heading', { name: 'Professional profile' })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Backend engineer.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'About you' })).toBeInTheDocument()
+    // "About you" and "Experience" are both visible at once — there is no tab to switch between
+    // them, unlike the earlier Tabs-based layout.
+    expect(screen.getByRole('heading', { name: 'Experience' })).toBeInTheDocument()
+    // About you starts in its read view (Europass-style: text first, edit on request) once there
+    // is something to read — not an input, so this checks rendered text rather than a display
+    // value. getAllByText, not getByText: the profile preview aside renders the same name and
+    // summary text a second time, so an exact match isn't unique on the page.
+    expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Backend engineer.').length).toBeGreaterThan(0)
   })
 
   it('shows a retryable error when the initial load fails', async () => {
@@ -87,17 +94,19 @@ describe('ProfessionalProfilePage', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('heading', { name: 'Professional profile' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'About you' })).toBeInTheDocument()
   })
 
-  it('switches between section tabs', async () => {
+  it('every section is reachable from the jump bar without switching a tab', async () => {
     server.use(http.get('/api/professional-profile', () => HttpResponse.json(PROFILE)))
 
     render(<ProfessionalProfilePage />)
-    await screen.findByRole('heading', { name: 'Professional profile' })
+    await screen.findByRole('heading', { name: 'About you' })
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Experience' }))
+    // These are jump-bar links (navigation), not ARIA tabs — this Card is already in the
+    // document, just further down the page.
+    await userEvent.click(screen.getByRole('link', { name: /Experience/ }))
 
-    expect(screen.getByText('No experience entries yet.')).toBeInTheDocument()
+    expect(screen.getByText('No experience recorded yet')).toBeInTheDocument()
   })
 })

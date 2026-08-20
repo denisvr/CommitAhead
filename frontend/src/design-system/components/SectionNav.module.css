@@ -1,0 +1,82 @@
+/* Literal values from cv-3-studio-v2.1.html ".jump"/".jump-in"/".jc" — see AppShell.module.css's
+   header comment for why this file doesn't route them through the generic scale. */
+.nav {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: var(--border-hairline) solid var(--border-soft);
+}
+
+.scroller {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 9px 22px;
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: var(--border-hairline) solid var(--border-soft);
+  border-radius: 20px;
+  padding: 5px 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.link:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.link:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.link[aria-current='true'] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.count {
+  font-weight: 600;
+  opacity: 0.62;
+  font-variant-numeric: tabular-nums;
+}
+
+.flag {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.flag.caution {
+  background: var(--caution);
+}
+
+.flag.critical {
+  background: var(--critical);
+}
+
+.link[aria-current='true'] .flag {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 40%, transparent);
+}
