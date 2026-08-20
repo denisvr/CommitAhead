@@ -55,18 +55,6 @@ export function ContactInfoFields({ value, onChange }: ContactInfoFieldsProps) {
           )}
         </Field>
       </div>
-
-      <Field label="Photo storage key" hint="Optional — a raw storage reference, not an upload widget yet.">
-        {(fieldProps) => (
-          <input
-            {...fieldProps}
-            type="text"
-            className={inputStyles.input}
-            value={value.photoStorageKey ?? ''}
-            onChange={(event) => onChange({ ...value, photoStorageKey: event.target.value || null })}
-          />
-        )}
-      </Field>
     </div>
   )
 }

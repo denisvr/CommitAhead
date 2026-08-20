@@ -36,7 +36,7 @@ function CertificationEntryReadView({ value }: { value: CertificationEntryDto })
 }
 
 export function CertificationsSection({ certifications, onChange }: CertificationsSectionProps) {
-  const { error, handleSave } = useSectionSave(certifications, replaceCertifications)
+  const { error, isSaving, handleSave } = useSectionSave(certifications, replaceCertifications)
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(certifications.length === 1 ? [certifications[0].id] : []))
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
 
@@ -63,29 +63,40 @@ export function CertificationsSection({ certifications, onChange }: Certificatio
 
   // No separate Save button — Done (exiting edit) persists the whole current list immediately,
   // since the API only offers whole-collection replace; the "per item" feel comes from the UI
-  // action, not a per-entity endpoint.
-  const stopEditingAndSave = (id: string) => {
-    setEditing(id, false)
-    void handleSave()
+  // action, not a per-entity endpoint. Edit mode only closes once the save actually succeeds, so a
+  // failed save leaves the entry open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async (id: string) => {
+    const success = await handleSave()
+    if (success) setEditing(id, false)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = certifications
     const next = certifications.filter((item) => item.id !== id)
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const moveTo = (id: string, delta: number) => {
+  // Applies the reorder optimistically but reverts to the pre-reorder array if the PUT fails — an
+  // optimistic update must never linger as if it had been saved.
+  const moveTo = async (id: string, delta: number) => {
     const index = certifications.findIndex((entry) => entry.id === id)
     const target = index + delta
     if (index < 0 || target < 0 || target >= certifications.length) return
+    const previous = certifications
     const next = [...certifications]
     ;[next[index], next[target]] = [next[target], next[index]]
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const { reorderFor } = useDragReorder(certifications, onChange, (next) => void handleSave(next))
+  const persistReorder = async (next: CertificationEntryDto[]) => {
+    const success = await handleSave(next)
+    if (!success) onChange(certifications)
+  }
+  const { reorderFor } = useDragReorder(certifications, onChange, persistReorder, isSaving)
 
   const missingLink = certifications.filter((entry) => !entry.url).length
 
@@ -97,7 +108,7 @@ export function CertificationsSection({ certifications, onChange }: Certificatio
       meta={certifications.length > 0 ? `${certifications.length} certification${certifications.length === 1 ? '' : 's'}` : undefined}
       badge={missingLink > 0 ? <Badge tone="caution">{missingLink} links missing</Badge> : undefined}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add a certification
         </Button>
       }
@@ -133,14 +144,14 @@ export function CertificationsSection({ certifications, onChange }: Certificatio
                 }
               >
                 <div className={styles.moveRow}>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(entry.id, -1)} disabled={index === 0} aria-label={`Move ${entry.name || 'entry'} up`}>
+                  <Button type="button" variant="ghost" onClick={() => void moveTo(entry.id, -1)} disabled={isSaving || index === 0} aria-label={`Move ${entry.name || 'entry'} up`}>
                     Move up
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => moveTo(entry.id, 1)}
-                    disabled={index === certifications.length - 1}
+                    onClick={() => void moveTo(entry.id, 1)}
+                    disabled={isSaving || index === certifications.length - 1}
                     aria-label={`Move ${entry.name || 'entry'} down`}
                   >
                     Move down
@@ -151,10 +162,10 @@ export function CertificationsSection({ certifications, onChange }: Certificatio
                     <CertificationEntryFields value={entry} onChange={(next) => onChange(certifications.map((item) => (item.id === entry.id ? next : item)))} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="success" onClick={() => stopEditingAndSave(entry.id)}>
+                      <Button type="button" variant="success" onClick={() => void stopEditingAndSave(entry.id)} isLoading={isSaving}>
                         Done
                       </Button>
                     </div>
@@ -164,10 +175,10 @@ export function CertificationsSection({ certifications, onChange }: Certificatio
                     <CertificationEntryReadView value={entry} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)}>
+                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)} disabled={isSaving}>
                         Edit
                       </Button>
                     </div>

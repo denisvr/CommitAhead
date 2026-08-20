@@ -2,8 +2,9 @@
    comment for why this file doesn't route them through the generic scale.
 
    No hover "Change" overlay and no cursor:pointer: there is no photo upload capability yet
-   (ContactInfo.PhotoStorageKey is a raw reference field, not a widget — see the field's own
-   hint), so nothing here should look clickable. Font stays the app's one sans family rather than
+   (ContactInfo.PhotoStorageKey is a raw reference field with no editor in this UI — a raw storage
+   key is not something a user should ever type by hand), so nothing here should look clickable.
+   Font stays the app's one sans family rather than
    the reference's serif — readme.md "one humanist sans for everything... never a second display
    family"; introducing a whole serif stack for two letters isn't worth that exception. */
 .hero {

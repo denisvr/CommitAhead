@@ -17,7 +17,7 @@ PostgreSQL hosted on Supabase is used for the database. Supabase also provides A
 
 ## Consequences
 
-- Schema benefits from a full relational engine: polymorphic EvidenceLink source references, FK constraint enforcement for deletion guards, ranked-list queries with aggregations across joined tables, and partial unique indexes for the one-Pending-draft-per-source invariant are all more natural in PostgreSQL.
+- Schema benefits from a full relational engine: FK constraint enforcement for deletion guards, queries with aggregations across joined child collections, and composite/alternate-key constraints for cross-aggregate references (ADR-0017) are all more natural in PostgreSQL.
 - SQLite's limited `ALTER TABLE` support would create friction as the schema evolves across migrations.
 - A network round-trip to Supabase is introduced for every query; this is acceptable for a small, invite-only user base with low concurrency.
 - Minimal APIs were evaluated alongside Controllers and excluded in favour of Controllers, which offer clearer structure for the feature-folder architecture (see ADR-0008).

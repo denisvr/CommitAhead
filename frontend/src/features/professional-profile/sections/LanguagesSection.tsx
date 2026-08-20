@@ -18,7 +18,7 @@ const createEntry = (): LanguageEntryDto => ({ id: crypto.randomUUID(), language
 // language; LanguageEntry only stores one overall proficiency. Showing four columns here would
 // mean inventing three values nobody entered, so this renders the one real attribute instead.
 export function LanguagesSection({ languages, onChange }: LanguagesSectionProps) {
-  const { error, handleSave } = useSectionSave(languages, replaceLanguages)
+  const { error, isSaving, handleSave } = useSectionSave(languages, replaceLanguages)
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
 
   const setEditing = (id: string, value: boolean) => {
@@ -36,16 +36,19 @@ export function LanguagesSection({ languages, onChange }: LanguagesSectionProps)
 
   // No separate Save button — Done (the check icon) persists the whole current list immediately,
   // since the API only offers whole-collection replace; the "per item" feel comes from the UI
-  // action, not a per-entity endpoint.
-  const stopEditingAndSave = (id: string) => {
-    setEditing(id, false)
-    void handleSave()
+  // action, not a per-entity endpoint. Edit mode only closes once the save actually succeeds, so a
+  // failed save leaves the entry open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async (id: string) => {
+    const success = await handleSave()
+    if (success) setEditing(id, false)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = languages
     const next = languages.filter((item) => item.id !== id)
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
   return (
@@ -55,7 +58,7 @@ export function LanguagesSection({ languages, onChange }: LanguagesSectionProps)
       heading="Languages"
       meta={`${languages.length} language${languages.length === 1 ? '' : 's'}`}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add a language
         </Button>
       }
@@ -75,10 +78,11 @@ export function LanguagesSection({ languages, onChange }: LanguagesSectionProps)
               key={entry.id}
               value={entry}
               isEditing={editingIds.has(entry.id)}
+              disabled={isSaving}
               onChange={(next) => onChange(languages.map((item) => (item.id === entry.id ? next : item)))}
-              onRemove={() => removeEntry(entry.id)}
+              onRemove={() => void removeEntry(entry.id)}
               onStartEdit={() => setEditing(entry.id, true)}
-              onStopEdit={() => stopEditingAndSave(entry.id)}
+              onStopEdit={() => void stopEditingAndSave(entry.id)}
             />
           ))}
         </>

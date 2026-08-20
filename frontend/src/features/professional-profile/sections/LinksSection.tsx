@@ -20,7 +20,7 @@ const createEntry = (): ProfileLinkDto => ({ id: crypto.randomUUID(), kind: 'Oth
 // a chip (not its ✕) expands ProfileLinkFields beneath the chip row, echoing the CollapsibleRow
 // pattern used for Experience/Education rather than inventing a new interaction from nothing.
 export function LinksSection({ profileLinks, onChange }: LinksSectionProps) {
-  const { error, handleSave } = useSectionSave(profileLinks, replaceProfileLinks)
+  const { error, isSaving, handleSave } = useSectionSave(profileLinks, replaceProfileLinks)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const addEntry = () => {
@@ -31,17 +31,24 @@ export function LinksSection({ profileLinks, onChange }: LinksSectionProps) {
 
   // No separate Save button — Done persists the whole current list immediately, since the API
   // only offers whole-collection replace; the "per item" feel comes from the UI action, not a
-  // per-entity endpoint.
-  const stopEditingAndSave = () => {
-    setExpandedId(null)
-    void handleSave()
+  // per-entity endpoint. Collapses the editor only once the save actually succeeds, so a failed
+  // save leaves it open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async () => {
+    const success = await handleSave()
+    if (success) setExpandedId(null)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = profileLinks
+    const wasExpanded = expandedId
     const next = profileLinks.filter((item) => item.id !== id)
     onChange(next)
     setExpandedId((current) => (current === id ? null : current))
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) {
+      onChange(previous)
+      setExpandedId(wasExpanded)
+    }
   }
 
   const expanded = profileLinks.find((entry) => entry.id === expandedId) ?? null
@@ -53,7 +60,7 @@ export function LinksSection({ profileLinks, onChange }: LinksSectionProps) {
       heading="Links"
       meta={`${profileLinks.length} link${profileLinks.length === 1 ? '' : 's'}`}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add link
         </Button>
       }
@@ -71,8 +78,9 @@ export function LinksSection({ profileLinks, onChange }: LinksSectionProps) {
           <Chip
             key={entry.id}
             onClick={() => setExpandedId((current) => (current === entry.id ? null : entry.id))}
-            onRemove={() => removeEntry(entry.id)}
+            onRemove={() => void removeEntry(entry.id)}
             removeLabel={`Remove ${entry.label || entry.kind}`}
+            disabled={isSaving}
           >
             {entry.label || entry.kind}
           </Chip>
@@ -84,10 +92,10 @@ export function LinksSection({ profileLinks, onChange }: LinksSectionProps) {
           <ProfileLinkFields value={expanded} onChange={(next) => onChange(profileLinks.map((item) => (item.id === expanded.id ? next : item)))} />
           <div className={styles.rowActions}>
             <span className={styles.rowActionsSpacer} />
-            <Button type="button" variant="danger" onClick={() => removeEntry(expanded.id)}>
+            <Button type="button" variant="danger" onClick={() => void removeEntry(expanded.id)} disabled={isSaving}>
               Delete
             </Button>
-            <Button type="button" variant="success" onClick={stopEditingAndSave}>
+            <Button type="button" variant="success" onClick={() => void stopEditingAndSave()} isLoading={isSaving}>
               Done
             </Button>
           </div>

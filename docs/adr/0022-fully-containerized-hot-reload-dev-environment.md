@@ -48,12 +48,12 @@ in containers" never means switching data.
   `appsettings.Development.json` exactly like a host `dotnet run` — including
   `Auth:CallbackUrl=http://localhost:5120/auth/callback`, which needs no change here, because the
   container publishes the same port (`127.0.0.1:5120:8080`) `launchSettings.json` already uses on
-  the host. `Supabase:Url`/`Supabase:AnonKey`/the Anthropic API key come from optional
-  `backend/.env` entries (new, alongside the existing Postgres passwords) rather than
-  `dotnet user-secrets` — a container has no access to the host's user-secrets store, and `.env`
-  (already gitignored) is the equivalent already established for `docker-compose.prod.yml`. All
-  three stay optional: an unconfigured value fails the same use case closed with a clear error,
-  exactly like running unconfigured on the host today — never a silent fallback.
+  the host. `Supabase:Url`/`Supabase:AnonKey` come from optional `backend/.env` entries (new,
+  alongside the existing Postgres passwords) rather than `dotnet user-secrets` — a container has no
+  access to the host's user-secrets store, and `.env` (already gitignored) is the equivalent
+  already established for `docker-compose.prod.yml`. Both stay optional: an unconfigured value
+  fails the same use case closed with a clear error, exactly like running unconfigured on the host
+  today — never a silent fallback.
 - **`frontend`** runs `npm ci && npm run dev -- --host 0.0.0.0` directly from `node:24-alpine` (the
   version `frontend/.nvmrc` pins), with `./frontend` bind-mounted and a named volume specifically
   for `node_modules` mounted *over* the bind mount's own `node_modules` path — otherwise the host's
@@ -82,7 +82,7 @@ install Docker, copy one `.env` file, one `docker compose` command.
   `dotnet watch` and Vite's own dev server already solve "reflect a code change immediately" —
   building a container-specific alternative would be reinventing tooling that already exists and is
   already relied on for the host-run workflow.
-- **Optional Supabase/Anthropic config, not a container-specific auth story.** Real backend-mediated
+- **Optional Supabase config, not a container-specific auth story.** Real backend-mediated
   Supabase Auth (ADR-0015 et al.) already works from `dotnet run`; this stack must not invent a
   parallel local-auth mechanism — it only needed a container-reachable way to supply the same
   configuration `dotnet user-secrets` supplies on the host.

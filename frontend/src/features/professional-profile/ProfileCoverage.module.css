@@ -118,18 +118,29 @@
   gap: 9px;
 }
 
-.checks li {
+.checkButton {
   display: grid;
   grid-template-columns: 15px minmax(0, 1fr);
   gap: 9px;
+  width: 100%;
+  font: inherit;
   font-size: 12.5px;
   color: var(--text-muted);
   line-height: 1.45;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
 }
 
-.checks li:hover {
+.checkButton:hover {
   color: var(--text);
+}
+
+.checkButton:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: 2px;
 }
 
 .mark {

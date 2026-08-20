@@ -1,6 +1,6 @@
 import { RestrictedMarkdown } from '../../design-system/components/RestrictedMarkdown'
 import type { ProfessionalProfileResponse } from './api'
-import { compareStartDateDesc, formatDateRange, formatMonthYear } from './formatDate'
+import { formatDateRange, formatMonthYear } from './formatDate'
 import styles from './ProfilePreview.module.css'
 
 export type HighlightedAchievement = { experienceId: string; index: number } | null
@@ -13,20 +13,26 @@ type ProfilePreviewProps = {
 
 const SHOWN_ACHIEVEMENTS = 3
 
-// A picture of the profile through a template, not a saved CV — a real CVPresentation curates a
-// subset of these same entries (see CVPreview) and can be reused across markets; this always
-// shows everything so the "+N more" note below can teach the Profile = truth / CV = strategy
-// distinction. Deliberately no template selector: only one export template exists today
-// (ExportCVPresentationUseCase.SupportedTemplateKey), and CLAUDE.md is explicit that later-phase
-// behaviour is never implemented from a mock — a dropdown offering templates that do not exist
-// would be exactly that.
+// A picture of the profile through a template, not a saved CV, and not necessarily what a CV
+// export prints either — a real CVPresentation curates its own subset of these same entries (see
+// CVPreview), can reorder and omit sections independently, and is what actually gets exported.
+// This view always shows everything, in the same order the Profile sections themselves keep it
+// (the persisted manual order — see docs/architecture/persistence.md), so the "+N more" note below
+// can teach the Profile = truth / CV = strategy distinction without silently re-deriving an order
+// the user didn't ask for. Deliberately no template selector: only one export template exists
+// today (ExportCVPresentationUseCase.SupportedTemplateKey), and CLAUDE.md is explicit that
+// later-phase behaviour is never implemented from a mock — a dropdown offering templates that do
+// not exist would be exactly that.
 export function ProfilePreview({ profile, highlighted, onFocusExperience }: ProfilePreviewProps) {
   const skillNames = (skillIds: string[]) => {
     const byId = new Map(profile.skills.map((skill) => [skill.id, skill.displayName]))
     return skillIds.map((id) => byId.get(id)).filter((name): name is string => Boolean(name))
   }
 
-  const experience = [...profile.experience].sort(compareStartDateDesc)
+  // Rendered in the profile's own persisted order (see ProfessionalProfile.Position) rather than
+  // re-sorted by date — Education and Certifications below already followed that rule; sorting
+  // Experience differently would silently discard whatever manual order the user last saved.
+  const experience = profile.experience
   const contactLine = [profile.contactInfo.email, profile.contactInfo.phone, profile.contactInfo.address].filter(Boolean)
 
   return (
@@ -35,7 +41,7 @@ export function ProfilePreview({ profile, highlighted, onFocusExperience }: Prof
         <h3>Profile preview</h3>
       </div>
       <p className={styles.pvCap}>
-        Your profile through a template — <b>not a saved CV</b>, but the same content an export would print today. Select anything below to jump to it.
+        A preview of your profile through a template — <b>not a saved CV</b>, and not necessarily what any particular CV export will print, since a CVPresentation can curate, reorder, or omit sections on its own. Select anything below to jump to it.
       </p>
 
       <div className={styles.paper}>
@@ -63,7 +69,19 @@ export function ProfilePreview({ profile, highlighted, onFocusExperience }: Prof
                 const shown = entry.achievements.slice(0, SHOWN_ACHIEVEMENTS)
                 const remaining = entry.achievements.length - shown.length
                 return (
-                  <button key={entry.id} type="button" className={styles.job} onClick={() => onFocusExperience(entry.id)}>
+                  <div
+                    key={entry.id}
+                    role="button"
+                    tabIndex={0}
+                    className={styles.job}
+                    onClick={() => onFocusExperience(entry.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        onFocusExperience(entry.id)
+                      }
+                    }}
+                  >
                     <span className={styles.jobHead}>
                       <span className={styles.jobTitle}>{entry.role || 'Untitled role'}</span>
                       <span className={styles.jobDate}>{formatDateRange(entry.startDate, entry.endDate)}</span>
@@ -86,7 +104,7 @@ export function ProfilePreview({ profile, highlighted, onFocusExperience }: Prof
                       </span>
                     )}
                     {skillNames(entry.skillIds).length > 0 && <span className={styles.tags}>{skillNames(entry.skillIds).join(' · ')}</span>}
-                  </button>
+                  </div>
                 )
               })}
             </>

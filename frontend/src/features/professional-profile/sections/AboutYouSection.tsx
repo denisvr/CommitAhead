@@ -107,17 +107,6 @@ export function AboutYouSection({ contactInfo, summaryMarkdown, onChange }: Abou
                 />
               )}
             </Field>
-            <Field label="Photo storage key" inlineHint="a raw storage reference, not an upload widget yet">
-              {(fieldProps) => (
-                <input
-                  {...fieldProps}
-                  type="text"
-                  className={inputStyles.input}
-                  value={contactInfo.photoStorageKey ?? ''}
-                  onChange={(event) => onChange({ ...contactInfo, photoStorageKey: event.target.value || null }, summaryMarkdown)}
-                />
-              )}
-            </Field>
             <Field label="Professional summary" inlineHint="each CV shortens it for the role" hint={`${summaryMarkdown.length} characters`} className={layout.wide}>
               {(fieldProps) => <textarea {...fieldProps} className={inputStyles.input} value={summaryMarkdown} onChange={(event) => onChange(contactInfo, event.target.value)} />}
             </Field>

@@ -265,9 +265,10 @@ and `restart: unless-stopped` — it sits alongside `backend/docker-compose.yml`
 Postgres) without conflict, using different ports (5434 vs 5433) and volumes. Both the app's `8080`
 and the db's `5434` are bound to `127.0.0.1` only, not `0.0.0.0` — this stack is for local use, not
 for being reachable from the rest of the LAN. The `app` service also carries a `deploy.resources.limits`
-(1 CPU / 1 GiB) — the real backstop against a runaway, uncancellable PDF parse
-(`docs/security/threat-model.md`, "PDF Upload") is the container's own resource ceiling, not
-anything in-process, so this makes that claim actually true for this stack rather than aspirational.
+(1 CPU / 1 GiB) — the real backstop against a runaway, uncancellable PDF parse (PdfPig counts pages
+of every freshly-rendered CV export, ADR-0020 — it has no cancellable API) is the container's own
+resource ceiling, not anything in-process, so this makes that claim actually true for this stack
+rather than aspirational.
 `ASPNETCORE_ENVIRONMENT=Docker` is this stack's own environment name: it skips
 `UseHsts()`/`UseHttpsRedirection()` (this stack has no TLS termination of its own — a real
 deployment behind a reverse proxy would use `Production` and keep both), and Data Protection keys

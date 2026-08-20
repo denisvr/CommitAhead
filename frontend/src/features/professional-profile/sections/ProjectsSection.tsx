@@ -51,7 +51,7 @@ function ProjectEntryReadView({ value, skills }: { value: ProjectEntryDto; skill
 // Projects are entirely optional — most engineers with a full employment history have one or
 // none, so this never carries a caution/critical badge, only a neutral count.
 export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionProps) {
-  const { error, handleSave } = useSectionSave(projects, replaceProjects)
+  const { error, isSaving, handleSave } = useSectionSave(projects, replaceProjects)
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(projects.length === 1 ? [projects[0].id] : []))
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
 
@@ -78,29 +78,40 @@ export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionP
 
   // No separate Save button — Done (exiting edit) persists the whole current list immediately,
   // since the API only offers whole-collection replace; the "per item" feel comes from the UI
-  // action, not a per-entity endpoint.
-  const stopEditingAndSave = (id: string) => {
-    setEditing(id, false)
-    void handleSave()
+  // action, not a per-entity endpoint. Edit mode only closes once the save actually succeeds, so a
+  // failed save leaves the entry open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async (id: string) => {
+    const success = await handleSave()
+    if (success) setEditing(id, false)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = projects
     const next = projects.filter((item) => item.id !== id)
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const moveTo = (id: string, delta: number) => {
+  // Applies the reorder optimistically but reverts to the pre-reorder array if the PUT fails — an
+  // optimistic update must never linger as if it had been saved.
+  const moveTo = async (id: string, delta: number) => {
     const index = projects.findIndex((entry) => entry.id === id)
     const target = index + delta
     if (index < 0 || target < 0 || target >= projects.length) return
+    const previous = projects
     const next = [...projects]
     ;[next[index], next[target]] = [next[target], next[index]]
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const { reorderFor } = useDragReorder(projects, onChange, (next) => void handleSave(next))
+  const persistReorder = async (next: ProjectEntryDto[]) => {
+    const success = await handleSave(next)
+    if (!success) onChange(projects)
+  }
+  const { reorderFor } = useDragReorder(projects, onChange, persistReorder, isSaving)
 
   return (
     <Card
@@ -110,7 +121,7 @@ export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionP
       meta={`${projects.length} project${projects.length === 1 ? '' : 's'}`}
       badge={<Badge tone="neutral">Optional</Badge>}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add a project
         </Button>
       }
@@ -138,10 +149,16 @@ export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionP
                 subtitle={entry.role || undefined}
               >
                 <div className={styles.moveRow}>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(entry.id, -1)} disabled={index === 0} aria-label={`Move ${entry.name || 'entry'} up`}>
+                  <Button type="button" variant="ghost" onClick={() => void moveTo(entry.id, -1)} disabled={isSaving || index === 0} aria-label={`Move ${entry.name || 'entry'} up`}>
                     Move up
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(entry.id, 1)} disabled={index === projects.length - 1} aria-label={`Move ${entry.name || 'entry'} down`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void moveTo(entry.id, 1)}
+                    disabled={isSaving || index === projects.length - 1}
+                    aria-label={`Move ${entry.name || 'entry'} down`}
+                  >
                     Move down
                   </Button>
                 </div>
@@ -150,10 +167,10 @@ export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionP
                     <ProjectEntryFields value={entry} onChange={(next) => onChange(projects.map((item) => (item.id === entry.id ? next : item)))} skills={skills} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="success" onClick={() => stopEditingAndSave(entry.id)}>
+                      <Button type="button" variant="success" onClick={() => void stopEditingAndSave(entry.id)} isLoading={isSaving}>
                         Done
                       </Button>
                     </div>
@@ -163,10 +180,10 @@ export function ProjectsSection({ projects, skills, onChange }: ProjectsSectionP
                     <ProjectEntryReadView value={entry} skills={skills} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)}>
+                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)} disabled={isSaving}>
                         Edit
                       </Button>
                     </div>

@@ -154,10 +154,16 @@ never imply a target number.
 
 ### ProfilePreview
 
-Renders the profile through a template as a document. Uses the `--paper-*` tokens and stays light in
-both themes. Selecting an element scrolls to and opens the matching profile entry; focusing or
-hovering a profile field highlights the corresponding line in the sheet. Below 1280px it moves into
-a dialog reached by exactly one control.
+Renders the profile through a template as a document, not necessarily what any particular CV
+export will print (a CVPresentation can curate, reorder, or omit sections on its own) — the copy
+says so explicitly. Every section renders in the profile's own persisted order, never re-derived
+(e.g. by date), so it never silently disagrees with the manual order the user set on the section
+itself. Uses the `--paper-*` tokens and stays light in both themes. Selecting an element scrolls to
+and opens the matching profile entry; focusing or hovering a profile field highlights the
+corresponding line in the sheet. Below 1280px it moves into a dialog reached by exactly one
+control. The clickable experience entry is a `div role="button"` — the one deliberate exception to
+"prefer native elements" below, because it wraps an achievement `<ul>`, and a native `<button>`'s
+content model does not permit list content as a descendant.
 
 ## Implementation rules
 

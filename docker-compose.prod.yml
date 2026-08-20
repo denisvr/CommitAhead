@@ -69,10 +69,11 @@ services:
     # Loopback-only, same reasoning as db above.
     ports:
       - "127.0.0.1:8080:8080"
-    # The real backstop against a runaway/uncancellable PDF parse is the container's own resource
-    # ceiling, not anything in-process (docs/security/threat-model.md, "PDF Upload" — PdfPig has no
-    # cancellable API). 1 CPU / 1 GiB is comfortably above this app's own steady-state footprint for
-    # a single-user local stack while still bounding a genuinely runaway parse or request.
+    # The real backstop against a runaway/uncancellable PDF parse (PdfPig counts pages of every
+    # freshly-rendered CV export, ADR-0020 — it has no cancellable API) is the container's own
+    # resource ceiling, not anything in-process. 1 CPU / 1 GiB is comfortably above this app's own
+    # steady-state footprint for a single-user local stack while still bounding a genuinely
+    # runaway parse or request.
     deploy:
       resources:
         limits:

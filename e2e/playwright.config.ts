@@ -18,7 +18,7 @@ if (baseURL !== APPROVED_BASE_URL) {
 export default defineConfig({
   testDir: './tests/journeys',
 
-  // workers: 1, never fullyParallel — all four journeys share one database, one seeded owner, and
+  // workers: 1, never fullyParallel — both journeys share one database, one seeded owner, and
   // one truncate-based reset (docs/testing/strategy.md §7.7). This bounds concurrency only; it is
   // not, and must never be relied on as, an execution-order guarantee.
   workers: 1,

@@ -5,6 +5,7 @@ import styles from '../sections/sections.module.css'
 type SkillFieldsProps = {
   value: SkillDto
   isEditing: boolean
+  disabled?: boolean
   onChange: (value: SkillDto) => void
   onRemove: () => void
   onStartEdit: () => void
@@ -34,7 +35,7 @@ const PROFICIENCIES: SkillProficiency[] = ['Beginner', 'Intermediate', 'Advanced
 // Skill/Level/Years/Last used columns become Skill/Category/Proficiency here — Years and Last
 // used aren't fields on SkillDto, and CLAUDE.md is explicit that later-phase behaviour is never
 // built from a mock, so they're dropped rather than invented for a pixel-exact column count.
-export function SkillFields({ value, isEditing, onChange, onRemove, onStartEdit, onStopEdit }: SkillFieldsProps) {
+export function SkillFields({ value, isEditing, disabled = false, onChange, onRemove, onStartEdit, onStopEdit }: SkillFieldsProps) {
   if (!isEditing) {
     return (
       <tr>
@@ -43,10 +44,10 @@ export function SkillFields({ value, isEditing, onChange, onRemove, onStartEdit,
         <td>{value.proficiency ?? '—'}</td>
         <td className={styles.skillActionCell}>
           <span className={styles.skillActions}>
-            <button type="button" className={`${styles.iconRemove} ${styles.iconEdit}`} onClick={onStartEdit} aria-label={`Edit ${value.displayName || 'skill'}`}>
+            <button type="button" disabled={disabled} className={`${styles.iconRemove} ${styles.iconEdit}`} onClick={onStartEdit} aria-label={`Edit ${value.displayName || 'skill'}`}>
               <Icon name="pencil" />
             </button>
-            <button type="button" className={`${styles.iconRemove} ${styles.iconDelete}`} onClick={onRemove} aria-label={`Remove ${value.displayName || 'skill'}`}>
+            <button type="button" disabled={disabled} className={`${styles.iconRemove} ${styles.iconDelete}`} onClick={onRemove} aria-label={`Remove ${value.displayName || 'skill'}`}>
               <Icon name="x" />
             </button>
           </span>
@@ -85,10 +86,10 @@ export function SkillFields({ value, isEditing, onChange, onRemove, onStartEdit,
       </td>
       <td className={styles.skillActionCell}>
         <span className={styles.skillActions}>
-          <button type="button" className={`${styles.iconRemove} ${styles.iconDone}`} onClick={onStopEdit} aria-label={`Done editing ${value.displayName || 'skill'}`}>
+          <button type="button" disabled={disabled} className={`${styles.iconRemove} ${styles.iconDone}`} onClick={onStopEdit} aria-label={`Done editing ${value.displayName || 'skill'}`}>
             <Icon name="check" />
           </button>
-          <button type="button" className={`${styles.iconRemove} ${styles.iconDelete}`} onClick={onRemove} aria-label={`Remove ${value.displayName || 'skill'}`}>
+          <button type="button" disabled={disabled} className={`${styles.iconRemove} ${styles.iconDelete}`} onClick={onRemove} aria-label={`Remove ${value.displayName || 'skill'}`}>
             <Icon name="x" />
           </button>
         </span>

@@ -23,7 +23,7 @@ Authentication is fully backend-mediated using Supabase magic link with PKCE:
 6. An **absolute session timeout of 7 days** applies regardless of activity; re-authentication is required after it.
 7. `POST /auth/logout` revokes the refresh token server-side and clears all cookies. An issued access token remains valid for up to 15 minutes after logout — this window is accepted. No server-side denylist is maintained in the MVP.
 8. CSRF validation is required on all state-changing requests.
-9. The Supabase anon key, service-role key, and AI provider key are never sent to the browser.
+9. The Supabase anon key and service-role key are never sent to the browser.
 
 ## Consequences
 

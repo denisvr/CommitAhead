@@ -49,9 +49,9 @@ applies.
   assert on the actual rendered content without a browser round-trip or a golden-file screenshot
   diff for every PR (visual-regression fixtures stay a deliberately separate, post-merge-only gate
   per the roadmap).
-- **Matches this project's existing PDF posture.** `PdfPig` (ADR-0010) already reads PDFs
-  server-side for job-posting uploads; QuestPDF writing them keeps every PDF touchpoint in managed
-  .NET code, no second toolchain to reason about.
+- **Matches this project's existing PDF posture.** `PdfPig` (ADR-0010) already reads back the PDFs
+  this export renderer produces, in tests (see above); QuestPDF writing them keeps every PDF
+  touchpoint in managed .NET code, no second toolchain to reason about.
 - **Page-limit enforcement is a first-class concern**, and this project's own use case
   (`ExportCVPresentationUseCase`) enforces it as a hard cap: it renders, asks the renderer for the
   actual page count (the renderer counts pages itself, via `PdfPig`, after generating the PDF —

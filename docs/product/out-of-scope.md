@@ -2,19 +2,13 @@
 
 The following are explicitly excluded. Implementing any of them would add complexity disproportionate to the MVP goal or contradict the design principles in `docs/product/brief.md`.
 
-## Study Queue
-- Spaced-repetition algorithm (SM-2 or similar)
-- Automated archival based on mastery level
-- Interview-date scheduling or countdown pressure
-- Study streaks, gamification, or habit tracking
+## Study Queue, Job Analyses, and AI (removed, not merely deferred)
 
-## AI
-- AI grading of LeetCode solutions
-- AI generation of system design diagrams or complete code solutions
-- Automatic tag synonym expansion (e.g. `"dp"` → `"dynamic-programming"`)
-- Automatic retry of failed AI commands (every retry is an explicit user action)
-- Scheduled or background AI analysis
-- AI calls in automated CI (FakeAIProvider only — no exceptions)
+The Study Queue and the AI-assisted Job Analysis pipeline (spaced repetition, AI grading, AI
+generation of diagrams/solutions, scheduled or background AI analysis, `FakeAIProvider`-gated CI
+calls, and everything else that used to live under these two headings) were fully **removed** from
+the codebase on 2026-08-18, not merely kept out of MVP scope — see `docs/current-state.md`. Do not
+re-introduce either area without an explicit product decision to do so.
 
 ## Professional Profile
 - Per-job CV versioning (CVPresentations reference canonical entries; no duplication)
@@ -40,7 +34,6 @@ The following are explicitly excluded. Implementing any of them would add comple
 - Offline / PWA mode
 - Mobile app
 - Export to external calendars or task managers
-- Orphaned Storage file cleanup job (logged and accepted as eventual consistency for MVP)
 
 ## Analytics
 - Usage dashboards, study-time tracking, or aggregate statistics

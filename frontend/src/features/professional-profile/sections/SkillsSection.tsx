@@ -38,7 +38,7 @@ const createEntry = (category: SkillCategory): SkillDto => ({ id: crypto.randomU
 // alignment between groups. Group headings are colSpan divider rows inside the one table/tbody
 // instead, so every row (any group) shares the same column layout.
 export function SkillsSection({ skills, onChange }: SkillsSectionProps) {
-  const { error, handleSave } = useSectionSave(skills, replaceSkills)
+  const { error, isSaving, handleSave } = useSectionSave(skills, replaceSkills)
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
 
   const setEditing = (id: string, value: boolean) => {
@@ -56,16 +56,19 @@ export function SkillsSection({ skills, onChange }: SkillsSectionProps) {
 
   // No separate Save button — Done (the check icon) persists the whole current list immediately,
   // since the API only offers whole-collection replace; the "per item" feel comes from the UI
-  // action, not a per-entity endpoint.
-  const stopEditingAndSave = (id: string) => {
-    setEditing(id, false)
-    void handleSave()
+  // action, not a per-entity endpoint. Edit mode only closes once the save actually succeeds, so a
+  // failed save leaves the entry open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async (id: string) => {
+    const success = await handleSave()
+    if (success) setEditing(id, false)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = skills
     const next = skills.filter((item) => item.id !== id)
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
   const groups = CATEGORY_ORDER.map((category) => ({ category, entries: skills.filter((skill) => skill.category === category) })).filter((group) => group.entries.length > 0)
@@ -77,7 +80,7 @@ export function SkillsSection({ skills, onChange }: SkillsSectionProps) {
       heading="Skills"
       meta={`${skills.length} skill${skills.length === 1 ? '' : 's'}${groups.length > 0 ? ` in ${groups.length} group${groups.length === 1 ? '' : 's'}` : ''}`}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add a skill
         </Button>
       }
@@ -113,10 +116,11 @@ export function SkillsSection({ skills, onChange }: SkillsSectionProps) {
                     key={entry.id}
                     value={entry}
                     isEditing={editingIds.has(entry.id)}
+                    disabled={isSaving}
                     onChange={(next) => onChange(skills.map((item) => (item.id === entry.id ? next : item)))}
-                    onRemove={() => removeEntry(entry.id)}
+                    onRemove={() => void removeEntry(entry.id)}
                     onStartEdit={() => setEditing(entry.id, true)}
-                    onStopEdit={() => stopEditingAndSave(entry.id)}
+                    onStopEdit={() => void stopEditingAndSave(entry.id)}
                   />
                 ))}
               </Fragment>

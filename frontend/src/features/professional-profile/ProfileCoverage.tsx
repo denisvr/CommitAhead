@@ -8,7 +8,11 @@ type Check = { id: string; tone: 'critical' | 'caution'; text: string }
 // equally. It is deliberately NOT "career-knowledge coverage" — that measure needs employment
 // duration represented, data quality, and per-entry richness, and the product decision so far is
 // to not build that formula yet (see ADR-0024 / docs/design/design-system notes). Replace this
-// function, not its caller, when that formula exists.
+// function, not its caller, when that formula exists. The six signals below are also spelled out
+// verbatim in the caption rendered next to the percentage, so the number never implies more than
+// it measures.
+const SIGNAL_COUNT = 6
+
 function computeCoverage(profile: ProfessionalProfileResponse): number {
   const signals = [
     profile.contactInfo.name.trim() !== '' && profile.contactInfo.email.trim() !== '' && profile.summaryMarkdown.trim() !== '',
@@ -50,15 +54,18 @@ export function ProfileCoverage({ profile }: { profile: ProfessionalProfileRespo
   return (
     <div className={styles.panel}>
       <div className={styles.cov}>
-        <h3>Profile coverage</h3>
+        <h3>Basic signals</h3>
         <span className={styles.spacer} />
         <b>{coverage}%</b>
       </div>
       {/* A native <progress>, not a width-styled div — no inline style attribute is allowed
           under the production CSP (ADR-0016), and this is the semantic, accessible element for
           exactly this value anyway. */}
-      <progress className={styles.bar} value={coverage} max={100} aria-label={`Profile coverage: ${coverage}%`} />
-      <p className={styles.exp}>How much of your career is recorded — not a score of how good a CV would be.</p>
+      <progress className={styles.bar} value={coverage} max={100} aria-label={`Basic signals present: ${coverage}%`} />
+      <p className={styles.exp}>
+        {SIGNAL_COUNT} basic signals, equally weighted: name, email and summary filled in; at least one experience; an achievement recorded on one of them; education; a skill; a language. Not a
+        score of how complete your career history is or how good a CV would be.
+      </p>
 
       {checks.length > 0 && (
         <details className={styles.attn}>
@@ -69,9 +76,11 @@ export function ProfileCoverage({ profile }: { profile: ProfessionalProfileRespo
           </summary>
           <ul className={styles.checks}>
             {checks.map((check) => (
-              <li key={check.id} onClick={() => scrollToSection(check.id)}>
-                <span className={[styles.mark, styles[check.tone]].join(' ')}>{check.tone === 'critical' ? '✕' : '!'}</span>
-                <span>{check.text}</span>
+              <li key={check.id}>
+                <button type="button" className={styles.checkButton} onClick={() => scrollToSection(check.id)}>
+                  <span className={[styles.mark, styles[check.tone]].join(' ')}>{check.tone === 'critical' ? '✕' : '!'}</span>
+                  <span>{check.text}</span>
+                </button>
               </li>
             ))}
           </ul>

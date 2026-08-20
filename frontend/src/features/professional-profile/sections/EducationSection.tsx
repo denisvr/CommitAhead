@@ -33,7 +33,7 @@ function EducationEntryReadView({ value }: { value: EducationEntryDto }) {
 }
 
 export function EducationSection({ education, onChange }: EducationSectionProps) {
-  const { error, handleSave } = useSectionSave(education, replaceEducation)
+  const { error, isSaving, handleSave } = useSectionSave(education, replaceEducation)
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(education.length === 1 ? [education[0].id] : []))
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
 
@@ -60,29 +60,40 @@ export function EducationSection({ education, onChange }: EducationSectionProps)
 
   // No separate Save button — Done (exiting edit) persists the whole current list immediately,
   // since the API only offers whole-collection replace; the "per item" feel comes from the UI
-  // action, not a per-entity endpoint.
-  const stopEditingAndSave = (id: string) => {
-    setEditing(id, false)
-    void handleSave()
+  // action, not a per-entity endpoint. Edit mode only closes once the save actually succeeds, so a
+  // failed save leaves the entry open (with the error shown) rather than looking saved.
+  const stopEditingAndSave = async (id: string) => {
+    const success = await handleSave()
+    if (success) setEditing(id, false)
   }
 
-  const removeEntry = (id: string) => {
+  const removeEntry = async (id: string) => {
+    const previous = education
     const next = education.filter((item) => item.id !== id)
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const moveTo = (id: string, delta: number) => {
+  // Applies the reorder optimistically but reverts to the pre-reorder array if the PUT fails — an
+  // optimistic update must never linger as if it had been saved.
+  const moveTo = async (id: string, delta: number) => {
     const index = education.findIndex((entry) => entry.id === id)
     const target = index + delta
     if (index < 0 || target < 0 || target >= education.length) return
+    const previous = education
     const next = [...education]
     ;[next[index], next[target]] = [next[target], next[index]]
     onChange(next)
-    void handleSave(next)
+    const success = await handleSave(next)
+    if (!success) onChange(previous)
   }
 
-  const { reorderFor } = useDragReorder(education, onChange, (next) => void handleSave(next))
+  const persistReorder = async (next: EducationEntryDto[]) => {
+    const success = await handleSave(next)
+    if (!success) onChange(education)
+  }
+  const { reorderFor } = useDragReorder(education, onChange, persistReorder, isSaving)
 
   return (
     <Card
@@ -91,7 +102,7 @@ export function EducationSection({ education, onChange }: EducationSectionProps)
       heading="Education and training"
       meta={education.length > 0 ? `${education.length} entr${education.length === 1 ? 'y' : 'ies'}` : undefined}
       actions={
-        <Button type="button" variant="success" size="sm" onClick={addEntry}>
+        <Button type="button" variant="success" size="sm" onClick={addEntry} disabled={isSaving}>
           + Add education or a course
         </Button>
       }
@@ -120,10 +131,16 @@ export function EducationSection({ education, onChange }: EducationSectionProps)
                 meta={entry.startDate ? formatDateRange(entry.startDate, entry.endDate) : undefined}
               >
                 <div className={styles.moveRow}>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(entry.id, -1)} disabled={index === 0} aria-label={`Move ${entry.degree || 'entry'} up`}>
+                  <Button type="button" variant="ghost" onClick={() => void moveTo(entry.id, -1)} disabled={isSaving || index === 0} aria-label={`Move ${entry.degree || 'entry'} up`}>
                     Move up
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => moveTo(entry.id, 1)} disabled={index === education.length - 1} aria-label={`Move ${entry.degree || 'entry'} down`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void moveTo(entry.id, 1)}
+                    disabled={isSaving || index === education.length - 1}
+                    aria-label={`Move ${entry.degree || 'entry'} down`}
+                  >
                     Move down
                   </Button>
                 </div>
@@ -132,10 +149,10 @@ export function EducationSection({ education, onChange }: EducationSectionProps)
                     <EducationEntryFields value={entry} onChange={(next) => onChange(education.map((item) => (item.id === entry.id ? next : item)))} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="success" onClick={() => stopEditingAndSave(entry.id)}>
+                      <Button type="button" variant="success" onClick={() => void stopEditingAndSave(entry.id)} isLoading={isSaving}>
                         Done
                       </Button>
                     </div>
@@ -145,10 +162,10 @@ export function EducationSection({ education, onChange }: EducationSectionProps)
                     <EducationEntryReadView value={entry} />
                     <div className={styles.rowActions}>
                       <span className={styles.rowActionsSpacer} />
-                      <Button type="button" variant="danger" onClick={() => removeEntry(entry.id)}>
+                      <Button type="button" variant="danger" onClick={() => void removeEntry(entry.id)} disabled={isSaving}>
                         Delete
                       </Button>
-                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)}>
+                      <Button type="button" variant="accent" onClick={() => setEditing(entry.id, true)} disabled={isSaving}>
                         Edit
                       </Button>
                     </div>

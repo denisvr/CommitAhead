@@ -7,7 +7,6 @@
 | Application | Local Docker image via `docker-compose.prod.yml` | Kestrel serves the built React SPA and API from one container |
 | Database | Local Docker PostgreSQL | Persistent named volume; reproducible roles, migrations, and RLS |
 | Auth | Supabase Auth, when configured | Backend-mediated magic link + PKCE; no browser Supabase key |
-| Storage | Supabase Storage, when configured | Private `job-postings` bucket; backend forwards the current user's JWT (ADR-0018) |
 | Secrets | Gitignored environment file | Local production-like mechanism only, not the Phase 6c answer |
 
 Phase 6a is a local production-like runtime, not an internet deployment. Its verified boundary and
@@ -15,8 +14,8 @@ manual acceptance checklist are in `README.md`; current priorities are in `docs/
 
 ## Future Internet Deployment (Phase 6c — Deferred)
 
-The target data services remain Supabase PostgreSQL, Auth, and private Storage, but the application
-hosting and secrets platform are not decided. The Vite production build (`frontend/dist`) is copied
+The target data services remain Supabase PostgreSQL and Auth, but the application hosting and
+secrets platform are not decided. The Vite production build (`frontend/dist`) is copied
 into the published ASP.NET Core artifact's `wwwroot` and served by Kestrel from the same origin as
 the API. One container/process will be deployed. See `docs/tbd.md`; do not begin Phase 6c without
 explicit user authorization.
@@ -55,13 +54,13 @@ remains open in `docs/tbd.md`.
 
 ## Environment Boundaries
 
-| Environment | Purpose | AI calls |
+| Environment | Purpose | External calls |
 |---|---|---|
-| Local development | Fast feature iteration | Real provider optional and called only by an explicit Analyze action; automated tests use fakes/stubs |
-| Local production-like (Phase 6a) | Exercise the deployable image locally | Real provider only when configured and explicitly invoked |
-| Isolated local E2E (Phase 6b) | Four explicit Playwright journeys | Real Anthropic adapter against the deterministic local stub; no real external calls |
-| CI | Automated tests | `FakeAIProvider` or stubbed HTTP only; no real external AI |
-| Internet production (Phase 6c) | Future live use | Real configured `IAIProvider`; deferred |
+| Local development | Fast feature iteration | Local Supabase Auth instance only (ADR-0023); no Cloud, no other external service |
+| Local production-like (Phase 6a) | Exercise the deployable image locally | Real Supabase Auth only when configured |
+| Isolated local E2E (Phase 6b) | Two explicit Playwright journeys | Local Supabase Auth stub only; zero real external calls |
+| CI | Automated tests | Stubbed HTTP only; no real external calls |
+| Internet production (Phase 6c) | Future live use | Real Supabase Auth (Cloud); deferred |
 
 The Phase 6b E2E stack is local, isolated, and non-persistent. It is not staging and must never
-connect to Phase 6a data or real Supabase/Anthropic services.
+connect to Phase 6a data or real Supabase services.

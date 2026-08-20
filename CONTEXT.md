@@ -6,7 +6,7 @@ A private, invite-only web application for maintaining one canonical professiona
 
 ### Professional Profile
 
-**ProfessionalProfile**: The canonical record of a user's professional identity — a singleton per user (ADR-0015), not a single global record. Contains six ordered canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. CVPresentations are separate aggregate roots that reference and curate these collections; entries are never duplicated.
+**ProfessionalProfile**: The canonical record of a user's professional identity — a singleton per user (ADR-0015), not a single global record. Contains six canonical collections — ExperienceEntry, EducationEntry, Skill, LanguageEntry, CertificationEntry, ProjectEntry — plus ProfileLinks. Only four of those six (ExperienceEntry, EducationEntry, CertificationEntry, ProjectEntry) carry a persisted, user-controlled manual order (`Position`); Skill, LanguageEntry, and ProfileLink have no such ordering. CVPresentations are separate aggregate roots that reference and curate these collections; entries are never duplicated.
 _Avoid_: CV, resume, profile
 
 **CVPresentation**: An independently addressable aggregate root representing a curated, locale-specific view over one ProfessionalProfile. Selects and orders entries from each canonical collection by ID, may override the summary, and carries formatting rules: targetMarket, locale, template, photo inclusion, personal-details visibility, date format, and page limit.
