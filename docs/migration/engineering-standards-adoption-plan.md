@@ -3,9 +3,9 @@
 Analysis date: 2026-08-20. Canonical contract analysed: the `engineering-standards` repository
 (`ENGINEERING.md` plus the routed detailed standards listed in section 3).
 
-This document is the **analysis and migration plan**, and it remains a snapshot of the repository as
-analysed on the date above. Implementation has since begun: `docs/current-state.md` is the authority
-on what is done, what is blocked on the private package feed, and what remains open. Section 10
+This document is the **analysis and migration plan**. Sections 1 to 7 remain a snapshot of the
+repository as analysed on the date above; section 8 is kept current as phases land.
+Phases 0 and 1 are complete and Phase 2 is next — `docs/current-state.md` is the authority on status. Section 10
 records the decisions this analysis raised and how each was resolved; `docs/tbd.md` remains the owner
 of unresolved project decisions.
 
@@ -38,7 +38,7 @@ What must change, in order of weight:
    `AGENTS.md` restate project policy instead of importing `ENGINEERING.md`, and ADR-0008 directly
    contradicts a non-negotiable rule.
 2. **No CQRS/vertical slices and no `IApplicationMediator`** — 28 `*UseCase` classes with
-   `ExecuteAsync`, injected directly into two multi-operation controllers (10 and 14 actions).
+   `ExecuteAsync`, injected directly into two multi-operation controllers (10 and 13 actions).
 3. **Repository ports wrap ordinary EF Core work**, including `SaveChangesAsync` on the port — the
    exact shape the standard names as prohibited.
 4. **No shared Result/Error contract and no RFC 9457 Problem Details.** Expected failures are
@@ -52,9 +52,10 @@ the error-body and OpenAPI-declaration phases. The single genuinely hard technic
 owns the transaction once the shared EF Core command behavior meets the existing RLS `set_config`
 transaction (section 10 B).
 
-Rough scale: ~25 application operations → ~25 slices and ~25 endpoint classes, ~110 new small files,
-3 repositories deleted, 2 controllers dissolved. Eleven phases, each independently buildable and
-revertable.
+Exact scale: **28 application operations** become 28 slices and 28 endpoint classes — two in the
+Phase 3 pilot, the remaining **26** in Phase 4 — alongside 3 repositories deleted and 2
+multi-operation controllers dissolved. Section 8 carries the operation-by-operation inventory.
+Eleven phases, each independently buildable and revertable.
 
 ---
 
@@ -79,7 +80,7 @@ e2e/       Playwright, 2 approved journeys, own package.json (out of scope here)
 | Dependency direction | Correct; API references Infrastructure only at composition root (ADR-0013) | `backend/tests/CommitAhead.Api.Tests/Architecture/ArchitectureTests.cs` |
 | Use cases | 28 `*UseCase` classes, `ExecuteAsync`, no command/query split, no validators, no `Features/` folder | `backend/src/CommitAhead.Application/ProfessionalProfiles/ReplaceExperienceUseCase.cs` |
 | Dispatch | None — constructor-injected use cases (14 in one controller) | `backend/src/CommitAhead.Api/Features/CVPresentations/CVPresentationController.cs:26` |
-| Endpoints | 2 multi-operation controllers (10 + 14 actions), 6 auth controllers, health, me, 2 catch-alls; `MapFallbackToFile` for the SPA shell only | `backend/src/CommitAhead.Api/Features/ProfessionalProfiles/ProfessionalProfileController.cs` |
+| Endpoints | 2 multi-operation controllers (10 + 13 actions), 6 auth controllers, health, me, 2 catch-alls; `MapFallbackToFile` for the SPA shell only | `backend/src/CommitAhead.Api/Features/ProfessionalProfiles/ProfessionalProfileController.cs` |
 | Persistence | `CommitAheadDbContext` (Infrastructure) behind `IProfessionalProfileRepository`, `ICVPresentationRepository`, `IUserRepository`; ports expose `SaveChangesAsync` | `backend/src/CommitAhead.Infrastructure/ProfessionalProfiles/ProfessionalProfileRepository.cs` |
 | Transactions / tenancy | `RlsTransactionActionFilter` opens a transaction + `set_config('app.current_user_id', …, is_local)` per `[UsesOwnerScopedData]` action; RLS policies in `scripts/database/001,002,004` | `backend/src/CommitAhead.Infrastructure/Persistence/RlsSessionContext.cs` |
 | Migrations | 13 EF migrations + model snapshot, Postgres | `backend/src/CommitAhead.Infrastructure/Persistence/Migrations/` |
@@ -187,7 +188,7 @@ Severity: **M** mandatory violation · **S** security · **A** architectural mig
 | 4 | M/A | No dispatch boundary; controllers inject up to 14 use cases → `IApplicationMediator.SendAsync` from every endpoint; `AddDevalenteMediator(ApplicationAssembly)` | `CVPresentationController.cs:26-54` | architectural | no | medium | 3, 13 |
 | 5 | M/A | 3 repository ports around ordinary EF Core, including `SaveChangesAsync` on the port → one `ICommitAheadDbContext` in Application used directly by handlers; delete the repositories; `AsNoTracking()` + projections on reads | `IProfessionalProfileRepository.cs`, `ICVPresentationRepository.cs`, `IUserRepository.cs` | architectural | no | **high** | 13 |
 | 6 | M | NetArchTest rule 2 forbids `Microsoft.EntityFrameworkCore` in Application, which blocks the mandated DbContext boundary → relax to allow provider-neutral EF Core while still banning Npgsql/Infrastructure/ASP.NET; rewrite rule 5 (`PersistencePorts`) | `ArchitectureTests.cs:29-42,106` | architectural | no | low | 5 |
-| 7 | M/A | Multi-operation controllers (10 and 14 actions) → one `<Op>Endpoint` class + one action each, under an abstract base endpoint owning the route prefix; routes stay byte-identical | both feature controllers | architectural | no | medium | 4 |
+| 7 | M/A | Multi-operation controllers (10 and 13 actions) → one `<Op>Endpoint` class + one action each, under an abstract base endpoint owning the route prefix; routes stay byte-identical | both feature controllers | architectural | no | medium | 4 |
 | 8 | M | No `Result`/`Result<T>`/`Error`; failures are `null`, enums, and `DomainValidationException` used as control flow → shared Results + per-feature error catalogs with stable lowercase codes | `ProfessionalProfileMutationResult.cs`, `ValidationExceptionFilter.cs` | behavioral | no | medium | 3, 13 |
 | 9 | M | No RFC 9457 contract; bespoke `outcomeCode` extension; **zero** `ProducesResponseType` → `ApiProblemDetails` + `errors[]` via injected `IResultProblemDetailsFactory`, declared statuses per operation | grep: 0 hits in `backend/src/` | behavioral | **yes** | medium | 8 |
 | 10 | M | No input validation layer; ad-hoc guards inline (e.g. email regex in the controller) → FluentValidation validators + validation behavior registered before the transaction behavior | `LoginController.cs:31-38` | behavioral | **yes** (400 bodies) | medium | 8 |
@@ -278,144 +279,245 @@ messaging/cache/observability stack, no E2E framework changes, no `Devalente.Sha
 
 ## 8. Phased migration plan
 
-Every phase is one branch/PR, leaves `dotnet build --warnaserror` and `npm run build` green, and
-ends with the verification block in section 9.
+Every phase leaves `dotnet build --warnaserror` and `npm run build` green, and ends with the
+verification block in section 9.
 
-### Phase 0 — Adoption metadata and tool routing (docs only)
+**PR granularity.** Phases 0 and 1 shipped together as a single baseline pull request. That is the
+one recorded exception, and it is deliberate: neither phase changes application behaviour beyond
+adding limits, and splitting instruction-file plumbing from the dependency and analyzer baseline
+would have produced two PRs that cannot be reviewed independently anyway. Every architectural phase
+from Phase 2 onward is its own reviewed pull request, and Phase 4 is further split one pull request
+per feature folder. Do not fold a later phase into an earlier one.
 
-Create `docs/engineering-context.md` (standards revision, root namespace `CommitAhead`, topology
-modular monolith, security profile S2, ASP.NET Core MVC, React, EF Core/Npgsql, generated clients,
-approved deviations). Convert `CLAUDE.md` and `AGENTS.md` into adapters importing
-`../engineering-standards/ENGINEERING.md` plus the context file, keeping only project-specific
-*strengthenings* (design-system routing, E2E contract, removed-features guard) and deleting
-duplicated shared policy. Draft the ADR set: supersede ADR-0008; record S2; record the
-client-generator decision (section 10 D).
+**Package installation is per phase.** A `Devalente.Shared.*` reference is added in the phase whose
+code uses it, never earlier. An unused package reference is unreviewable: nothing in the diff shows
+what it is for.
 
-**Done when:** both instruction files load the contract, no rule in the repository contradicts a
-non-negotiable, every section 6 row is represented in the context file or an ADR.
-**Contract/data risk:** none.
+| Package | Introduced in |
+|---|---|
+| `Devalente.Shared.AspNetCore.Security.Testing` | Phase 1 (endpoint-authorization inventory) |
+| `Devalente.Shared.Cqrs.Abstractions`, `Devalente.Shared.Cqrs` | Phase 3 (mediator dispatch) |
+| `Devalente.Shared.Results` | Phase 3 (pilot command and query contracts) |
+| `Devalente.Shared.Validation.FluentValidation` and `FluentValidation` | Phase 3 (pilot validator) |
+| `Devalente.Shared.EntityFrameworkCore` | Phase 3 (command transaction behaviour) |
+| `Devalente.Shared.AspNetCore.Mvc` | Phase 3 (pilot Problem Details responses) |
+| `Devalente.Shared.OpenApi.NSwag` | Phase 8 (generator migration) |
+| `Devalente.Shared.Auditing.Abstractions` | Not planned (ADR decision H: skipped) |
 
-### Phase 1 — Baseline build, dependency and security controls
+### Phase 0 — Adoption metadata and tool routing (complete)
 
-Add the credential-free `NuGet.Config` source; install
-`Devalente.Shared.{Cqrs.Abstractions,Cqrs,Results,Validation.FluentValidation,AspNetCore.Mvc,EntityFrameworkCore,AspNetCore.Security.Testing}`;
-refresh lock files. Raise analyzers (#20). Add explicit `[Authorize]` to every protected action and
-the `MvcEndpointAuthorizationVerifier` inventory test with a reviewed `ApprovedAnonymousEndpoints`
-list (#16). Add the transport limits and export rate-limit policy (#19). Instantiate the security
-plan / evidence register (#17).
+Created `docs/engineering-context.md`; converted `CLAUDE.md` and `AGENTS.md` into discovery adapters
+importing `../engineering-standards/ENGINEERING.md` plus the context file; recorded ADR-0025
+(canonical contract), ADR-0026 (CQRS slices with a project-owned mediator, superseding ADR-0008),
+ADR-0027 (security profile S2), and ADR-0028 (transaction and RLS ownership).
 
-**Done when:** restore works locally and in CI from the private feed; the inventory test fails if any
-action loses its declaration; new limits have tests. No application behavior changes beyond the
-added limits.
+Documentation only; no behaviour change.
 
-### Phase 2 — Solution boundaries and dependency direction
+### Phase 1 — Baseline build, dependency, and security controls (complete)
 
-Split tests: `Infrastructure.Tests` → `Infrastructure.IntegrationTests` (plus unit tests staying with
-the boundary they prove); `Api.Tests` → `Api.IntegrationTests`; decide where architecture tests live.
-Adopt the `Fixtures/` + `Features/` layout. Split CI into unit and integration jobs. Do the
-mechanical one-type-per-file work **only** for files that survive the later phases unchanged
+- `NuGet.Config` declaring the private feed with no credential, and `packageSourceMapping` pinning
+  the `Devalente.Shared.*` prefix to it.
+- CI authenticates that feed in both jobs that restore .NET projects (`backend`,
+  `combined-artifact`), failing closed with a named error when the secret is absent, and
+  `packages: read` is granted to exactly those two jobs.
+- Dependabot private registry configured against its own separate secret store.
+- Explicit `[Authorize]` on every protected MVC operation, plus the mechanical
+  endpoint-authorization inventory test and its reviewed `ApprovedAnonymousEndpoints` list.
+- `AnalysisLevelSecurity=latest-all`; the one finding it surfaced fixed with a narrow justified
+  suppression, not a global one.
+- Finite transport ceilings: a Kestrel request-body cap derived from the domain's own limits, and a
+  JSON depth bound on both serializer configurations.
+- A global state-changing rate limit per authenticated caller, and a tighter CV-export policy, with
+  enforcement tests including `429` and per-caller partition isolation.
+- The S2 evidence register in `docs/security/threat-model.md`.
+
+Only `Devalente.Shared.AspNetCore.Security.Testing` is installed in this phase.
+
+**Not satisfied by code, and recorded as open in the evidence register:** the Actions secret, the
+Dependabot secret, the package read grant, and branch protection are GitHub settings the repository
+owner must configure. Kestrel's body limit is asserted as configuration, because a test host does not
+run Kestrel; its runtime rejection is a deployed check.
+
+### Phase 2 — Solution boundaries and dependency direction (next)
+
+Split tests: `Infrastructure.Tests` becomes `Infrastructure.IntegrationTests` with unit tests kept
+at the boundary they prove; `Api.Tests` becomes `Api.IntegrationTests`; decide where the architecture
+tests live. Adopt the `Fixtures/` and `Features/` layout. Split CI into unit and integration jobs.
+
+Do the mechanical one-type-per-file work only for files the later phases do not rewrite anyway
 (`ProfessionalProfileEntryDtos.cs`, `CVExportDocument.cs`, the small controllers' response records).
-Remove the stale `InternalsVisibleTo` comment (#24).
 
-**Done when:** `dotnet test` passes with identical test counts; no formatting-only churn is mixed
-into later phases.
+**Done when:** `dotnet test` passes with identical test counts, and no formatting-only churn is left
+to collide with a later architectural diff.
 
-### Phase 3 — EF Core persistence boundary + pilot vertical slice
+### Phase 3 — The pilot slice, end to end
 
-Introduce `ICommitAheadDbContext` in Application; register `CommitAheadDbContext` and the interface
-to the same scoped instance; relax/rewrite the two NetArchTest rules (#6). Migrate **one query and
-one command** end to end as the pilot: `GetProfessionalProfile` (query, `Result<T>`, `AsNoTracking`
-projection) and `ReplaceExperience` (command, validator, one expected domain failure,
-`DanglingSelectionCleanup` as a feature-owned service), plus their `<Op>Endpoint` classes,
-`ProfessionalProfileErrors`, and a real-provider integration test. Repositories remain for
-everything else.
+This phase is deliberately self-contained: it stands up the complete dispatch pipeline for two
+operations rather than deferring parts of it. A pilot that cannot execute its own validator or return
+its own Problem Details would prove nothing about the target architecture.
 
-**Done when:** the pilot path is green at unit, integration, and HTTP level; the old use cases for
-those two operations are deleted; **review before repeating** — this is the gate the adoption guide
-requires.
-**Risk:** transaction ownership (section 10 B) must be resolved here, in the pilot, not later.
+Install and register, in this order:
 
-### Phase 4 — Complete the persistence and slice migration
+1. `ICommitAheadDbContext` in Application, with `CommitAheadDbContext` and the interface resolving to
+   the same scoped instance; the two NetArchTest rules relaxed to permit provider-neutral EF Core in
+   Application while still banning Npgsql, Infrastructure, and ASP.NET Core.
+2. `AddDevalenteMediator(ApplicationAssembly)` — the pilot endpoints dispatch exactly one command or
+   query each and inject `IApplicationMediator`, nothing else.
+3. `AddDevalenteRequestValidation(ApplicationAssembly)` — registered **before** the transaction
+   behaviour, so an invalid request is refused before a transaction begins.
+4. `AddDevalenteEfCoreTransactions<CommitAheadDbContext>` — the command transaction owner.
+5. The RLS owner-scope behaviour, registered **after** the EF transaction behaviour so it runs
+   inside the transaction that behaviour opened (ADR-0028).
+6. `AddDevalenteMvcProblemDetails`, so the pilot's own failures return the canonical RFC 9457 shape
+   through an injected `IResultProblemDetailsFactory`.
 
-Repeat the pilot pattern across the remaining ~23 operations (ProfessionalProfile x8, CVPresentation
-x13, Identity x1, Auth x4 — Auth handlers keep `ISupabaseAuthClient` as a capability port). Delete
-all three repositories and the `PersistencePorts` list. `SaveChangesAsync` disappears from
-Application except where the transaction behavior owns it.
+Migrate two operations: `GetProfessionalProfile` (query, `Result<T>`, `AsNoTracking` projection) and
+`ReplaceExperience` (command, validator, one expected domain failure, `DanglingSelectionCleanup` as a
+feature-owned service). Add `ProfessionalProfileErrors`, the two endpoint classes, and the
+real-provider tests ADR-0028 requires. The three repositories stay for every operation not yet
+migrated.
 
-**Done when:** no `I*Repository` remains; every handler uses `ICommitAheadDbContext`; RLS isolation
-tests still prove cross-owner denial; both E2E journeys pass.
-Sub-batch by feature (one PR per feature folder) — do not ship 23 slices in one diff.
+**Done when:** both pilot operations are green at unit, integration, and HTTP level; the pilot
+validator demonstrably executes and its failures arrive as `ApiProblemDetails` with an `errors` array
+and a JSON pointer; ADR-0028's verification gate passes in full; the old use-case classes for those
+two operations are deleted. **Review before repeating** — this is the gate the adoption guide
+requires, and the shape fixed here is the shape of everything in Phase 4.
 
-### Phase 5 — Mediator dispatch
+### Phase 4 — Migrate the remaining 26 operations
 
-Register `AddDevalenteMediator(ApplicationAssembly)`; endpoints inject `IApplicationMediator` and
-send exactly one command or query. Health and the catch-alls stay outside dispatch (the permitted
-probe/operational exception). Handler discovery must report missing/duplicate registrations.
+Repeat the reviewed pilot pattern across the 26 operations listed in the inventory below, one pull
+request per feature folder. Delete all three repositories and the `PersistencePorts` list once the
+last operation that used them is migrated. `SaveChangesAsync` disappears from Application except
+where the transaction behaviour owns it.
 
-**Done when:** no endpoint injects a handler or DbContext; a duplicate or missing handler fails
-loudly in a test.
+Routes, verbs, and success status codes stay byte-identical throughout, so the SPA, the generated
+client, and both E2E journeys are unaffected by the restructure itself.
+
+**Done when:** no `I*Repository` remains; every handler uses `ICommitAheadDbContext`; the RLS
+isolation tests still prove cross-owner denial; both E2E journeys pass.
+
+### Phase 5 — Prove no direct dispatch remains
+
+Phase 4 removes the last direct call by construction, so this phase is a closing gate rather than new
+plumbing, and it exists to stop the pattern coming back:
+
+- delete the per-use-case registrations from `AddApplication`;
+- add an architecture rule that an API endpoint may not depend on a handler, a use-case class, a
+  repository, or a `DbContext` — the mechanical equivalent of the endpoint-authorization inventory,
+  for dispatch;
+- delete `RlsTransactionActionFilter` and `[UsesOwnerScopedData]`, whose responsibility moved into the
+  pipeline in Phase 3.
+
+**Done when:** the new architecture rule fails if a single endpoint reaches past the mediator.
 
 ### Phase 6 — Endpoint-per-operation restructure
 
-Dissolve the two controllers into base endpoints plus one class/action each, with
-`<Op>Request`/`<Op>Response` in their own files (#7, #15). **Routes, verbs, and success status codes
-stay byte-identical** so the frontend, generated client, and both E2E journeys are unaffected.
+Dissolve the two multi-operation controllers into abstract base endpoints plus one class and one
+action each, with `<Op>Request` and `<Op>Response` in their own files. Routes, verbs, and success
+status codes remain byte-identical.
 
-**Done when:** `git diff` on `schema.d.ts` shows no path/verb/success-shape change; API integration
-tests unchanged and green.
+**Done when:** `git diff` on `schema.d.ts` shows no path, verb, or success-shape change, and the API
+tests are unchanged and green.
 
-### Phase 7 — Result, validation, and RFC 9457 error contract
+### Phase 7 — Complete the Result and RFC 9457 contract
 
-Complete the error catalogs; delete `ValidationExceptionFilter` and the
-`DomainValidationException`-as-control-flow path (keeping constructor and value-object guards only
-for genuine internal invariants); replace the `outcomeCode` extension and bare
-`NotFound()`/`Conflict()` with `IResultProblemDetailsFactory`; declare
-`ProducesResponseType<ApiProblemDetails>` per operation; register validation **before** the EF
-transaction behavior.
+Phase 3 already proved this path for the pilot; this phase generalizes it and removes the old
+mechanisms. Complete the per-feature error catalogs; delete `ValidationExceptionFilter` and the
+`DomainValidationException`-as-control-flow path, keeping constructor and value-object guards only
+for genuine internal invariants; replace the bespoke `outcomeCode` extension and the bare
+`NotFound()` and `Conflict()` results; declare `ProducesResponseType<ApiProblemDetails>` per
+operation; convert the rate-limiter rejection body from plain text to the same contract.
 
-**Done when:** every failure path returns `ApiProblemDetails` with `errors[]`, asserted by
-integration tests on exact code/type/status/pointer. Contract change — needs section 10 C approval.
+**Done when:** every failure path returns `ApiProblemDetails` with an `errors` array, asserted on
+exact code, type, status, and pointer.
 
 ### Phase 8 — OpenAPI and generated client
 
-Per section 10 D: either adopt `Devalente.Shared.OpenApi.NSwag` with a committed pinned
-`config.nswag`, `DevalenteGenerateApiClients`, `SkipNSwag=True` on the integration-test project
-references, and a rewritten frontend API layer; or keep `openapi-typescript` under the ADR exception
-with pinned settings. Either way: fix the export operation's binary + `problem+json` declarations
-(#11), and add OpenAPI-shape assertions for binary/bodyless operations. Enable `ValidateOnStart` once
-generation no longer runs the host (#18).
+Adopt `Devalente.Shared.OpenApi.NSwag` with a committed, fully pinned `config.nswag`,
+`DevalenteGenerateApiClients`, and `SkipNSwag=True` on integration-test project references; rewrite
+the frontend API layer against the generated client. Fix the export operation's binary and
+`problem+json` declarations, and add OpenAPI-shape assertions for binary and bodyless operations.
+Enable `ValidateOnStart` once document generation no longer runs the host.
 
-**Done when:** the CI drift check passes with the pinned tool; the client types the PDF response;
+**Done when:** the CI drift check passes with the pinned tool, the client types the PDF response, and
 startup fails closed on missing Supabase configuration, with a test.
 
 ### Phase 9 — Frontend error localization
 
-Add `localization/i18n.ts` + `locales/en/errors.json`; normalize transport errors preserving `code`,
-`detail`, `pointer`, `parameters`, `traceId`; replace the 38 `describeError` sites with
-`translateApiError`; associate pointer-bearing errors with fields; add the CI key-set check.
+Add `localization/i18n.ts` and `locales/en/errors.json`; normalize transport errors preserving
+`code`, `detail`, `pointer`, `parameters`, and `traceId`; replace the 38 `describeError` sites with
+`translateApiError`; associate pointer-bearing errors with their fields; add the CI key-set check.
 
-**Done when:** no API error text is derived from a hand-parsed `message`/`detail` string; the
-missing-key fallback order (locale → default → `detail` → generic + traceId) is tested; nothing
-renders API text as HTML.
+**Done when:** no API error text is derived from a hand-parsed `message` or `detail` string, and the
+fallback order (locale, default locale, `detail`, generic plus traceId) is tested.
 
 ### Phase 10 — Integration tests and Testcontainers completion
 
-Fill the authorization matrix per operation (no credential → 401; malformed/expired/wrong-audience →
-401; another owner's resource → 404/403; authorized success), Problem Details assertions,
-limit/rate-limit/429 tests, and one egress-disabled verification run.
+Fill the API authorization matrix per operation, add the Problem Details assertions, and run one
+egress-disabled verification.
 
-**Done when:** every protected operation has its matrix; the suite passes with outbound network
+**Done when:** every protected operation has its matrix and the suite passes with outbound network
 disabled.
 
 ### Phase 11 — Documentation reconciliation and final verification
 
 Update `CLAUDE.md`, `AGENTS.md`, `docs/architecture/solution.md`, `docs/testing/strategy.md`,
-`docs/security/threat-model.md` (ASVS identifiers + evidence register), `docs/current-state.md`,
-`docs/roadmap.md`, `CONTEXT.md`; finalize the ADR supersessions; record the standards revision in
-`docs/engineering-context.md`. Run the full suite plus both E2E journeys via `npm run e2e:full`.
+`docs/security/threat-model.md`, `docs/current-state.md`, `docs/roadmap.md`, and `CONTEXT.md`;
+finalize the ADR supersessions; confirm the recorded standards revision. Run the full suite plus both
+E2E journeys.
 
-**Done when:** no document describes repositories or use-case classes as current; the evidence
-register covers every S2 control with an owner.
+**Done when:** no document describes repositories or use-case classes as current, and the evidence
+register has an owner against every S2 control.
+
+### Operation migration inventory
+
+All 28 current `*UseCase` classes, each appearing exactly once. The pilot migrates two; Phase 4
+migrates the remaining 26. Target names follow the canonical contract: `<Operation>Command` or
+`<Operation>Query`, a matching `Handler`, and an `<Operation>Endpoint` owning one action.
+
+Every route below is preserved byte-identical through Phases 3 to 6. The only contract changes are
+the failure bodies (Phase 7) and the export operation's declared response (Phase 8).
+
+| # | Current `*UseCase` | Route | Target request | Handler | Endpoint | Phase |
+|---|---|---|---|---|---|---|
+| 1 | `GetProfessionalProfileUseCase` | `GET /api/professional-profile` | `GetProfessionalProfileQuery` | `GetProfessionalProfileQueryHandler` | `GetProfessionalProfileEndpoint` | 3 |
+| 2 | `ReplaceExperienceUseCase` | `PUT /api/professional-profile/experience` | `ReplaceExperienceCommand` | `ReplaceExperienceCommandHandler` | `ReplaceExperienceEndpoint` | 3 |
+| 3 | `CreateProfessionalProfileUseCase` | `POST /api/professional-profile` | `CreateProfessionalProfileCommand` | `CreateProfessionalProfileCommandHandler` | `CreateProfessionalProfileEndpoint` | 4 |
+| 4 | `UpdateProfessionalProfileUseCase` | `PUT /api/professional-profile` | `UpdateProfessionalProfileCommand` | `UpdateProfessionalProfileCommandHandler` | `UpdateProfessionalProfileEndpoint` | 4 |
+| 5 | `ReplaceEducationUseCase` | `PUT /api/professional-profile/education` | `ReplaceEducationCommand` | `ReplaceEducationCommandHandler` | `ReplaceEducationEndpoint` | 4 |
+| 6 | `ReplaceSkillsUseCase` | `PUT /api/professional-profile/skills` | `ReplaceSkillsCommand` | `ReplaceSkillsCommandHandler` | `ReplaceSkillsEndpoint` | 4 |
+| 7 | `ReplaceLanguagesUseCase` | `PUT /api/professional-profile/languages` | `ReplaceLanguagesCommand` | `ReplaceLanguagesCommandHandler` | `ReplaceLanguagesEndpoint` | 4 |
+| 8 | `ReplaceCertificationsUseCase` | `PUT /api/professional-profile/certifications` | `ReplaceCertificationsCommand` | `ReplaceCertificationsCommandHandler` | `ReplaceCertificationsEndpoint` | 4 |
+| 9 | `ReplaceProjectsUseCase` | `PUT /api/professional-profile/projects` | `ReplaceProjectsCommand` | `ReplaceProjectsCommandHandler` | `ReplaceProjectsEndpoint` | 4 |
+| 10 | `ReplaceProfileLinksUseCase` | `PUT /api/professional-profile/profile-links` | `ReplaceProfileLinksCommand` | `ReplaceProfileLinksCommandHandler` | `ReplaceProfileLinksEndpoint` | 4 |
+| 11 | `GetCVPresentationsUseCase` | `GET /api/cv-presentations` | `GetCVPresentationsQuery` | `GetCVPresentationsQueryHandler` | `GetCVPresentationsEndpoint` | 4 |
+| 12 | `GetCVPresentationUseCase` | `GET /api/cv-presentations/{id}` | `GetCVPresentationQuery` | `GetCVPresentationQueryHandler` | `GetCVPresentationEndpoint` | 4 |
+| 13 | `CreateCVPresentationUseCase` | `POST /api/cv-presentations` | `CreateCVPresentationCommand` | `CreateCVPresentationCommandHandler` | `CreateCVPresentationEndpoint` | 4 |
+| 14 | `UpdateCVPresentationUseCase` | `PUT /api/cv-presentations/{id}` | `UpdateCVPresentationCommand` | `UpdateCVPresentationCommandHandler` | `UpdateCVPresentationEndpoint` | 4 |
+| 15 | `DeleteCVPresentationUseCase` | `DELETE /api/cv-presentations/{id}` | `DeleteCVPresentationCommand` | `DeleteCVPresentationCommandHandler` | `DeleteCVPresentationEndpoint` | 4 |
+| 16 | `ReplaceExperienceSelectionsUseCase` | `PUT /api/cv-presentations/{id}/experience-selections` | `ReplaceExperienceSelectionsCommand` | `ReplaceExperienceSelectionsCommandHandler` | `ReplaceExperienceSelectionsEndpoint` | 4 |
+| 17 | `ReplaceEducationSelectionsUseCase` | `PUT /api/cv-presentations/{id}/education-selections` | `ReplaceEducationSelectionsCommand` | `ReplaceEducationSelectionsCommandHandler` | `ReplaceEducationSelectionsEndpoint` | 4 |
+| 18 | `ReplaceSkillSelectionsUseCase` | `PUT /api/cv-presentations/{id}/skill-selections` | `ReplaceSkillSelectionsCommand` | `ReplaceSkillSelectionsCommandHandler` | `ReplaceSkillSelectionsEndpoint` | 4 |
+| 19 | `ReplaceLanguageSelectionsUseCase` | `PUT /api/cv-presentations/{id}/language-selections` | `ReplaceLanguageSelectionsCommand` | `ReplaceLanguageSelectionsCommandHandler` | `ReplaceLanguageSelectionsEndpoint` | 4 |
+| 20 | `ReplaceCertificationSelectionsUseCase` | `PUT /api/cv-presentations/{id}/certification-selections` | `ReplaceCertificationSelectionsCommand` | `ReplaceCertificationSelectionsCommandHandler` | `ReplaceCertificationSelectionsEndpoint` | 4 |
+| 21 | `ReplaceProjectSelectionsUseCase` | `PUT /api/cv-presentations/{id}/project-selections` | `ReplaceProjectSelectionsCommand` | `ReplaceProjectSelectionsCommandHandler` | `ReplaceProjectSelectionsEndpoint` | 4 |
+| 22 | `ReplaceProfileLinkSelectionsUseCase` | `PUT /api/cv-presentations/{id}/profile-link-selections` | `ReplaceProfileLinkSelectionsCommand` | `ReplaceProfileLinkSelectionsCommandHandler` | `ReplaceProfileLinkSelectionsEndpoint` | 4 |
+| 23 | `ExportCVPresentationUseCase` | `GET /api/cv-presentations/{id}/export` | `ExportCVPresentationQuery` | `ExportCVPresentationQueryHandler` | `ExportCVPresentationEndpoint` | 4 (binary contract completed in 8) |
+| 24 | `GetCurrentUserUseCase` | `GET /api/me` | `GetCurrentUserQuery` | `GetCurrentUserQueryHandler` | `GetCurrentUserEndpoint` | 4 |
+| 25 | `LoginUseCase` | `POST /auth/login` | `LoginCommand` | `LoginCommandHandler` | `LoginEndpoint` | 4 |
+| 26 | `CallbackUseCase` | `GET /auth/callback` | `CompleteAuthCallbackCommand` | `CompleteAuthCallbackCommandHandler` | `CompleteAuthCallbackEndpoint` | 4 |
+| 27 | `RefreshUseCase` | `POST /auth/refresh` | `RefreshSessionCommand` | `RefreshSessionCommandHandler` | `RefreshSessionEndpoint` | 4 |
+| 28 | `LogoutUseCase` | `POST /auth/logout` | `LogoutCommand` | `LogoutCommandHandler` | `LogoutEndpoint` | 4 |
+
+Counts: 10 ProfessionalProfile operations (rows 1 to 10, matching the controller's 10 actions),
+13 CVPresentation operations (rows 11 to 23, matching its 13 actions), 1 identity query, 4 auth
+commands. Two migrate in Phase 3, twenty-six in Phase 4.
+
+**Routes with no application operation**, which therefore appear in no row above and are not lost:
+`GET /api/health` (operational probe, stays outside dispatch), `GET /auth/csrf` (antiforgery token
+issuance, a transport concern), `POST /auth/e2e/session` (E2E-only, no production meaning),
+`* /api/{**catchall}` and `* /auth/{**catchall}` (404 routing), and the `MapFallbackToFile` SPA shell.
+Phase 6 keeps each as a one-action endpoint class; none gains or loses a route.
 
 ---
 
@@ -457,7 +559,7 @@ E2E stays post-merge/manual per the project contract.
 > **Resolved 2026-08-21.** The owner directed that the canonical contract wins and that local
 > decisions in conflict with it are not preserved. That settles **A** (reverse ADR-0008 — ADR-0026),
 > **B** (option 1, the standards-aligned path — ADR-0028), **D** (migrate to NSwag in Phase 8; no
-> retention ADR is written), **F** (feed being provisioned; pin `Devalente.Shared.* 0.2.0`), **G**
+> retention ADR is written), **F** (feed provisioned and reachable; pinned at the stable `Devalente.Shared.* 0.2.0`), **G**
 > (S2 — ADR-0027), and **H** (skip auditing abstractions). **C** and **E** remain open: both are
 > answered by the contract in principle, but the exact observable-contract cutover and the localization
 > scope are confirmed when Phases 7 and 9 are implemented. The original text is kept below because it
@@ -525,7 +627,7 @@ recommendation is to skip it and keep the existing timestamps.
 | Risk | Boundary / mitigation |
 |---|---|
 | **No persisted-data change in the entire plan** (unless H is approved) | Every phase is schema-neutral; rollback is a `git revert` with no data unwind. This is the single biggest safety property of this migration. |
-| Phase 4 volume (~23 slices, 3 repositories deleted) | One PR per feature folder, each independently green; the Phase 3 pilot must be reviewed *before* the pattern repeats. |
+| Phase 4 volume (26 slices, 3 repositories deleted) | One PR per feature folder, each independently green; the Phase 3 pilot must be reviewed *before* the pattern repeats. |
 | RLS regression while repositories are removed | `RlsIsolationPhase2Tests` plus owner-scoped integration tests run in every Phase 3/4 PR; the RLS scripts and policies are never touched. |
 | Transaction semantics regression (commit after the response starts) | Decision B is settled in the pilot and asserted by a test that a failed command persists nothing and a successful one is visible before the response completes. |
 | Contract drift breaking the SPA or E2E | Routes/verbs/success shapes frozen through Phase 6; the `schema.d.ts` diff is the tripwire; E2E journeys run at 6, 7, and 8. |
