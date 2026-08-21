@@ -69,10 +69,45 @@ priority, and document routing; detailed rules remain in their authoritative doc
 
 ## Current priority
 
-There is no known outstanding work. The Professional Profile / CVPresentation MVP (editing,
-curation, export) is complete and E2E-verified; Auth is complete and E2E-verified. The Phase 6a
-manual acceptance checklist (`README.md`, against `docker-compose.prod.yml` with real credentials)
-remains an optional, not-yet-run manual pass — it does not block anything else.
+**Adopting the Devalente engineering standards (ADR-0025).** The canonical contract lives in the
+sibling `../engineering-standards` checkout; `CLAUDE.md` and `AGENTS.md` are discovery adapters and
+`docs/engineering-context.md` holds this project's context. The gap analysis, phase definitions, and
+the 28-operation migration inventory are in
+`docs/migration/engineering-standards-adoption-plan.md`.
+
+**Phases 0 and 1 are complete.** They shipped as one baseline pull request — the single recorded
+exception to one-PR-per-phase, because neither changes application behaviour beyond adding limits.
+Every phase from Phase 2 onward is its own reviewed pull request.
+
+Phase 1 delivered: the private feed declared without credentials plus `packageSourceMapping`; CI
+authenticating that feed in both jobs that restore .NET projects, failing closed when the secret is
+absent, with `packages: read` scoped to exactly those two jobs; the Dependabot private registry;
+explicit `[Authorize]` on every protected operation with a mechanical endpoint-authorization
+inventory test; `AnalysisLevelSecurity=latest-all`; finite transport ceilings (a Kestrel body cap
+derived from the domain's own limits, and a JSON depth bound on both serializer configurations); a
+global per-caller state-changing rate limit and a tighter CV-export policy, both with `429`
+enforcement tests; and the S2 evidence register in `docs/security/threat-model.md`.
+
+**Next: Phase 2 — solution boundaries.** Split the test projects into unit and integration
+boundaries (`Infrastructure.IntegrationTests`, `Api.IntegrationTests`), adopt the `Fixtures/` and
+`Features/` layout, and split CI into unit and integration jobs. Phase 3, the reviewed pilot slice,
+comes after it and must be reviewed before its pattern is repeated in Phase 4.
+
+Packages are installed per phase, in the phase whose code uses them. Phase 1 installed only
+`Devalente.Shared.AspNetCore.Security.Testing`. `Cqrs`, `Cqrs.Abstractions`, `Results`,
+`Validation.FluentValidation`, `EntityFrameworkCore`, and `AspNetCore.Mvc` all arrive in Phase 3;
+`OpenApi.NSwag` in Phase 8. Do not add a reference ahead of the code that uses it.
+
+**Open, and owned outside this repository** — these are GitHub settings the repository owner must
+configure, tracked in the evidence register: the `DEVALENTE_PACKAGES_TOKEN` secret in the **Actions**
+store, the same value in the separate **Dependabot** store, the package read grant for this
+repository, and branch protection on `main`. CI fails closed with a named error until the Actions
+secret exists.
+
+The feature work itself is complete: the Professional Profile / CVPresentation MVP (editing,
+curation, export) and Auth are both implemented and E2E-verified. The Phase 6a manual acceptance
+checklist (`README.md`, against `docker-compose.prod.yml` with real credentials) remains an optional,
+not-yet-run manual pass — it does not block anything else.
 
 Do not begin Phase 6c, choose hosting, or implement internet-deployment controls without explicit
 user authorization. Do not re-introduce Study, Job Analyses, Interview Notes, AI analysis, or
@@ -94,7 +129,11 @@ Never reuse the Phase 6a database for E2E and never treat the E2E stack as stagi
 ## Authoritative documents
 
 - `docs/roadmap.md` owns implementation status and next work.
-- `CLAUDE.md` owns engineering constraints; `AGENTS.md` owns agent startup instructions.
+- `../engineering-standards/ENGINEERING.md` owns engineering rules (ADR-0025);
+  `docs/engineering-context.md` owns this project's context and binding project decisions;
+  `CLAUDE.md` and `AGENTS.md` are discovery adapters only.
+- `docs/migration/engineering-standards-adoption-plan.md` owns the standards-adoption gap analysis
+  and phase sequence.
 - `CONTEXT.md` owns domain terminology.
 - `docs/testing/strategy.md` Layer 7 owns E2E rules; `e2e/README.md` owns E2E commands.
 - `README.md` owns local development, local production-like runtime, and manual acceptance commands.

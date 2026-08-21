@@ -1,13 +1,16 @@
-using CommitAhead.Application.Identity;
+﻿using CommitAhead.Application.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommitAhead.Api.Features.Me;
 
-// Secure by default: no [Authorize] needed — the authorization fallback policy already requires
-// an authenticated, enabled user for any endpoint without [AllowAnonymous]. An explicit [Authorize]
-// here would use AuthorizationOptions.DefaultPolicy instead of FallbackPolicy, bypassing
-// EnabledUserRequirement entirely.
+// The contract requires every MVC operation to declare its authorization explicitly — the
+// fallback policy protects mistakes, the attribute makes intent reviewable. [Authorize] resolves
+// AuthorizationOptions.DefaultPolicy, which AddCommitAheadAuthentication sets to the same
+// authenticated-and-enabled-user policy as FallbackPolicy, so this does not bypass
+// EnabledUserRequirement (EnabledUserPolicyTests proves it).
 [ApiController]
+[Authorize]
 [Route("api/me")]
 public sealed class MeController : ControllerBase
 {

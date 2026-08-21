@@ -49,6 +49,34 @@ public static class SecurityServiceCollectionExtensions
                         QueueLimit = 0,
                     }));
 
+            options.AddPolicy("export", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: ResolveCallerPartitionKey(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        Window = TransportLimits.ExportWindow,
+                        PermitLimit = TransportLimits.ExportsPerWindow,
+                        QueueLimit = 0,
+                    }));
+
+            // A global limiter rather than an attribute per mutating action: a new state-changing
+            // endpoint cannot forget to opt in, which is the failure mode an attribute has and this
+            // does not. Safe methods are exempt so ordinary page loads are never throttled, and
+            // static files never reach here at all (UseStaticFiles runs before the limiter).
+            // Endpoint policies stack on top of this rather than replacing it, so CV export is
+            // bounded by both.
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                IsStateChanging(context.Request.Method)
+                    ? RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: $"write:{ResolveCallerPartitionKey(context)}",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            Window = TransportLimits.WriteWindow,
+                            PermitLimit = TransportLimits.WritesPerMinute,
+                            QueueLimit = 0,
+                        })
+                    : RateLimitPartition.GetNoLimiter("safe-method"));
+
             options.OnRejected = async (context, cancellationToken) =>
             {
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -78,5 +106,28 @@ public static class SecurityServiceCollectionExtensions
     public static IApplicationBuilder UseCommitAheadCors(this IApplicationBuilder app, IWebHostEnvironment environment)
     {
         return environment.IsDevelopment() ? app.UseCors(DevCorsPolicy) : app;
+    }
+
+    private static bool IsStateChanging(string method)
+    {
+        return !HttpMethods.IsGet(method)
+            && !HttpMethods.IsHead(method)
+            && !HttpMethods.IsOptions(method)
+            && !HttpMethods.IsTrace(method);
+    }
+
+    /// <summary>
+    /// Partitions by the authenticated subject so one caller cannot spend another caller's budget,
+    /// and falls back to the remote address only for anonymous requests. The claim is "sub" rather
+    /// than ClaimTypes.NameIdentifier because MapInboundClaims is disabled (see
+    /// AuthenticationServiceCollectionExtensions), so inbound claim names are never rewritten.
+    /// </summary>
+    private static string ResolveCallerPartitionKey(HttpContext context)
+    {
+        var subject = context.User.FindFirst("sub")?.Value;
+
+        return string.IsNullOrEmpty(subject)
+            ? $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}"
+            : $"sub:{subject}";
     }
 }
