@@ -123,6 +123,22 @@ Log access is restricted. The exact production retention period remains TBD in `
 - SBOM generated for production releases; final container image scanned with Trivy (high/critical blocks deployment)
 - New direct dependencies reviewed for: maintenance status, ownership, repository health, necessity
 
+#### npm dependency overrides
+
+`package.json` cannot carry comments, so each override is recorded here. An override is a
+security-relevant dependency decision: it must say why it exists and when it can be removed, and it
+must never pin a vulnerable version. Ranges rather than exact pins are deliberate — an exact pin
+stops receiving patches, which is exactly how the `js-yaml` pin below became the vulnerable version
+it was meant to protect against.
+
+| Override | Reason | Removable when |
+|---|---|---|
+| `js-yaml: ^4.3.1` | Transitive through `@redocly/openapi-core` (via `openapi-typescript`). Versions 4.0.0 to 4.3.0 carry GHSA-5p4m-2wfm-xmqj, quadratic CPU consumption in `!!omap` resolution. | `@redocly/openapi-core` requires a fixed version itself. |
+| `nanoid: ^3.3.18` | Transitive through `vite` then `postcss`. Versions below 3.3.18 carry GHSA-2v37-7h3g-55p8, custom generators can loop indefinitely at size zero. | `postcss` requires 3.3.18 or later, or moves to nanoid 5.x. |
+| `brace-expansion: 5.0.9` | Transitive, pinned past a prior advisory. | The dependents that pull it request a fixed version themselves. |
+| `openapi-typescript.typescript: $typescript` | Not a security pin. Keeps the generator on the same TypeScript version as the application so generated output cannot be produced by a different compiler than the one that type-checks it. | The generator is replaced by NSwag in Phase 8 of the adoption plan. |
+
+
 ### Automated Security Tests (every PR, blocking)
 - Gitleaks secret scanning
 - Dependency CVE scans (direct + transitive)

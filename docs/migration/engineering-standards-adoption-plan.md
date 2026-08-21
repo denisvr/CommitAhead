@@ -168,7 +168,8 @@ Project side: `CLAUDE.md`, `AGENTS.md`, `CONTEXT.md`, `docs/current-state.md`,
 - **Supply chain**: committed `packages.lock.json` x8, `--locked-mode` restore,
   `dotnet list package --vulnerable --include-transitive` failing on any hit,
   `npm audit --audit-level=high`, Gitleaks, SHA-pinned Actions, Dependabot,
-  `permissions: contents: read`, documented reason for each npm `override`.
+  `permissions: contents: read`. Each npm `override` now records its reason and removal condition
+  in `docs/security/threat-model.md`; before this migration they carried none.
 - **Generated-client discipline**: generated files never hand-edited, regenerated in CI with a
   `git diff --exit-code` drift gate, contract derived from the built project (not a live endpoint).
 - **ADR practice**: 24 ADRs with status/context/decision/consequences/alternatives and explicit
