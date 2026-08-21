@@ -3,14 +3,16 @@
 Analysis date: 2026-08-20. Canonical contract analysed: the `engineering-standards` repository
 (`ENGINEERING.md` plus the routed detailed standards listed in section 3).
 
-This document is an **analysis and migration plan only**. No code, configuration, or other
-documentation was changed to produce it, and none of the phases below have started. It does not
-resolve any open decision — section 10 lists the decisions that require explicit approval before
-implementation begins, and `docs/tbd.md` remains the owner of unresolved project decisions.
+This document is the **analysis and migration plan**, and it remains a snapshot of the repository as
+analysed on the date above. Implementation has since begun: `docs/current-state.md` is the authority
+on what is done, what is blocked on the private package feed, and what remains open. Section 10
+records the decisions this analysis raised and how each was resolved; `docs/tbd.md` remains the owner
+of unresolved project decisions.
 
-Nothing in this document overrides an accepted ADR. Where the plan requires reversing one
-(ADR-0008), that reversal must be recorded as a new superseding ADR before the corresponding code
-changes.
+Nothing in this document overrides an accepted ADR. The reversals it required are recorded as ADRs:
+ADR-0025 (the standards are the canonical contract), ADR-0026 (CQRS vertical slices with a
+project-owned mediator, superseding ADR-0008), ADR-0027 (security profile S2), and ADR-0028
+(transaction and RLS ownership).
 
 ---
 
@@ -451,6 +453,15 @@ E2E stays post-merge/manual per the project contract.
 ---
 
 ## 10. Decisions that require explicit approval
+
+> **Resolved 2026-08-21.** The owner directed that the canonical contract wins and that local
+> decisions in conflict with it are not preserved. That settles **A** (reverse ADR-0008 — ADR-0026),
+> **B** (option 1, the standards-aligned path — ADR-0028), **D** (migrate to NSwag in Phase 8; no
+> retention ADR is written), **F** (feed being provisioned; pin `Devalente.Shared.* 0.2.0`), **G**
+> (S2 — ADR-0027), and **H** (skip auditing abstractions). **C** and **E** remain open: both are
+> answered by the contract in principle, but the exact observable-contract cutover and the localization
+> scope are confirmed when Phases 7 and 9 are implemented. The original text is kept below because it
+> records why each decision went the way it did.
 
 **A. Reverse ADR-0008.** The contract mandates CQRS vertical slices with canonical operation names
 and `IApplicationMediator`; ADR-0008 forbids exactly that. Adopting the standards means superseding

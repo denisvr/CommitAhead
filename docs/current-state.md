@@ -69,10 +69,24 @@ priority, and document routing; detailed rules remain in their authoritative doc
 
 ## Current priority
 
-There is no known outstanding work. The Professional Profile / CVPresentation MVP (editing,
-curation, export) is complete and E2E-verified; Auth is complete and E2E-verified. The Phase 6a
-manual acceptance checklist (`README.md`, against `docker-compose.prod.yml` with real credentials)
-remains an optional, not-yet-run manual pass — it does not block anything else.
+**Adopting the Devalente engineering standards (ADR-0025).** The canonical contract now lives in the
+sibling `../engineering-standards` checkout; `CLAUDE.md` and `AGENTS.md` are discovery adapters and
+`docs/engineering-context.md` holds this project's context. The gap analysis and phased plan are in
+`docs/migration/engineering-standards-adoption-plan.md`.
+
+Done: Phase 0 (adoption metadata, ADR-0025 through ADR-0028, ADR-0008 superseded) and the
+package-independent part of Phase 1 (`NuGet.Config` for the private feed, explicit `[Authorize]` on
+every protected operation, `AnalysisLevelSecurity=latest-all`).
+
+Blocked on the private `Devalente.Shared.* 0.2.0` feed being restorable locally and in CI: the MVC
+authorization-inventory test, and every code phase from the DbContext boundary onward (Phases 3-9).
+Still open inside Phase 1 with no package dependency: transport and rate limits for the export and
+write endpoints, and the security evidence register required by ADR-0027.
+
+The feature work itself is complete: the Professional Profile / CVPresentation MVP (editing,
+curation, export) and Auth are both implemented and E2E-verified. The Phase 6a manual acceptance
+checklist (`README.md`, against `docker-compose.prod.yml` with real credentials) remains an optional,
+not-yet-run manual pass — it does not block anything else.
 
 Do not begin Phase 6c, choose hosting, or implement internet-deployment controls without explicit
 user authorization. Do not re-introduce Study, Job Analyses, Interview Notes, AI analysis, or
@@ -94,7 +108,11 @@ Never reuse the Phase 6a database for E2E and never treat the E2E stack as stagi
 ## Authoritative documents
 
 - `docs/roadmap.md` owns implementation status and next work.
-- `CLAUDE.md` owns engineering constraints; `AGENTS.md` owns agent startup instructions.
+- `../engineering-standards/ENGINEERING.md` owns engineering rules (ADR-0025);
+  `docs/engineering-context.md` owns this project's context and binding project decisions;
+  `CLAUDE.md` and `AGENTS.md` are discovery adapters only.
+- `docs/migration/engineering-standards-adoption-plan.md` owns the standards-adoption gap analysis
+  and phase sequence.
 - `CONTEXT.md` owns domain terminology.
 - `docs/testing/strategy.md` Layer 7 owns E2E rules; `e2e/README.md` owns E2E commands.
 - `README.md` owns local development, local production-like runtime, and manual acceptance commands.

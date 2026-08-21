@@ -1,11 +1,13 @@
-using CommitAhead.Api.Security;
+﻿using CommitAhead.Api.Security;
 using CommitAhead.Application.CVPresentations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommitAhead.Api.Features.CVPresentations;
 
 /// <summary>Multi-row per owner (model.md) — unlike ProfessionalProfile, every route below is scoped by {id}.</summary>
 [ApiController]
+[Authorize]
 [Route("api/cv-presentations")]
 public sealed class CVPresentationController : ControllerBase
 {

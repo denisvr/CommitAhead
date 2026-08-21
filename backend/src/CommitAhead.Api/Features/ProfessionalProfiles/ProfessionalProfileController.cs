@@ -1,11 +1,13 @@
-using CommitAhead.Api.Security;
+﻿using CommitAhead.Api.Security;
 using CommitAhead.Application.ProfessionalProfiles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommitAhead.Api.Features.ProfessionalProfiles;
 
 /// <summary>A singleton per owner (model.md) — no {id} anywhere in this route; the current user always has at most one.</summary>
 [ApiController]
+[Authorize]
 [Route("api/professional-profile")]
 [UsesOwnerScopedData]
 public sealed class ProfessionalProfileController : ControllerBase

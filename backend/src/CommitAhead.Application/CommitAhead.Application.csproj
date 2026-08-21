@@ -5,7 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Lets Application.Tests exercise internal untrusted-AI-output parsers/validators (AI/) directly, without making them public. -->
+    <!-- Lets Application.Tests exercise internal helpers (RestrictedMarkdownParser, CVExportDateFormatter,
+         DanglingSelectionCleanup) directly, without making them public. -->
     <InternalsVisibleTo Include="CommitAhead.Application.Tests" />
   </ItemGroup>
 
