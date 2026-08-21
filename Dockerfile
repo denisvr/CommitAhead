@@ -19,7 +19,7 @@ RUN npm run build
 # (latestPatch, same band only) refuses to run, failing `dotnet publish` inside the image with an
 # SDK-not-found error even though a *newer* SDK was actually present.
 # ---- Stage 2: publish the backend, with the frontend build already in place ----
-FROM mcr.microsoft.com/dotnet/sdk:10.0.302 AS backend-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS backend-build
 WORKDIR /src
 COPY backend/ backend/
 COPY --from=frontend-build /src/frontend/dist frontend/dist
