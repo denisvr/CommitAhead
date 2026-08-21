@@ -74,14 +74,19 @@ sibling `../engineering-standards` checkout; `CLAUDE.md` and `AGENTS.md` are dis
 `docs/engineering-context.md` holds this project's context. The gap analysis and phased plan are in
 `docs/migration/engineering-standards-adoption-plan.md`.
 
-Done: Phase 0 (adoption metadata, ADR-0025 through ADR-0028, ADR-0008 superseded) and the
-package-independent part of Phase 1 (`NuGet.Config` for the private feed, explicit `[Authorize]` on
-every protected operation, `AnalysisLevelSecurity=latest-all`).
+Done: Phase 0 (adoption metadata, ADR-0025 through ADR-0028, ADR-0008 superseded) and Phase 1
+(`NuGet.Config` for the private feed, explicit `[Authorize]` on every protected operation,
+`AnalysisLevelSecurity=latest-all`, and the MVC endpoint-authorization inventory test backed by
+`Devalente.Shared.AspNetCore.Security.Testing`). The private feed is reachable; the pinned version is
+`0.2.0-preview.1` because `v0.2.0` stable is not tagged yet.
 
-Blocked on the private `Devalente.Shared.* 0.2.0` feed being restorable locally and in CI: the MVC
-authorization-inventory test, and every code phase from the DbContext boundary onward (Phases 3-9).
-Still open inside Phase 1 with no package dependency: transport and rate limits for the export and
-write endpoints, and the security evidence register required by ADR-0027.
+Next: Phase 3, the reviewed pilot slice (`ICommitAheadDbContext`, one query and one command migrated
+end to end, ADR-0028's verification gate). Phase 3 must be reviewed before its pattern is repeated
+across the remaining operations in Phase 4.
+
+Still open inside Phase 1: transport and rate limits for the export and write endpoints, and the
+security evidence register required by ADR-0027. Neither depends on the packages. Also not yet wired:
+the CI and Dependabot authentication steps for the private feed, which need a repository secret.
 
 The feature work itself is complete: the Professional Profile / CVPresentation MVP (editing,
 curation, export) and Auth are both implemented and E2E-verified. The Phase 6a manual acceptance

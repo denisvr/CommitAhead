@@ -7,7 +7,9 @@ contract and must not be restated here.
 
 - Standards revision: `b199c5f4561d6ab725868d2e6f036ba04ec093e3` (2026-08-20)
 - Standards checkout: `../engineering-standards` (sibling directory; read-only for this project)
-- Shared package version: `Devalente.Shared.* 0.2.0`
+- Shared package version: `Devalente.Shared.* 0.2.0-preview.1` — the highest published version.
+  `0.2.0` stable is not tagged yet in the standards repository; promote this pin in one commit once
+  `v0.2.0` exists, separately from any architectural phase
 - Root namespace: `CommitAhead` (no organization prefix — preserve it; renaming requires explicit
   authorization)
 - Topology: modular monolith — one deployable ASP.NET Core host that also serves the React SPA from
@@ -77,8 +79,9 @@ repository is mid-migration: current code still uses per-operation use-case clas
 ports, and non-RFC-9457 error responses. New work follows the target architecture in that plan and
 in the contract, not the surrounding legacy shape.
 
-Phases 0 and the package-independent part of Phase 1 are done. Everything from the DbContext
-boundary onward depends on `Devalente.Shared.* 0.2.0` being restorable.
+Phases 0 and 1 are done; `docs/current-state.md` is the authority on what is next and what is still
+open. Packages are installed per phase, only where the phase's code needs them — do not add a
+`Devalente.Shared.*` reference ahead of the code that uses it.
 
 ## Approved deviations
 
