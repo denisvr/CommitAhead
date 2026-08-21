@@ -1,5 +1,10 @@
 # CommitAhead — Threat Model and Security Controls
 
+**Security profile: S2 Standard** (ADR-0027) — targeting all applicable OWASP ASVS 5.0
+Level 1 and Level 2 requirements. The evidence register at the end of this document is the
+authority on which controls are evidenced today, which are owned outside this repository, and
+which are still open.
+
 ## Assets
 
 | Asset | Sensitivity |
@@ -133,3 +138,74 @@ Log access is restricted. The exact production retention period remains TBD in `
 
 ### Pre-internet-deployment Checklist
 A manual security checklist must be completed before the first internet-facing deployment. Penetration testing is deferred to post-MVP.
+
+## Evidence register (ADR-0027)
+
+Required by the S2 profile. A control is only complete when its evidence is named, so this table
+separates what is proven by an executable check in this repository from what depends on
+infrastructure, an external platform setting, or a manual pass. "Owner" is where the control actually
+lives, not who wrote the code.
+
+Profile achievement is **not** claimed. This register tracks progress toward it, and the open items
+below are part of the register, not footnotes to it.
+
+### Evidenced in this repository
+
+| Control | Owner | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| Default-deny authorization | Code | `FallbackPolicy` and `DefaultPolicy` both require an authenticated, enabled user | `EnabledUserPolicyTests` | Pass |
+| Explicit authorization on every operation | Code | `[Authorize]` / `[AllowAnonymous]` on every MVC action | `EndpointAuthorizationInventoryTests` — mechanical inventory, fails on a missing declaration | Pass |
+| Approved anonymous inventory | Code | `ApprovedAnonymousEndpoints`, nine reviewed entries | Same test; also fails on a stale approval | Pass |
+| Owner isolation (application) | Code | Every query and command scoped by `OwnerUserId` (ADR-0015) | Application use-case tests; `ProfessionalProfileRepositoryTests`, `CVPresentationRepositoryTests` | Pass |
+| Owner isolation (database) | Code + configuration | RLS policies in `002_rls_users.sql` and `004_rls_phase2.sql`; least-privileged `commitahead_app` role | `RlsIsolationPhase2Tests` against a real provider | Pass at provider level only — see open items |
+| Session confidentiality | Code | HttpOnly/Secure cookies; tokens never in browser storage | `RefreshEndpointTests`, `LogoutEndpointTests`, frontend `client.test.ts` | Pass |
+| Access-token lifetime ceiling | Code | Server-side 15-minute `iat` check, independent of cookie MaxAge | `MeEndpointTests` | Pass |
+| Antiforgery on unsafe methods | Code | `CsrfMiddleware` plus double-submit cookie and header | `CsrfTests` | Pass |
+| Security headers and CSP | Code | `SecurityHeadersMiddleware`; no `unsafe-inline` for `style-src` | `SecurityHeadersTests` | Pass |
+| CORS narrowness | Code | Dev-only named policy; no CORS in any other environment | `CorsTests` | Pass |
+| Login abuse limit | Code | 5 per 15 minutes per remote address | `LoginEndpointTests` | Pass |
+| State-changing request limit | Code | Global limiter, 120 per minute per authenticated subject; safe methods exempt | `RateLimitTests` — 429 enforced, and verified to fail when the limiter is removed | Pass |
+| CV export abuse limit | Code | 10 per 5 minutes per authenticated subject | `RateLimitTests`, including per-caller partition isolation | Pass |
+| JSON parser depth bound | Code | `MaxDepth = 32` on both serializer configurations | `TransportLimitTests` | Pass |
+| Untrusted Markdown rendering | Code | `RestrictedMarkdownParser`; dangerous-protocol rejection | `RestrictedMarkdownParserTests`, `RestrictedMarkdown.test.tsx`, `restrictedUrlTransform` | Pass |
+| Log redaction | Code | Exception type only, never message or object, on rollback failure | `RlsSessionContext` logging assertions; `RecordingLogger` use-case tests | Pass |
+| Test authentication cannot reach production | Code | `E2EConfigurationGuard` fails closed; endpoint 404s outside the E2E environment; absent from OpenAPI | `E2EConfigurationGuardTests`, `E2ESessionEndpointTests` | Pass |
+| Static security analysis | Build | `AnalysisLevelSecurity=latest-all`, warnings as errors | `dotnet build --warnaserror` in CI | Pass |
+| Dependency vulnerabilities | Build | `dotnet list package --vulnerable --include-transitive`, `npm audit --audit-level=high`, committed lock files, `--locked-mode` restore | CI `backend` and `frontend` jobs | Pass |
+| Secret scanning | Build | Gitleaks | CI `security` job | Pass |
+| Supply-chain pinning | Build | Actions pinned to commit SHAs; `packageSourceMapping` pins `Devalente.Shared.*` to the private feed | `NuGet.Config`; workflow review | Pass |
+| Private feed fails closed | Build | CI aborts with a named error when `DEVALENTE_PACKAGES_TOKEN` is absent, instead of restoring from a 401 | CI `backend` and `combined-artifact` jobs | Configured, not yet exercised — secret not created |
+| Layer and dependency isolation | Code | NetArchTest rules | `ArchitectureTests` | Pass |
+
+### Owned outside this repository
+
+These cannot be proven by a test here. Each names what the user must configure.
+
+| Control | Owner | Required action | Status |
+|---|---|---|---|
+| Private feed access, CI | GitHub repository settings | Add `DEVALENTE_PACKAGES_TOKEN`, a classic PAT with `read:packages` only, under Settings then Secrets and variables then **Actions** | Open |
+| Private feed access, Dependabot | GitHub repository settings | Add the same value under Settings then Secrets and variables then **Dependabot**. It is a separate store; the Actions secret is not visible to it | Open |
+| Package read grant | GitHub package settings | NuGet packages on GitHub Packages inherit permissions from the repository that published them. If the package page offers "Manage Actions access", grant `CommitAhead` read access and the workflows can use `GITHUB_TOKEN` instead of a PAT | Open |
+| Branch protection, required checks, secret push protection | GitHub repository settings | Enable on `main`. Cannot be represented by files in this repository | Open |
+| TLS termination, HSTS at the edge, private database networking | Infrastructure | Phase 6c; hosting undecided (`docs/tbd.md`) | Deferred |
+| Data Protection key ring encryption at rest | Infrastructure | Open decision in `docs/tbd.md` | Deferred |
+| Request body limit enforcement | Infrastructure and code | `TransportLimits.MaxRequestBodyBytes` is configured on Kestrel and asserted as configuration. A test host does not run Kestrel, so a 413 must be verified against a deployed instance, and the reverse proxy must not permit more | Open |
+| Backup encryption, retention, restore testing | Operations | Open decision in `docs/tbd.md` | Deferred |
+| Production log retention | Operations | Open decision in `docs/tbd.md` | Deferred |
+
+### Open items required by S2
+
+- **The API authorization matrix is incomplete.** Per-operation HTTP tests for another owner's
+  resource, for malformed and wrong-audience credentials, and for insufficient permission do not
+  exist yet. Owner isolation is currently proven at the provider level, which is necessary but not
+  sufficient.
+- **RLS is not proven through the HTTP pipeline.** `PostgresApiTestFactory` connects as the
+  Testcontainers owner and never applies the RLS scripts, so no API test exercises the
+  least-privileged `commitahead_app` role. ADR-0028 defines the tests that must close this.
+- **Expected failures do not yet use the canonical Problem Details contract.** Rate-limit rejections
+  return a plain-text body, and domain failures return bare status codes or a bespoke `outcomeCode`
+  extension. Phase 7 of the adoption plan owns this.
+- **ASVS requirement-level tailoring is not written down.** Only the profile is recorded. Password
+  storage requirements are not applicable, because identity is delegated to Supabase and this
+  application never receives a password, but the remaining Level 1 and Level 2 requirements have not
+  been enumerated with versioned identifiers.

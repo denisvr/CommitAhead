@@ -2,6 +2,7 @@
 using CommitAhead.Application.CVPresentations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CommitAhead.Api.Features.CVPresentations;
 
@@ -151,9 +152,11 @@ public sealed class CVPresentationController : ControllerBase
         return result == CVPresentationMutationResult.NotFound ? NotFound() : NoContent();
     }
 
-    // A plain read plus in-process PDF rendering — never calls an external service, so no
-    // rate-limit policy, same as GetById/Put elsewhere in this codebase.
+    // In-process PDF rendering is the most expensive thing an authenticated caller can ask for, so
+    // it carries its own tight per-caller policy on top of the global state-changing limiter (which
+    // does not apply here: export is a GET). It still calls no external service.
     [HttpGet("{id:guid}/export")]
+    [EnableRateLimiting("export")]
     [UsesOwnerScopedData]
     public async Task<IActionResult> Export(Guid id, CancellationToken cancellationToken)
     {

@@ -7,18 +7,33 @@ using CommitAhead.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Kestrel's 30 MB default body limit is far larger than anything this contract can legitimately
+// carry. TransportLimits.MaxRequestBodyBytes is derived from the domain's own ceilings, so it
+// cannot reject valid input. Enforcement is Kestrel's: a test host does not run Kestrel, so the
+// value is asserted as configuration in TransportLimitTests and its runtime effect belongs to a
+// deployed check (see docs/security/threat-model.md, "Evidence register").
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = TransportLimits.MaxRequestBodyBytes);
+
 builder.Services.AddControllers(options =>
     {
         options.Filters.Add<ValidationExceptionFilter>();
         options.Filters.Add<RlsTransactionActionFilter>();
     })
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.MaxDepth = TransportLimits.MaxJsonDepth;
+    });
 
 // Microsoft.AspNetCore.OpenApi's schema generator reads Http.Json.JsonOptions, not MVC's
 // JsonOptions above — without this, the OpenAPI document (and the frontend's generated
 // TypeScript client) would describe enums as plain numbers while every actual response, per the
 // MVC option, serializes them as strings. Both must agree.
-builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.MaxDepth = TransportLimits.MaxJsonDepth;
+});
 builder.Services.AddOpenApi();
 
 // Fail-closed, before anything else touches configuration: E2E:* settings must be present if and

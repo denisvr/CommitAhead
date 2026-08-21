@@ -62,6 +62,38 @@ These strengthen the shared contract and are binding.
 - **Never resolve an open decision by assumption.** `docs/tbd.md` owns unresolved decisions.
   Phase 6c internet deployment and hosting selection require explicit authorization before any work.
 
+## Private package feed
+
+`Devalente.Shared.*` comes from a private GitHub Packages feed. `NuGet.Config` at the repository root
+declares the source with **no credential** and pins the `Devalente.Shared.*` prefix to it through
+`packageSourceMapping`, so a same-named package on nuget.org can never be substituted.
+
+Credentials live in two places, neither of them this repository:
+
+- **Locally** — in the user-level NuGet configuration only. Register it with
+  `dotnet nuget add source`, using the source name `devalente-shared` exactly, because NuGet matches
+  stored credentials by source name rather than URL.
+- **In CI** — a repository secret named `DEVALENTE_PACKAGES_TOKEN`, injected into the runner's
+  ephemeral checkout before restore. The workflow fails closed with a named error when it is absent,
+  rather than letting restore fall back to a 401 that surfaces as a confusing "package not found".
+
+The following must be configured by the repository owner and cannot be represented by files here.
+They are tracked as open in the evidence register in `docs/security/threat-model.md`:
+
+1. `DEVALENTE_PACKAGES_TOKEN` under Settings, Secrets and variables, **Actions** — a classic PAT with
+   `read:packages` and nothing else.
+2. The same value under Settings, Secrets and variables, **Dependabot**. This is a separate store;
+   the Actions secret is invisible to Dependabot, and without it NuGet updates keep running while
+   silently losing the ability to evaluate the private packages.
+3. The package read grant. NuGet packages on GitHub Packages inherit permissions from the repository
+   that published them, so a cross-repository `GITHUB_TOKEN` does not generally work. If the package
+   settings page offers "Manage Actions access", granting `CommitAhead` read access there allows the
+   workflows to drop the PAT and use `GITHUB_TOKEN` with the `packages: read` permission they already
+   declare.
+
+If a freshly published version is invisible to restore, it is almost always the local NuGet HTTP
+cache, which holds the feed index for about 30 minutes: `dotnet nuget locals http-cache --clear`.
+
 ## Reading order
 
 `docs/current-state.md` (status and current priority) → `CONTEXT.md` (terminology) → the relevant

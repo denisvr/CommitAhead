@@ -1,7 +1,22 @@
 version: 2
+
+# Dependabot has its own secret store, separate from Actions secrets. The same token value must be
+# added in both places: Settings > Secrets and variables > Actions for CI, and
+# Settings > Secrets and variables > Dependabot for the registry below. Without the Dependabot copy,
+# NuGet updates keep running but silently stop being able to evaluate the private packages, which is
+# exactly where losing alerts matters most.
+registries:
+  devalente-shared:
+    type: nuget-feed
+    url: https://nuget.pkg.github.com/denisvr/index.json
+    username: denisvr
+    password: ${{secrets.DEVALENTE_PACKAGES_TOKEN}}
+
 updates:
   - package-ecosystem: "nuget"
     directory: "/backend"
+    registries:
+      - devalente-shared
     schedule:
       interval: "weekly"
 
