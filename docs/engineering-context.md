@@ -7,9 +7,9 @@ contract and must not be restated here.
 
 - Standards revision: `b199c5f4561d6ab725868d2e6f036ba04ec093e3` (2026-08-20)
 - Standards checkout: `../engineering-standards` (sibling directory; read-only for this project)
-- Shared package version: `Devalente.Shared.* 0.2.0-preview.1` — the highest published version.
-  `0.2.0` stable is not tagged yet in the standards repository; promote this pin in one commit once
-  `v0.2.0` exists, separately from any architectural phase
+- Shared package version: `Devalente.Shared.* 0.2.0` (stable, tagged `v0.2.0`). `0.x` allows breaking
+  changes in a minor version, so keep this pin for the whole migration and bump it in its own commit,
+  separately from any architectural phase
 - Root namespace: `CommitAhead` (no organization prefix — preserve it; renaming requires explicit
   authorization)
 - Topology: modular monolith — one deployable ASP.NET Core host that also serves the React SPA from

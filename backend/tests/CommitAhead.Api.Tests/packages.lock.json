@@ -10,9 +10,9 @@
       },
       "Devalente.Shared.AspNetCore.Security.Testing": {
         "type": "Direct",
-        "requested": "[0.2.0-preview.1, )",
-        "resolved": "0.2.0-preview.1",
-        "contentHash": "k2ZxJOWUDH8oXX41WvYUAbH07EB1HYtibYhc/8rltSXf8g786CGiYwHDt0uQHgGv3A3Y8cQuF5Cd6tVKaYB1iw=="
+        "requested": "[0.2.0, )",
+        "resolved": "0.2.0",
+        "contentHash": "ILn5O5vJgP5tvIeDd3FFBRPo87/DYBdWXeaShrb9XYPSvDZVp0SGT9WwBfpOVqvlq0AiZ+kmEdCWrEqISzX4Pg=="
       },
       "Microsoft.AspNetCore.Mvc.Testing": {
         "type": "Direct",

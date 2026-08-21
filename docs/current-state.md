@@ -77,8 +77,8 @@ sibling `../engineering-standards` checkout; `CLAUDE.md` and `AGENTS.md` are dis
 Done: Phase 0 (adoption metadata, ADR-0025 through ADR-0028, ADR-0008 superseded) and Phase 1
 (`NuGet.Config` for the private feed, explicit `[Authorize]` on every protected operation,
 `AnalysisLevelSecurity=latest-all`, and the MVC endpoint-authorization inventory test backed by
-`Devalente.Shared.AspNetCore.Security.Testing`). The private feed is reachable; the pinned version is
-`0.2.0-preview.1` because `v0.2.0` stable is not tagged yet.
+`Devalente.Shared.AspNetCore.Security.Testing`). The private feed is reachable and the pinned version
+is the stable `0.2.0`.
 
 Next: Phase 3, the reviewed pilot slice (`ICommitAheadDbContext`, one query and one command migrated
 end to end, ADR-0028's verification gate). Phase 3 must be reviewed before its pattern is repeated
