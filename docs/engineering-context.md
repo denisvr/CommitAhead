@@ -73,9 +73,12 @@ Credentials live in two places, neither of them this repository:
 - **Locally** — in the user-level NuGet configuration only. Register it with
   `dotnet nuget add source`, using the source name `devalente-shared` exactly, because NuGet matches
   stored credentials by source name rather than URL.
-- **In CI** — a repository secret named `DEVALENTE_PACKAGES_TOKEN`, injected into the runner's
-  ephemeral checkout before restore. The workflow fails closed with a named error when it is absent,
-  rather than letting restore fall back to a 401 that surfaces as a confusing "package not found".
+- **In CI** — a repository secret named `DEVALENTE_PACKAGES_TOKEN`. `dotnet nuget update source`
+  writes it to the runner's user-level NuGet configuration, not into the checkout, so it cannot be
+  committed or uploaded by accident; NuGet merges that with the repository's credential-free source
+  declaration and matches the two by source name. The workflow fails closed with a named error when
+  the secret is absent, rather than letting restore fall back to a 401 that surfaces as a confusing
+  "package not found".
 
 The following must be configured by the repository owner and cannot be represented by files here.
 They are tracked as open in the evidence register in `docs/security/threat-model.md`:

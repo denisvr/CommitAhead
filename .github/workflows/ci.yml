@@ -44,10 +44,14 @@ jobs:
           global-json-file: backend/global.json
 
       - name: Authenticate the private package feed
-        # Injects the credential into this ephemeral checkout's NuGet.Config, which declares the
-        # source without one. Fails closed rather than letting restore fall back to a 401 that
-        # surfaces as a confusing "package not found". The token is never echoed: it reaches
-        # dotnet through the environment, and no step uploads or commits the modified config.
+        # The repository's NuGet.Config declares this source without a credential; the credential
+        # goes into the runner's own user-level NuGet configuration, which is where
+        # `dotnet nuget update source` writes (verified locally, 2026-08-21) — not into the
+        # checkout, so it cannot be committed or uploaded by accident. NuGet merges the two and
+        # matches the credential to the source by name, which is why the name must stay
+        # "devalente-shared". Fails closed rather than letting restore fall back to a 401 that
+        # surfaces as a confusing "package not found". The token is never echoed: it reaches dotnet
+        # through the environment only.
         env:
           DEVALENTE_PACKAGES_TOKEN: ${{ secrets.DEVALENTE_PACKAGES_TOKEN }}
         run: |
@@ -165,10 +169,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Authenticate the private package feed
-        # Injects the credential into this ephemeral checkout's NuGet.Config, which declares the
-        # source without one. Fails closed rather than letting restore fall back to a 401 that
-        # surfaces as a confusing "package not found". The token is never echoed: it reaches
-        # dotnet through the environment, and no step uploads or commits the modified config.
+        # The repository's NuGet.Config declares this source without a credential; the credential
+        # goes into the runner's own user-level NuGet configuration, which is where
+        # `dotnet nuget update source` writes (verified locally, 2026-08-21) — not into the
+        # checkout, so it cannot be committed or uploaded by accident. NuGet merges the two and
+        # matches the credential to the source by name, which is why the name must stay
+        # "devalente-shared". Fails closed rather than letting restore fall back to a 401 that
+        # surfaces as a confusing "package not found". The token is never echoed: it reaches dotnet
+        # through the environment only.
         env:
           DEVALENTE_PACKAGES_TOKEN: ${{ secrets.DEVALENTE_PACKAGES_TOKEN }}
         run: |
