@@ -1,9 +1,16 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-28
 ---
 
 # Feature-folder use cases without MediatR
+
+**Status: superseded by ADR-0026** — CommitAhead adopted the Devalente engineering standards as its
+canonical engineering contract (ADR-0025), which mandates CQRS vertical slices dispatched through the
+project-owned `IApplicationMediator`. MediatR remains prohibited, as does a generic
+`IUseCase<TRequest, TResponse>`; what changes is that the per-operation `*UseCase` class with
+`ExecuteAsync` is retired in favour of canonical command/query slices and a central pipeline. Kept for
+historical record — the reasoning below explains why direct dispatch was chosen originally.
 
 ## Context
 
